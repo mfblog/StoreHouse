@@ -58,9 +58,15 @@ check_singbox(){
             if [[ "$core_choice" == "4" ]]; then
                 if [[ -f /usr/local/bin/mihomo ]]; then
                     echo -e "${green_text}检测到已安装Mihomo核心，开始升级...${reset}"
+                    systemctl stop mihomo-router.service
+                    systemctl stop nftables
                     mihomo_install
                     mv mihomo /usr/local/bin/mihomo
                     chmod +x /usr/local/bin/mihomo
+                    systemctl restart mihomo.service
+                    systemctl restart mihomo-router.service
+                    systemctl restart nftables
+
                     echo -e "${green_text}Mihomo 升级完成${reset}"
                     exit 0
                 fi
@@ -76,16 +82,26 @@ check_singbox(){
                         choose_install_singbox
                         ;;
                         2) 
+                        systemctl stop sing-box-router.service
+                        systemctl stop nftables 
                         singbox_p_install
                         mv sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
                         chmod +x /usr/local/bin/sing-box 
+                        systemctl restart sing-box.service
+                        systemctl restart sing-box-router.service
+                        systemctl restart nftables
                         echo -e "${green_text}Puer喵佬核心升级完成${reset}"
                         exit 0
                         ;;
                         3) 
+                        systemctl stop sing-box-router.service
+                        systemctl stop nftables 
                         singbox_x_install
                         mv sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
                         chmod +x /usr/local/bin/sing-box 
+                        systemctl restart sing-box.service
+                        systemctl restart sing-box-router.service
+                        systemctl restart nftables
                         echo -e "${green_text}曦灵X核心升级完成${reset}"
                         exit 0
                         ;;
@@ -101,7 +117,7 @@ check_singbox(){
                 echo -e "${yellow}已跳过升级${reset}"
                 exit 1
                 ;;
-        esac  # 新增的esac闭合
+        esac  
     else
         echo -e "${yellow}[信息] 开始安装核心...${reset}"
           # 调用安装函数
@@ -240,7 +256,9 @@ choose_install_singbox(){
     case "$choice" in
         1)
             echo -e "当前选择: ${green_text}Sing-BOX${reset}编译安装"              
-            if [[ -f /usr/local/bin/sing-box ]]; then            
+            if [[ -f /usr/local/bin/sing-box ]]; then 
+            systemctl stop sing-box-route.service  
+            systemctl stop nftables        
             singbox_install_make
             cp "$(go env GOPATH)/bin/sing-box" /usr/local/bin/ || { echo "复制文件失败！退出脚本"; exit 1; }
             chmod +x /usr/local/bin/sing-box 
@@ -257,6 +275,8 @@ choose_install_singbox(){
             ;;
         2)
             echo -e "当前选择: ${green_text} Sing-BOX ${reset}二进制安装"
+            systemctl stop sing-box-route.service
+            systemctl stop nftables 
             export core_service="sing-box"
             if [[ -f /usr/local/bin/sing-box ]]; then  
             singbox_install_core
@@ -509,9 +529,9 @@ install_singbox_tproxy(){
     fi
 
 # 判断是否已存在 net.ipv6.conf.all.forwarding = 1
-    if ! grep -q '^net.ipv6.conf.all.forwarding = 1$' /etc/sysctl.conf; then
-        echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.conf
-    fi
+#    if ! grep -q '^net.ipv6.conf.all.forwarding = 1$' /etc/sysctl.conf; then
+ #       echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.conf
+ #   fi
     sleep 1
     echo "系统转发创建完成"
     # 写入tproxy rule  
@@ -1453,7 +1473,8 @@ check_mosdns_core(){
             esac
         done
     else
-        check_existing_core && {
+        #check_existing_core &&
+         {
             read -p "检测到其他核心，是否继续安装 MosDNS？[Y/n] " confirm
             [[ ${confirm:-Y} =~ [Nn] ]] && {
                 echo -e "${red}安装已取消${reset}"
