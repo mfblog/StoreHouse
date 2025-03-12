@@ -7,28 +7,24 @@ yellow="\033[33m"
 reset="\033[0m"
 sub_host="https://sub-singbox.herozmy.com"
 json_file="&file=https://raw.githubusercontent.com/herozmy/sing-box-mosdns-fakeip/main/config/fake-ip.json"
-main(){
-echo -e "1. TProxy Sing-Box | Mihomo Fake-ip <官方内核|喵佬P核|曦灵X核|Mihomo内核>"
-echo -e "2. Mosdns Fake-ip分流"
-echo -e "3. 卸载 Sing-Box | Mihomo | Mosdns"
-echo -e "请选择:"
-read choice
-case $choice in
-    1) 
-        choose_singbox  # 先选择核心类型
-        ;;
-    2) 
-        install_mosdns
-        install_mosdns_config
-        ;;
-    3) 
-        uninstall_all
-        ;;
-    *)
-        echo "无效的选项，请重新运行脚本并选择有效的选项."
-    ;;
-esac
+local_ip=$(hostname -I | awk '{print $1}')
+found_singbox=false
+found_mosdns=false
+found_mihomo=false
 
+check_installed() {
+    programs=("sing-box" "mosdns" "mihomo")    
+    for program in "${programs[@]}"; do
+        if [ -f "/usr/local/bin/$program" ]; then
+            case "$program" in
+                "sing-box") found_singbox=true ;;
+                "mosdns") found_mosdns=true ;;
+                "mihomo") found_mihomo=true ;;
+            esac
+            echo -e "${green_text}当前系统已安装${reset}"
+            echo -e "  ${green_text}✔${reset} $program"
+        fi
+    done
 }
 # 修改架构检测函数为最新标准
 detect_architecture() {
@@ -45,8 +41,6 @@ detect_architecture() {
             ;;
     esac
 }
-
-
 
 check_singbox(){
 
@@ -1379,7 +1373,109 @@ choose_singbox(){
 }
 ###################################################################Mosdns
 
+main(){
+
+echo "-------------------------------------------------"
+echo -e "${green_text}软路由透明代理方案 sing-box/mihomo + Mosdns${reset}"
+echo "-------------------------------------------------"
+echo -e "1. ${yellow}TProxy Sing-Box | Mihomo Fake-ip <官方内核|喵佬P核|曦灵X核|Mihomo内核>${reset}"
+echo -e "2. ${yellow}Mosdns Fake-ip分流${reset}"
+echo -e "3. ${yellow}卸载 Sing-Box | Mihomo | Mosdns${reset}"
+echo "------------------------------------------------- "
+echo -e "当前机器地址:${local_ip}"
+echo "----------------------------------------"
+check_installed
+echo "========================================"
+echo -e "请选择:"
+read choice
+case $choice in
+    1) 
+        choose_singbox  # 先选择核心类型
+        ;;
+    2) 
+        check_mosdns_core
+        install_mosdns_config
+        ;;
+    3) 
+        uninstall_all
+        ;;
+    *)
+        echo "无效的选项，请重新运行脚本并选择有效的选项."
+    ;;
+esac
+}
+  check_existing_core(){ 
+    if $found_singbox || $found_mihomo; then
+        echo -e "${yellow}检测到已安装其他核心程序："
+        $found_singbox && echo "  ▶ Sing-Box (已存在)"
+        $found_mihomo && echo "  ▶ Mihomo (已存在)"
+        $found_mosdns && echo "  ▶ Mosdns (已存在)"
+        echo -e "${reset}"
+        return 0
+    else
+        return 1
+    fi
+  }
+check_mosdns_core(){
+    check_existing_core
+  # 主逻辑
+     if $found_mosdns; then
+        echo -e "${green}当前 MosDNS 版本：$(mosdns version | head -n1)${reset}"
+        echo -e "${yellow}请选择操作：${reset}"
+        PS3="请输入选项："
+        select option in "升级版本" "更新规则" "返回菜单"; do
+            case $option in
+                "升级版本")
+                    echo -e "${green}开始升级 MosDNS...${reset}"
+                    install_mosdns
+                    read -p "升级后是否更新规则？[Y/n] " update
+                    if [[ ${update:-Y} =~ [Yy] ]]; then
+                        echo -e "${green}正在更新规则...${reset}"
+                        mv /etc/mosdns/ /etc/mosdnsbak
+                        install_mosdns_config
+                        exit 0
+                    fi
+                    break
+                    ;;
+                "更新规则")
+                    echo -e "${green}正在更新规则...${reset}"
+                        mv /etc/mosdns/ /etc/mosdnsbak
+                        install_mosdns_config
+                        exit 0
+                    break
+                    ;;
+                "返回菜单")
+                    return 0
+                    ;;
+                *)
+                    echo -e "${red}无效选择，请重新输入${reset}"
+                    ;;
+            esac
+        done
+    else
+        check_existing_core && {
+            read -p "检测到其他核心，是否继续安装 MosDNS？[Y/n] " confirm
+            [[ ${confirm:-Y} =~ [Nn] ]] && {
+                echo -e "${red}安装已取消${reset}"
+                return 0
+            }
+        }
+            time_zone
+            install_mosdns
+    fi
+
+}
+
+time_zone(){
+    echo -e "\n设置时区为Asia/Shanghai"
+    timedatectl set-timezone Asia/Shanghai || { echo -e "\e[31m时区设置失败！退出脚本\e[0m"; exit 1; }
+    echo -e "\e[32m时区设置成功\e[0m"
+    echo -e "\n设置时区为Asia/Shanghai"
+}
+
 install_mosdns(){
+
+
     if [[ $(uname -m) == "aarch64" ]]; then
         arch="arm64"
     elif [[ $(uname -m) == "x86_64" ]]; then
@@ -1392,10 +1488,6 @@ install_mosdns(){
     mosdns_host="https://github.com/herozmy/StoreHouse/releases/download/mosdns/mosdns-linux-$arch.zip"
     apt update && apt -y upgrade || { echo "更新失败！退出脚本"; exit 1; }
     apt install curl wget git tar gawk sed cron unzip nano -y || { echo "更新失败！退出脚本"; exit 1; }
-    echo -e "\n设置时区为Asia/Shanghai"
-    timedatectl set-timezone Asia/Shanghai || { echo -e "\e[31m时区设置失败！退出脚本\e[0m"; exit 1; }
-    echo -e "\e[32m时区设置成功\e[0m"
-    echo -e "\n设置时区为Asia/Shanghai"
     wget "${mosdns_host}" || { echo -e "\e[31m下载失败！退出脚本\e[0m"; exit 1; }
     echo "开始解压"
     unzip ./mosdns-linux-$arch.zip 
@@ -1404,6 +1496,8 @@ install_mosdns(){
     rm -rf mosdns-linux-$arch.zip
     chmod 0777 /usr/local/bin/mosdns 
 }
+
+
 install_mosdns_config(){   
     echo -e "\n自定义设置（以下设置可直接回车使用默认值）"
     read -p "输入sing-box/mihomo入站地址（默认10.10.10.147:6666）：" uiport
@@ -1441,8 +1535,9 @@ install_mosdns_config(){
         (
             wget -O mosdns.zip https://github.com/herozmy/StoreHouse/raw/refs/heads/latest/config/mosdns/ph/mosdns2025302.zip &&
             mkdir -p /etc/mosdns/ &&
-            mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml &&
             unzip mosdns.zip -d /etc/mosdns/ &&
+            mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml &&
+            
             rm -f mosdns.zip
         ) || {
             echo "下载或解压失败，请检查网络连接和目标目录权限。"
