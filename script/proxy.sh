@@ -5,6 +5,7 @@
 green_text="\033[32m"
 yellow="\033[33m"
 reset="\033[0m"
+red='\033[1;31m'
 sub_host="https://sub-singbox.herozmy.com"
 json_file="&file=https://raw.githubusercontent.com/herozmy/sing-box-mosdns-fakeip/main/config/fake-ip.json"
 local_ip=$(hostname -I | awk '{print $1}')
@@ -493,7 +494,7 @@ check_resolved(){
 install_core_service(){
     check_resolved
     sleep 1
-    echo -e "配置系统服务文件"
+    echo -e "${yellow}配置系统服务文件${reset}"
     sleep 1
     core_service_file="/etc/systemd/system/${core_service}.service"
 cat << EOF > "$core_service_file"
@@ -515,14 +516,14 @@ EOF
         sed -i '/CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE/,/LimitNOFILE=infinity/c\Type=simple\nExecStart=/usr/local/bin/mihomo -d /etc/mihomo/' "$core_service_file"
     
     fi
-    echo "${core_service} 服务创建完成"
+    echo -e "${green_text}${core_service} 服务创建完成${reset}"
     systemctl daemon-reload
     systemctl enable ${core_service}
 }
 install_singbox_tproxy(){
-    echo -e "配置tproxy"
+    echo -e "${yellow}配置tproxy${reset}"
     sleep 1
-    echo "创建系统转发"
+    echo -e "${yellow}创建系统转发${reset}"
 # 判断是否已存在 net.ipv4.ip_forward=1
     if ! grep -q '^net.ipv4.ip_forward=1$' /etc/sysctl.conf; then
         echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
@@ -533,9 +534,10 @@ install_singbox_tproxy(){
  #       echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.conf
  #   fi
     sleep 1
-    echo "系统转发创建完成"
+    echo -e "${green_text}系统转发创建完成${reset}"
+    sleep 1
     # 写入tproxy rule  
-    echo "写入路由 rule"
+    echo -e "${yellow}写入路由 rule${reset}"
         cat <<EOF > "/etc/systemd/system/${core_service}-router.service"
 [Unit]
 Description=${core_service} TProxy Rules
@@ -554,6 +556,7 @@ ExecStop=/sbin/ip rule del fwmark 1 table 100 ; /sbin/ip route del local default
 WantedBy=multi-user.target
 EOF
 echo -e "${green_text}${core_service}-router 服务创建完成"
+sleep 1
 ####写入nftables
 echo "" > "/etc/nftables.conf"
 cat <<EOF > "/etc/nftables.conf"
@@ -618,6 +621,7 @@ table inet $core_service {
 }
 EOF
     echo -e "${green_text}nftables规则写入完成${reset}"
+    sleep 1
 
 }
 ###检测ui是否存在
@@ -1038,14 +1042,14 @@ hy2-gohome(){
     read -p "请输入选择 (y/n): " hy2_choice
     case "${hy2_choice}" in
         y)
-            echo -e "安装hy2回家配置"
+            echo -e "${green_text}安装hy2回家配置${reset}"
             install_hy2-gohome
             ;;
         n)
-            echo -e "不安装hy2回家配置"
+            echo -e "${yellow}不安装hy2回家配置${reset}"
             ;;
         *)
-            echo -e "无效选择，退出脚本"
+            echo -e "${red}无效选择，退出脚本${reset}"
             exit 1
             ;;
     esac
@@ -1054,10 +1058,10 @@ hy2-gohome(){
 
 
 ph_home_config(){
-    echo -e "请输入：mosdns地址 例如：10.10.10.53"
+    echo -e "${yellow}请输入：mosdns地址 例如：10.10.10.53${reset}"
     read -p "DNS地址: " mosdns_address
     mosdns_address="${mosdns_address:-10.10.10.53}"
-    echo -e "请输入：家里wifi bssid 例如：e8:9f:80:8b:9c:59 <用于回家直连，请自行获取>"
+    echo -e "${yellow}请输入：家里wifi bssid 例如：e8:9f:80:8b:9c:59 <用于回家直连，请自行获取>${reset}"
     read -p "家里wifi bssid: " wifi_bssid
     wifi_bssid="${wifi_bssid:-e8:9f:80:8b:9c:59}"
 cat << EOF >  "/root/go_home.json"
@@ -1332,98 +1336,10 @@ echo "=================================================================="
     echo -e "${green_text}请使用${reset} ${yellow}systemctl status ${core_service}-router${reset} ${green_text}查看路由状态${reset}" 
 
 }
-choose_singbox(){
-    echo -e "请选择${green_text}程序${reset}"
-    echo -e "${yellow}1. Sing-box官核${reset}"
-    echo -e "${yellow}2. Sing-boxPuer喵佬核心${reset}"
-    echo -e "${yellow}3. Sing-box曦灵X核心${reset}"
-    echo -e "${yellow}4. Mihomo核心${reset}"
-    echo -e "${yellow}0. 返回主菜单${reset}"
-    read -p "请输入选择 (1/2/3/4/5/0): " core_choice
-  
-    case "$core_choice" in
-        1)
-            echo -e "当前选择: ${green_text}Sing-BOX${reset}官方核心"        
-            echo -e "请选择: ${green_text}Sing-BOX${reset}官方核心安装方式"  
-            check_singbox
-            choose_install_singbox
-            install_josn_config
-            install_core_service
-            install_singbox_tproxy
-            hy2-gohome
-            install_over
-            ;;
-        2)
-            echo -e "当前选择: ${green_text} Sing-BOX ${reset}Puer喵佬核心"
-            check_singbox
-            check_enter
-            install_josn_config
-            install_core_service
-            install_singbox_tproxy
-            hy2-gohome
-            install_over
-            ;;
-        3)
-            echo -e "当前选择: ${green_text}Sing-BOX${reset}曦灵X核心"
-            check_singbox
-            check_enter
-            install_josn_config
-            install_core_service
-            install_singbox_tproxy  
-            hy2-gohome
-            install_over
-            ;;
-        4)
-            echo -e "当前选择: ${green_text}Mihomo${reset}核心"
-            check_singbox
-            check_enter
-            install_josn_config
-            install_core_service
-            install_singbox_tproxy
-            install_over
-            ;;
-        0)
-            main
-            ;;
-        *)
-            echo -e "无效选择，退出脚本"
-            exit 1
-            ;;
-    esac
-}
+
 ###################################################################Mosdns
 
-main(){
 
-echo "-------------------------------------------------"
-echo -e "${green_text}软路由透明代理方案 sing-box/mihomo + Mosdns${reset}"
-echo "-------------------------------------------------"
-echo -e "1. ${yellow}TProxy Sing-Box | Mihomo Fake-ip <官方内核|喵佬P核|曦灵X核|Mihomo内核>${reset}"
-echo -e "2. ${yellow}Mosdns Fake-ip分流${reset}"
-echo -e "3. ${yellow}卸载 Sing-Box | Mihomo | Mosdns${reset}"
-echo "------------------------------------------------- "
-echo -e "当前机器地址:${local_ip}"
-echo "----------------------------------------"
-check_installed
-echo "========================================"
-echo -e "请选择:"
-read choice
-case $choice in
-    1) 
-        choose_singbox  # 先选择核心类型
-        ;;
-    2) 
-        check_mosdns_core
-        install_mosdns_config
-        ;;
-    3) 
-        uninstall_all
-        ;;
-    *)
-        echo "无效的选项，请重新运行脚本并选择有效的选项."
-    ;;
-esac
-}
   check_existing_core(){ 
     if $found_singbox || $found_mihomo; then
         echo -e "${yellow}检测到已安装其他核心程序："
@@ -1437,10 +1353,10 @@ esac
     fi
   }
 check_mosdns_core(){
-    check_existing_core
+   # check_existing_core
   # 主逻辑
      if $found_mosdns; then
-        echo -e "${green}当前 MosDNS 版本：$(mosdns version | head -n1)${reset}"
+        echo -e "${green_text}当前 MosDNS 版本：$(mosdns version | head -n1)${reset}"
         echo -e "${yellow}请选择操作：${reset}"
         PS3="请输入选项："
         select option in "升级版本" "更新规则" "返回菜单"; do
@@ -1459,7 +1375,7 @@ check_mosdns_core(){
                     ;;
                 "更新规则")
                     echo -e "${green}正在更新规则...${reset}"
-                        mv /etc/mosdns/ /etc/mosdnsbak
+                        mv /etc/mosdns/ /etc/mosdnsbak/
                         install_mosdns_config
                         exit 0
                     break
@@ -1473,7 +1389,7 @@ check_mosdns_core(){
             esac
         done
     else
-        #check_existing_core &&
+        check_existing_core &&
          {
             read -p "检测到其他核心，是否继续安装 MosDNS？[Y/n] " confirm
             [[ ${confirm:-Y} =~ [Nn] ]] && {
@@ -1481,8 +1397,10 @@ check_mosdns_core(){
                 return 0
             }
         }
+            systemctl stop $program-router
             time_zone
             install_mosdns
+            
     fi
 
 }
@@ -1571,14 +1489,86 @@ install_mosdns_config(){
     esac
 
     echo -e "${green_text}Mosdns规则拉取成功${reset}"
-    echo "配置mosdns"
+    echo -e "${yellow}配置mosdns${reset}"
     sed -i "s/- addr: 10.10.10.147:6666/- addr: ${uiport}/g" /etc/mosdns/config.yaml
-    echo "设置mosdns开机自启动"
+    echo -e "${yellow}设置mosdns开机自启动${reset}"
     mosdns service install -d /etc/mosdns -c /etc/mosdns/config.yaml
-    echo "mosdns开机启动完成"
+    echo -e "${green_text}mosdns开机启动完成${reset}"
     sleep 1
     systemctl restart mosdns
+    check_aio
 
+}
+
+check_aio() {
+    local NEED_ADJUST=0
+    local NFT_RULESET="/etc/nftables.conf"
+    
+    # 定义核心二进制检测路径数组
+    local MOSDNS_PATHS="/usr/local/bin/mosdns"
+    
+    local PROXY_PATHS=(
+        "/usr/local/bin/mihomo"
+        "/usr/local/bin/sing-box"
+    )
+
+    # 增强型二进制检测函数
+    check_binary() {
+        local paths=("$@")
+        for path in "${paths[@]}"; do
+            if [ -x "$path" ] && file "$path" | grep -qE "ELF.*executable"; then
+                return 0
+            fi
+        done
+        return 1
+    }
+
+    # 检测组件存在性
+    local HAS_MOSDNS=0
+    local HAS_PROXY=0
+    
+    check_binary "${MOSDNS_PATHS[@]}" && HAS_MOSDNS=1
+    check_binary "${PROXY_PATHS[@]}" && HAS_PROXY=1
+
+    echo -e "${yellow}=== 组件检测结果 ===${reset}"
+    echo -e "MosDNS 存在: $([ $HAS_MOSDNS -eq 1 ] && 
+        echo "${green_text}是✓${reset}" || 
+        echo "${red}否✗${reset}")"
+        
+    echo -e "代理核心存在: $([ $HAS_PROXY -eq 1 ] && 
+        echo "${green_text}是✓${reset}" || 
+        echo "${red}否✗${reset}")"
+
+    # 判断调整条件
+    if [ $HAS_MOSDNS -eq 1 ] && [ $HAS_PROXY -eq 1 ]; then
+        NEED_ADJUST=1
+        echo -e "${yellow}检测到DNS与代理核心共存，需要调整防火墙规则${reset}"
+    else
+        echo -e "${green_text}未检测到需要调整的组合${reset}"
+    fi
+
+    # 应用规则调整
+    if [ $NEED_ADJUST -eq 1 ]; then
+        # 检查IP是否已存在
+        if ! grep -q "223.5.5.5" "$NFT_RULESET"; then
+            echo -e "${yellow}正在添加规则...${reset}"
+            
+            # 精准修改nftables配置文件
+            sed -i '/10.0.0.0\/8,/a\      223.5.5.5,' "$NFT_RULESET"
+            
+            
+            # 验证并重载
+            if nft -c -f "$NFT_RULESET"; then
+                nft -f "$NFT_RULESET"
+                echo -e "${green_text}防火墙规则已更新${reset}"
+            else
+                echo -e "${red_text}配置错误，已回滚${reset}"
+                sed -i '/223.5.5.5,/d' "$NFT_RULESET"
+            fi
+        else
+            echo -e "${green_text}规则已存在${reset}"
+        fi
+    fi
 }
 
 uninstall_all(){
@@ -1633,5 +1623,96 @@ uninstall_all(){
     done
     echo "卸载完成"
 }
-
+choose_singbox(){
+    echo -e "请选择${green_text}程序${reset}"
+    echo -e "${yellow}1. Sing-box官核${reset}"
+    echo -e "${yellow}2. Sing-boxPuer喵佬核心${reset}"
+    echo -e "${yellow}3. Sing-box曦灵X核心${reset}"
+    echo -e "${yellow}4. Mihomo核心${reset}"
+    echo -e "${yellow}0. 返回主菜单${reset}"
+    read -p "请输入选择 (1/2/3/4/5/0): " core_choice
+  
+    case "$core_choice" in
+        1)
+            echo -e "当前选择: ${green_text}Sing-BOX${reset}官方核心"        
+            echo -e "请选择: ${green_text}Sing-BOX${reset}官方核心安装方式"  
+            check_singbox
+            choose_install_singbox
+            install_josn_config
+            install_core_service
+            install_singbox_tproxy
+            hy2-gohome
+            install_over
+            ;;
+        2)
+            echo -e "当前选择: ${green_text} Sing-BOX ${reset}Puer喵佬核心"
+            check_singbox
+            check_enter
+            install_josn_config
+            install_core_service
+            install_singbox_tproxy
+            hy2-gohome
+            check_aio
+            install_over
+            ;;
+        3)
+            echo -e "当前选择: ${green_text}Sing-BOX${reset}曦灵X核心"
+            check_singbox
+            check_enter
+            install_josn_config
+            install_core_service
+            install_singbox_tproxy  
+            hy2-gohome
+            check_aio
+            install_over
+            ;;
+        4)
+            echo -e "当前选择: ${green_text}Mihomo${reset}核心"
+            check_singbox
+            check_enter
+            install_josn_config
+            install_core_service
+            install_singbox_tproxy
+            check_aio
+            install_over
+            ;;
+        0)
+            main
+            ;;
+        *)
+            echo -e "无效选择，退出脚本"
+            exit 1
+            ;;
+    esac
+}
+main(){
+echo "-------------------------------------------------"
+echo -e "${green_text}软路由透明代理方案 sing-box/mihomo + Mosdns${reset}"
+echo "-------------------------------------------------"
+echo -e "1. ${yellow}TProxy Sing-Box | Mihomo Fake-ip <官方内核|喵佬P核|曦灵X核|Mihomo内核>${reset}"
+echo -e "2. ${yellow}Mosdns Fake-ip分流${reset}"
+echo -e "3. ${yellow}卸载 Sing-Box | Mihomo | Mosdns${reset}"
+echo "------------------------------------------------- "
+echo -e "当前机器地址:${local_ip}"
+echo "----------------------------------------"
+check_installed
+echo "========================================"
+echo -e "请选择:"
+read choice
+case $choice in
+    1) 
+        choose_singbox  # 先选择核心类型
+        ;;
+    2) 
+        check_mosdns_core
+        install_mosdns_config
+        ;;
+    3) 
+        uninstall_all
+        ;;
+    *)
+        echo "无效的选项，请重新运行脚本并选择有效的选项."
+    ;;
+esac
+}
 main
