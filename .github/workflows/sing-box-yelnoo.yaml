@@ -155,8 +155,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          release_name: sing-box
-          tag: sing-box
+          release_name: sing-box-yelnoo
+          tag: sing-box-yelnoo
           overwrite: true
           body: |
             更新 [sing-box YelNoo 版](https://github.com/YelNoo/sing-box/tree/build)至 v${{ env.yelnoo_VERSION }}，发布于 ${{ env.yelnoo_TIME }}
