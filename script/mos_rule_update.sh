@@ -7,10 +7,10 @@ direct_list_url="https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/
 cn_ip_cidr_url="https://raw.githubusercontent.com/Hackl0us/GeoIP2-CN/release/CN-ip-cidr.txt"
 
 # 设置本地文件路径
-geosite_cn_file="/etc/mosdns/geosite_cn.txt"
-geoip_cn_file="/etc/mosdns/geoip_cn.txt"
-geosite_geolocation_noncn_file="/etc/mosdns/geosite_geolocation_noncn.txt"
-gfw_file="/etc/mosdns/gfw.txt"
+geosite_cn_file="/etc/mosdns/rule/geosite_cn.txt"
+geoip_cn_file="/etc/mosdns/rule/geoip_cn.txt"
+geosite_geolocation_noncn_file="/etc/mosdns/rule/geosite_geolocation_noncn.txt"
+gfw_file="/etc/mosdns/rule/gfw.txt"
 
 # 下载并替换文件的函数
 download_and_replace() {
