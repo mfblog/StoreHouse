@@ -1,14 +1,13 @@
 name: Update sing-box-yelnoo
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # 保留手动触发
   schedule:
-    - cron: "30 18 * * *"
+    - cron: "30 17 * * *"  # 保留定时任务
   push:
     branches:
-      - latest
-    paths-ignore:
-      - "README.md"
-      - ".github/workflows/update-mihomo.yml"
+      - latest  # 仅监控latest分支
+    paths:
+      - ".github/workflows/sing-box-yelnoo.yaml"  #
 
 jobs:
   go:

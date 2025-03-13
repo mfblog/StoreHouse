@@ -1,9 +1,14 @@
 name: Release mosdns
 
 on:
+  workflow_dispatch:  # 保留手动触发
   schedule:
-    - cron: '0 0 * * *'  # 每天运行一次
-  workflow_dispatch:      # 保留手动触发选项
+    - cron: "30 20 * * *"  # 保留定时任务
+  push:
+    branches:
+      - latest  # 仅监控latest分支
+    paths:
+      - ".github/workflows/mosdns.yaml"  #
 
 jobs:
   build-release:

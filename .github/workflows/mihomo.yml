@@ -1,17 +1,13 @@
 name: Update mihomo
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # 保留手动触发
   schedule:
-    - cron: "0 18 * * *"
+    - cron: "30 21 * * *"  # 保留定时任务
   push:
     branches:
-      - latest
-    paths-ignore:
-      - "README.md"
-      - ".github/workflows/delete-old-workflows.yml"
-      - ".github/workflows/update-adguardhome.yml"
-      - ".github/workflows/update-dashboard.yml"
-      - ".github/workflows/update-singbox.yml"
+      - latest  # 仅监控latest分支
+    paths:
+      - ".github/workflows/mihomo.yaml"  #
 
 jobs:
   go:
