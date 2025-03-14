@@ -332,7 +332,7 @@
     # s核
     singbox_s_install(){
         arch=$(detect_architecture)
-        download_url="https://github.com/herozmy/StoreHouse/releases/download/sing-box-yelnoo/sing-box-yelnoo-dev-linux-${arch}.tar.gz"
+        download_url="https://github.com/herozmy/StoreHouse/releases/download/sing-box-yelnoo/sing-box-yelnoo-linux-${arch}.tar.gz"
 
 
         echo -e "${yellow}开始下载S佬Y核心...${reset}"
