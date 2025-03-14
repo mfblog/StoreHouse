@@ -1541,24 +1541,37 @@ check_aio() {
 
     # 应用规则调整
     if [ $NEED_ADJUST -eq 1 ]; then
-        # 检查IP是否已存在
-        if ! grep -q "223.5.5.5" "$NFT_RULESET"; then
-            echo -e "${yellow}正在添加规则...${reset}"
-            
-            # 精准修改nftables配置文件
-            sed -i '/10.0.0.0\/8,/a\      223.5.5.5,' "$NFT_RULESET"
-            
-            
-            # 验证并重载
-            if nft -c -f "$NFT_RULESET"; then
-                nft -f "$NFT_RULESET"
-                echo -e "${green_text}防火墙规则已更新${reset}"
-            else
-                echo -e "${red_text}配置错误，已回滚${reset}"
-                sed -i '/223.5.5.5,/d' "$NFT_RULESET"
+        # 定义要添加的IPv4/IPv6地址
+        local ADD_IPV4=("223.5.5.5/32" "223.6.6.6/32")
+        local ADD_IPV6=("2400:3200::1/128" "2400:3200:baba::1/128")
+        
+        # 处理IPv4规则
+        for ip in "${ADD_IPV4[@]}"; do
+            if ! grep -q "$ip" "$NFT_RULESET"; then
+                echo -e "${yellow}添加IPv4 $ip...${reset}"
+                sed -i "/10.0.0.0\/8,/a\      $ip," "$NFT_RULESET"
             fi
+        done
+        
+        # 处理IPv6规则
+        for ip in "${ADD_IPV6[@]}"; do
+            if ! grep -q "$ip" "$NFT_RULESET"; then
+                echo -e "${yellow}添加IPv6 $ip...${reset}"
+                sed -i "/100::\/64,/a\      $ip," "$NFT_RULESET" 
+            fi
+        done
+        
+        # 统一验证配置
+        if nft -c -f "$NFT_RULESET"; then
+            # 刷新防火墙规则
+            echo -e "${yellow}正在刷新防火墙...${reset}"
+            nft flush ruleset    # 清空现有规则
+            nft -f "$NFT_RULESET"  # 重新加载配置
+            sleep 1
+            echo -e "${green_text}防火墙规则已生效${reset}"
         else
-            echo -e "${green_text}规则已存在${reset}"
+            echo -e "${red_text}配置错误，回滚修改${reset}"
+            sed -i '/\(223.5.5.5\/32\|223.6.6.6\/32\|2400:3200::1\/128\|2400:3200:baba::1\/128\),/d' "$NFT_RULESET"
         fi
     fi
 }
