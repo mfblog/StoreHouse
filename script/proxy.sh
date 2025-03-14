@@ -1409,20 +1409,12 @@ time_zone(){
     echo -e "\n设置时区为Asia/Shanghai"
     timedatectl set-timezone Asia/Shanghai || { echo -e "\e[31m时区设置失败！退出脚本\e[0m"; exit 1; }
     echo -e "\e[32m时区设置成功\e[0m"
-    echo -e "\n设置时区为Asia/Shanghai"
 }
 
 install_mosdns(){
 
 
-    if [[ $(uname -m) == "aarch64" ]]; then
-        arch="arm64"
-    elif [[ $(uname -m) == "x86_64" ]]; then
-        arch="amd64"
-    else
-        arch="未知"
-        exit 0
-    fi
+    arch=$(detect_architecture)
     echo "系统架构是：$arch"
     mosdns_host="https://github.com/herozmy/StoreHouse/releases/download/mosdns/mosdns-linux-$arch.zip"
     apt update && apt -y upgrade || { echo "更新失败！退出脚本"; exit 1; }
