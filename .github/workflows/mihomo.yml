@@ -201,7 +201,7 @@ jobs:
         run: |
           mkdir -p ./tmp-mihomo/compress/
           archs=(amd64 armv5 armv6 armv7 arm64 mips-softfloat mipsle-hardfloat mipsle-softfloat)
-          new_name=(amd64 armv5 armv6 armv7 armv8 mips-softfloat mipsle-hardfloat mipsle-softfloat)
+          new_name=(amd64 armv5 armv6 armv7 armv64 mips-softfloat mipsle-hardfloat mipsle-softfloat)
           # `Meta` cores
           for ((i = 0; i < 8; i++)); do
             mv -f "./tmp-mihomo/mihomo-meta-linux-${archs[i]}/meta" ./tmp-mihomo/mihomo
