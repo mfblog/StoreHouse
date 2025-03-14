@@ -284,7 +284,7 @@ jobs:
         run: |
           mkdir -p ./tmp-sing-box/compress/
           archs=(amd64 amd64-v3 armv5 armv6 armv7 arm64 mips-softfloat mipsle-hardfloat mipsle-softfloat)
-          new_name=(amd64 amd64v3 armv5 armv6 armv7 armv64 mips-softfloat mipsle-hardfloat mipsle-softfloat)
+          new_name=(amd64 amd64v3 armv5 armv6 armv7 arm64 mips-softfloat mipsle-hardfloat mipsle-softfloat)
           # `PuerNya` cores
           for ((i = 0; i < 9; i++)); do
             mv -f "./tmp-sing-box/sing-box-puernya-linux-${archs[i]}/sing-box" ./tmp-sing-box/sing-box
