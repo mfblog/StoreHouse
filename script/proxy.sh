@@ -547,7 +547,7 @@
 
     [Install]
     WantedBy=multi-user.target
-    EOF
+EOF
         if [ "$core_service" = "mihomo" ]; then
             sed -i '/CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE/,/LimitNOFILE=infinity/c\Type=simple\nExecStart=/usr/local/bin/mihomo -d /etc/mihomo/' "$core_service_file"
         
@@ -574,7 +574,7 @@
         sleep 1
         # 写入tproxy rule  
         echo -e "${yellow}写入路由 rule${reset}"
-            cat <<EOF > "/etc/systemd/system/${core_service}-router.service"
+        cat <<EOF > "/etc/systemd/system/${core_service}-router.service"
     [Unit]
     Description=${core_service} TProxy Rules
     After=network.target
@@ -590,7 +590,7 @@
 
     [Install]
     WantedBy=multi-user.target
-    EOF
+EOF
     echo -e "${green_text}${core_service}-router 服务创建完成"
     sleep 1
     ####写入nftables
@@ -655,7 +655,7 @@
         iifname { wg0, lo, $interface_name } meta l4proto { tcp, udp } ct direction original goto ${core_service}-tproxy
     }
     }
-    EOF
+EOF
         echo -e "${green_text}nftables规则写入完成${reset}"
         sleep 1
 
@@ -1067,7 +1067,7 @@
             }
         }
     }
-    EOF
+EOF
         echo -e "${green}客户端配置生成完成${reset}"
         echo -e "${yellow}客户端配置生成路径为: /root/go_home.json${reset}"
         echo -e "${yellow}请自行复制至客户端${reset}"
@@ -1233,7 +1233,7 @@
             }   
         }   
     }
-    EOF
+EOF
         echo -e "${green}客户端配置生成完成${reset}"
         echo -e "${yellow}客户端配置生成路径为: /root/go_home.json${reset}"
         echo -e "${yellow}请自行复制至客户端${reset}"
@@ -1357,7 +1357,7 @@
     echo -e "\t\t\tPowered by www.herozmy.com 2025"
     echo -e "\n"
     echo -e "${core_service}运行目录为/etc/${core_service}"
-    echo -e "${core_service} WebUI地址:http://${local_ip}:9090"
+    echo -e "${core_service} WebUI地址:${green_text}http://${local_ip}:9090${reset}"
     echo -e "本脚本仅适用于学习与研究等个人用途，请勿用于任何违反国家法律的活动！"
     echo "=================================================================="
         echo -e "${green_text}请使用${reset} ${yellow}systemctl start ${core_service}${reset} ${green_text}启动服务${reset}"
@@ -1379,7 +1379,7 @@
     echo -e "\t\t\tPowered by www.herozmy.com 2025"
     echo -e "\n"
     echo -e "Mosdns运行目录为/etc/mosdns"
-    echo -e "Mosdns 如果使用mosdns-ph版，则WebUI地址:http://${local_ip}:9099"
+    echo -e "Mosdns 如果使用mosdns-ph版，则WebUI地址:${green_text}http://${local_ip}:9099${reset}"
     echo -e "本脚本仅适用于学习与研究等个人用途，请勿用于任何违反国家法律的活动！"
     echo "=================================================================="
         echo -e "${green_text}请使用${reset} ${yellow}systemctl start mosdns${reset} ${green_text}启动服务${reset}"
