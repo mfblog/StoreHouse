@@ -310,6 +310,7 @@ singbox_p_install(){
     arch=$(detect_architecture)
     download_url="https://github.com/herozmy/StoreHouse/releases/download/sing-box/sing-box-puernya-linux-${arch}.tar.gz"
 
+
     echo -e "${yellow}开始下载Puer喵佬核心...${reset}"
     if ! wget -O sing-box.tar.gz $download_url; then
         echo -e "${yellow}下载失败，请检查网络连接${reset}"
