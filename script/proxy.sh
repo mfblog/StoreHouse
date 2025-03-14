@@ -1645,6 +1645,7 @@ choose_singbox(){
             check_singbox
             choose_install_singbox
             install_josn_config
+            check_ui
             install_core_service
             install_singbox_tproxy
             hy2-gohome
@@ -1655,6 +1656,7 @@ choose_singbox(){
             check_singbox
             check_enter
             install_josn_config
+            check_ui
             install_core_service
             install_singbox_tproxy
             hy2-gohome
@@ -1666,6 +1668,7 @@ choose_singbox(){
             check_singbox
             check_enter
             install_josn_config
+            check_ui
             install_core_service
             install_singbox_tproxy  
             hy2-gohome
@@ -1677,6 +1680,7 @@ choose_singbox(){
             check_singbox
             check_enter
             install_josn_config
+            check_ui
             install_core_service
             install_singbox_tproxy
             check_aio

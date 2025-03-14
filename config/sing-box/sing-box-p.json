@@ -7,13 +7,13 @@
     "experimental": {
         "clash_api": {
             "external_controller": "0.0.0.0:9090",
-            "external_ui": "/etc/sing-box-p/ui",
+            "external_ui": "/etc/sing-box/ui",
             "secret": "",
             "default_mode": "rule"
         },
         "cache_file": {
             "enabled": true,
-            "path": "/etc/sing-box-p/cache.db",
+            "path": "/etc/sing-box/cache.db",
             "store_fakeip": true
         }
     },
@@ -102,7 +102,7 @@
     ],
     "outbound_providers": [{
         "type": "remote",
-        "path": "/etc/sing-box-p/providers/1.yaml",
+        "path": "/etc/sing-box/providers/1.yaml",
         "tag": "🛫 机场",
         "healthcheck_url": "http://www.gstatic.com/generate_204",
         "healthcheck_interval": "10m0s",
