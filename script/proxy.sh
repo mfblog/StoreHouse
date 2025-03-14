@@ -1398,7 +1398,7 @@ check_mosdns_core(){
                 return 0
             }
         }
-            systemctl stop $program-router
+            [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
             time_zone
             install_mosdns
             
@@ -1570,6 +1570,7 @@ check_aio() {
             nft -f "$NFT_RULESET"  # 重新加载配置
             sleep 1
             echo -e "${green_text}防火墙规则已生效${reset}"
+            [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"; [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl start "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
         else
             echo -e "${red_text}配置错误，回滚修改${reset}"
             sed -i '/\(223.5.5.5\/32\|223.6.6.6\/32\|2400:3200::1\/128\|2400:3200:baba::1\/128\),/d' "$NFT_RULESET"
@@ -1584,50 +1585,81 @@ uninstall_all(){
         echo -e "${yellow}[检测结果] 未找到任何已安装的核心程序${reset}"
         return 0
     fi
-    echo -e "${yellow}检测到已安装以下核心：${reset}"
-    for file in $found_files; do
-        echo -e "  ${green}$(basename $file)${reset}"
-    done
-    # 确认卸载
-    read -p "是否继续卸载？(y/n) " confirm
-    [[ $confirm != "y" ]] && return 0
-    # 执行卸载操作
-    for file in $found_files; do
-        filename=$(basename "$file")
-    if [ "${filename}" == "mosdns" ]; then
-        systemctl disable mosdns
-        systemctl stop mosdns
-        rm -rf /etc/mosdns
-        rm -rf /usr/local/bin/mosdns
-        rm -rf /etc/systemd/system/mosdns.service
-    elif [ "${filename}" == "sing-box" ]; then
-        systemctl disable ${filename}
-        systemctl stop ${filename}
-        systemctl disable ${filename}-router
-        systemctl stop ${filename}-router
-        echo " " > "/etc/nftables.conf"
-        nft flush ruleset
-        nft -f /etc/nftables.conf 
-        rm -rf /etc/sing-box
-        rm -rf /usr/local/bin/sing-box
-        rm -rf /etc/systemd/system/${filename}.service
-        rm -rf /etc/systemd/system/${filename}-router.service
-    elif [ "${filename}" == "mihomo" ]; then
-        systemctl disable ${filename}
-        systemctl stop ${filename}
-        systemctl disable ${filename}-router
-        systemctl stop ${filename}-router
-        echo " " > "/etc/nftables.conf"
-        nft flush ruleset
-        nft -f /etc/nftables.conf 
-        rm -rf /etc/mihomo
-        rm -rf /usr/local/bin/mihomo
-        rm -rf /etc/systemd/system/${filename}.service
-        rm -rf /etc/systemd/system/${filename}-router.service
 
-    fi
+    # 构建已安装程序数组
+    declare -a installed_programs
+    echo -e "${yellow}检测到已安装以下核心：${reset}"
+    i=1
+    for file in $found_files; do
+        program=$(basename "$file")
+        installed_programs+=("$program")
+        echo -e "  ${green_text}$i${reset}) $program"
+        ((i++))
     done
-    echo "卸载完成"
+    echo -e "  ${green_text}0${reset}) 卸载所有"
+    echo -e "  ${green_text}q${reset}) 退出"
+
+    # 获取用户选择
+    read -p "请选择要卸载的程序 (0-$((i-1))/q): " choice
+    case $choice in
+        q|Q) 
+            echo "取消卸载"
+            return 0
+            ;;
+        0)  # 卸载所有
+            read -p "确认卸载所有程序？(y/n) " confirm
+            [[ $confirm != "y" ]] && return 0
+            programs_to_uninstall=("${installed_programs[@]}")
+            ;;
+        [1-9])  # 卸载单个程序
+            if [ $choice -le ${#installed_programs[@]} ]; then
+                read -p "确认卸载 ${installed_programs[$((choice-1))]}？(y/n) " confirm
+                [[ $confirm != "y" ]] && return 0
+                programs_to_uninstall=("${installed_programs[$((choice-1))]}")
+            else
+                echo -e "${red_text}无效的选项${reset}"
+                return 1
+            fi
+            ;;
+        *)
+            echo -e "${red_text}无效的选项${reset}"
+            return 1
+            ;;
+    esac
+
+    # 执行卸载操作
+    for program in "${programs_to_uninstall[@]}"; do
+        echo -e "${yellow}正在卸载 $program...${reset}"
+        case "$program" in
+            "mosdns")
+                systemctl disable mosdns
+                systemctl stop mosdns
+                rm -rf /etc/mosdns
+                rm -rf /usr/local/bin/mosdns
+                rm -rf /etc/systemd/system/mosdns.service
+                ;;
+            "sing-box"|"mihomo")
+                systemctl disable $program
+                systemctl stop $program
+                systemctl disable $program-router
+                systemctl stop $program-router
+                # 如果是最后一个代理程序，清理防火墙规则
+                if ! [ -f "/usr/local/bin/sing-box" ] && ! [ -f "/usr/local/bin/mihomo" ]; then
+                    echo " " > "/etc/nftables.conf"
+                    nft flush ruleset
+                    nft -f /etc/nftables.conf
+                fi
+                rm -rf /etc/$program
+                rm -rf /usr/local/bin/$program
+                rm -rf /etc/systemd/system/$program.service
+                rm -rf /etc/systemd/system/$program-router.service
+                ;;
+        esac
+        echo -e "${green_text}$program 已卸载完成${reset}"
+    done
+
+    systemctl daemon-reload
+    echo -e "${green_text}卸载完成${reset}"
 }
 choose_singbox(){
     echo -e "请选择${green_text}程序${reset}"
