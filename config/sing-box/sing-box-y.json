@@ -18,7 +18,8 @@
         }
     },
     "dns": {
-        "servers": [{
+        "servers": [
+            {
                 "tag": "localDns",
                 "address": "tls://223.5.5.5:853",
                 "detour": "direct"
@@ -33,7 +34,8 @@
                 "address": "fakeip"
             }
         ],
-        "rules": [{
+        "rules": [
+            {
                 "inbound": "in-dns",
                 "server": "fakeipDNS",
                 "disable_cache": false,
@@ -96,16 +98,17 @@
         }
     ],
     "providers": [
-    {
-        "type": "remote",
-        "path": "/etc/sing-box/providers/机场.txt",
-        "tag": "🛫 机场",
-        "url": "机场订阅",
-        "update_interval": "24000h",
-        "download_detour": "direct"
-      }
-],
-    "outbounds": [{
+        {
+            "type": "remote",
+            "path": "/etc/sing-box/providers/机场.txt",
+            "tag": "🛫 机场",
+            "url": "机场订阅",
+            "update_interval": "24000h",
+            "download_detour": "direct"
+        }
+    ],
+    "outbounds": [
+        {
             "type": "selector",
             "tag": "🚀 节点选择",
             "outbounds": [
@@ -385,8 +388,8 @@
             "type": "selector",
             "tag": "🐟 漏网之鱼",
             "outbounds": [
-             "🚀 节点选择"
-         ]
+                "🚀 节点选择"
+            ]
         }
     ],
     "route": {
@@ -397,7 +400,7 @@
             {
                 "inbound": "in-dns",
                 "action": "hijack-dns"
-              },
+            },
             {
                 "ip_cidr": [
                     "8.8.8.8",
@@ -420,8 +423,8 @@
             {
                 "network": "udp",
                 "port": 443,
-                           "action": "reject",
-           "method": "drop"
+                "action": "reject",
+                "method": "drop"
             },
             {
                 "domain_suffix": [
@@ -477,7 +480,8 @@
                 "outbound": "direct"
             }
         ],
-        "rule_set": [{
+        "rule_set": [
+            {
                 "tag": "spotify",
                 "type": "remote",
                 "format": "binary",

@@ -1713,15 +1713,17 @@ EOF
         systemctl daemon-reload
         echo -e "${green_text}卸载完成${reset}"
     }
+
+
     check_core_status() {
-        echo -e "\n${yellow}检查服务状态...${reset}"
-        echo -e "----------------------------------------"
+       # echo -e "\n${yellow}检查服务状态...${reset}"
+        #echo -e "----------------------------------------"
         
         # 查找已安装的程序
         found_files=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" -o -name "mosdns" \))
         
         if [ -z "$found_files" ]; then
-            echo -e "${yellow}未检测到已安装的程序${reset}"
+            #echo -e "${yellow}未检测到已安装的程序${reset}"
             return
         fi
         
@@ -1731,7 +1733,7 @@ EOF
             echo -e "\n${program}:"
             case "$program" in
                 "sing-box"|"mihomo")
-                    if systemctl is-active --quiet ${program}-router; then
+                    if systemctl is-active --quiet ${program}; then
                         echo -e "  路由服务: ${green_text}运行中${reset}"
                     else
                         echo -e "  路由服务: ${red_text}未运行${reset}"
@@ -1749,6 +1751,8 @@ EOF
         
         echo -e "\n----------------------------------------"
     }
+
+
     choose_singbox(){
         echo -e "请选择${green_text}程序${reset}"
         echo -e "${yellow}1. Sing-box官核 ${reset}${green_text}<vps自建推荐>${reset}"
@@ -1842,10 +1846,10 @@ EOF
     echo -e "3. ${yellow}卸载 Sing-Box | Mihomo | Mosdns${reset}"
     echo "------------------------------------------------- "
     echo -e "当前机器地址:${green_text}${local_ip}${reset}"
-    echo "----------------------------------------"
+    echo "-------------------------------------------------"
     check_installed
     check_core_status
-    echo "========================================"
+    echo "================================================="
     echo -e "请选择:"
     read choice
     case $choice in
