@@ -59,14 +59,14 @@
                 if [[ "$core_choice" == "4" ]]; then
                     if [[ -f /usr/local/bin/mihomo ]]; then
                         echo -e "${green_text}检测到已安装Mihomo核心，开始升级...${reset}"
-                        systemctl stop mihomo-router.service
-                        systemctl stop nftables
+                        systemctl stop mihomo-router.service > /dev/null 2>&1
+                        systemctl stop nftables > /dev/null 2>&1
                         mihomo_install
                         mv mihomo /usr/local/bin/mihomo
                         chmod +x /usr/local/bin/mihomo
-                        systemctl restart mihomo.service
-                        systemctl restart mihomo-router.service
-                        systemctl restart nftables
+                        systemctl restart mihomo.service > /dev/null 2>&1
+                        systemctl restart mihomo-router.service > /dev/null 2>&1
+                        systemctl restart nftables > /dev/null 2>&1
 
                         echo -e "${green_text}Mihomo 升级完成${reset}"
                         exit 0
@@ -76,34 +76,46 @@
                         echo -e "${green_text}检测到已安装Sing-Box核心，开始升级...${reset}"
                         # 无法自动判断时让用户选择
                         echo -e "${yellow}无法自动识别核心版本，请手动选择：${reset}"
-                        echo -e "1. 官方核心\n2. Puer喵佬核心\n3. 曦灵X核心"
+                        echo -e "1. 官方核心\n2. Puer喵佬核心\n3. 曦灵X核心\n4. S佬Y核心"
                         read -rp "请输入选择 (1/2/3): " core_choice
                         case "$core_choice" in
                             1) 
                             choose_install_singbox
                             ;;
                             2) 
-                            systemctl stop sing-box-router.service
-                            systemctl stop nftables 
+                            systemctl stop sing-box-router.service > /dev/null 2>&1
+                            systemctl stop nftables > /dev/null 2>&1
                             singbox_p_install
                             mv sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
                             chmod +x /usr/local/bin/sing-box 
-                            systemctl restart sing-box.service
-                            systemctl restart sing-box-router.service
-                            systemctl restart nftables
+                            systemctl restart sing-box.service > /dev/null 2>&1
+                            systemctl restart sing-box-router.service > /dev/null 2>&1
+                            systemctl restart nftables > /dev/null 2>&1
                             echo -e "${green_text}Puer喵佬核心升级完成${reset}"
                             exit 0
                             ;;
                             3) 
-                            systemctl stop sing-box-router.service
-                            systemctl stop nftables 
+                            systemctl stop sing-box-router.service > /dev/null 2>&1
+                            systemctl stop nftables > /dev/null 2>&1
                             singbox_x_install
                             mv sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
                             chmod +x /usr/local/bin/sing-box 
-                            systemctl restart sing-box.service
-                            systemctl restart sing-box-router.service
-                            systemctl restart nftables
+                            systemctl restart sing-box.service > /dev/null 2>&1
+                            systemctl restart sing-box-router.service > /dev/null 2>&1
+                            systemctl restart nftables > /dev/null 2>&1
                             echo -e "${green_text}曦灵X核心升级完成${reset}"
+                            exit 0
+                            ;;
+                            4)
+                            systemctl stop sing-box-router.service > /dev/null 2>&1
+                            systemctl stop nftables > /dev/null 2>&1
+                            singbox_s_install
+                            mv sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
+                            chmod +x /usr/local/bin/sing-box 
+                            systemctl restart sing-box.service > /dev/null 2>&1
+                            systemctl restart sing-box-router.service > /dev/null 2>&1
+                            systemctl restart nftables > /dev/null 2>&1
+                            echo -e "${green_text}S佬Y核心升级完成${reset}"
                             exit 0
                             ;;
                             *) 
@@ -232,7 +244,7 @@
         
         VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep tag_name | cut -d ":" -f2 | sed 's/[\",v ]//g')
         curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-${arch}.tar.gz"
-        tar -zxvf sing-box.tar.gz
+        tar -zxvf sing-box.tar.gz > /dev/null 2>&1
         cd sing-box-${VERSION}-linux-${arch} || { echo "进入解压目录失败！"; exit 1; }
         mv sing-box ../ || { echo "移动 sing-box 失败！"; exit 1; }
         cd ..
@@ -251,7 +263,7 @@
         fi
         
         echo -e "${green_text}下载完成，开始安装${reset}"
-        tar -zxvf mihomo.tar.gz
+        tar -zxvf mihomo.tar.gz > /dev/null 2>&1
         rm -f mihomo.tar.gz
     }
 
@@ -266,8 +278,8 @@
             1)
                 echo -e "当前选择: ${green_text}Sing-BOX${reset}编译安装"              
                 if [[ -f /usr/local/bin/sing-box ]]; then 
-                systemctl stop sing-box-route.service  
-                systemctl stop nftables        
+                systemctl stop sing-box-route.service > /dev/null 2>&1
+                systemctl stop nftables > /dev/null 2>&1
                 singbox_install_make
                 cp "$(go env GOPATH)/bin/sing-box" /usr/local/bin/ || { echo "复制文件失败！退出脚本"; exit 1; }
                 chmod +x /usr/local/bin/sing-box 
@@ -284,10 +296,10 @@
                 ;;
             2)
                 echo -e "当前选择: ${green_text} Sing-BOX ${reset}二进制安装"
-                systemctl stop sing-box-route.service
-                systemctl stop nftables 
                 export core_service="sing-box"
                 if [[ -f /usr/local/bin/sing-box ]]; then  
+                systemctl stop sing-box-route.service > /dev/null 2>&1
+                systemctl stop nftables > /dev/null 2>&1
                 singbox_install_core
                 mv sing-box /usr/local/bin/ || { echo "复制文件失败！退出脚本"; exit 1; }
                 chmod +x /usr/local/bin/sing-box
@@ -342,7 +354,7 @@
         fi
         
         echo -e "${green_text}下载完成，开始安装${reset}"
-        tar -zxvf sing-box.tar.gz
+        tar -zxvf sing-box.tar.gz > /dev/null 2>&1
         rm -f sing-box.tar.gz
     }
 
@@ -358,7 +370,7 @@
         fi
         
         echo -e "${green_text}下载完成，开始安装${reset}"
-        tar -zxvf sing-box.tar.gz
+        tar -zxvf sing-box.tar.gz > /dev/null 2>&1
         mv sing-box_linux_amd64 sing-box
 
         rm -f sing-box.tar.gz
@@ -369,11 +381,15 @@
         local retry_count=0
         local max_retries=3
         local suburl=""
-        
+        get_subscription_url 
+    # 检查订阅地址是否为空
+        if [ -z "$suburl" ]; then
+            echo -e "${yellow}未提供订阅地址，跳过配置文件生成${reset}"
+            return 0  # 直接退出函数，不执行后续操作
+        fi
+
         while [ $retry_count -lt $max_retries ]; do
-            # 获取订阅地址
-            get_subscription_url  # 新增函数处理订阅地址输入
-            
+
             # 生成配置文件
             generate_config  # 新增配置文件生成函数
             
@@ -385,10 +401,13 @@
                 remaining=$((max_retries - retry_count))
                 echo -e "${yellow}剩余尝试次数: ${remaining}${reset}"
             fi
-        done
+        
         
         echo -e "${red}连续3次生成配置文件失败，请检查订阅地址有效性${reset}"
         exit 1
+        done
+
+  
     }
 
     # 新增订阅地址获取函数
@@ -408,7 +427,9 @@
 
     # 新增配置文件生成函数
     generate_config() {
+
         echo -e "${yellow}正在生成配置文件...${reset}"
+
         curl -o config.json "${sub_host}/config/${suburl}${json_file}" || {
             echo -e "${red}配置文件下载失败${reset}"
             return 1
@@ -438,14 +459,21 @@
     ### 安装配置文件
     install_josn_config(){
     ###官方内核配置文件
-        if [[ "$core_choice" == "1" ]]; then
-            customize_settings  
+    if [[ "$core_choice" == "1" ]]; then
+    customize_settings
+        # 仅在订阅地址有效时生成配置
+        if [ -n "$suburl" ]; then
+         
             mkdir -p /etc/sing-box
-            mv config.json /etc/sing-box/config.json || {
-                echo -e "${red}配置文件移动失败${reset}"
-                exit 1
-            }
-            echo -e "${green_text}Sing-box配置文件写入成功！${reset}"
+            if [ -f "config.json" ]; then
+                mv config.json /etc/sing-box/config.json || {
+                    echo -e "${red}配置文件移动失败${reset}"
+                    exit 1
+                }
+            fi        
+        # 无订阅地址时的处理
+       fi
+        echo -e "${green_text}Sing-box配置文件写入成功！${reset}"
     ###Puer喵佬核心配置文件
         elif [[ "$core_choice" == "2" ]]; then
             get_subscription_url
@@ -554,7 +582,7 @@ EOF
         fi
         echo -e "${green_text}${core_service} 服务创建完成${reset}"
         systemctl daemon-reload
-        systemctl enable ${core_service}
+        systemctl enable ${core_service} > /dev/null 2>&1
     }
     install_singbox_tproxy(){
         echo -e "${yellow}配置tproxy${reset}"
@@ -677,7 +705,7 @@ EOF
         fi
     }
     git_ui(){
-        if git clone https://github.com/metacubex/metacubexd.git -b gh-pages /etc/${filename}/ui; then
+        if git clone https://github.com/Zephyruso/zashboard.git -b gh-pages /etc/${filename}/ui; then
             echo -e "UI 源码拉取${green_text}成功${reset}。"
         else
             echo "拉取源码失败，请手动下载源码并解压至 /etc/${filename}/ui."
@@ -1346,12 +1374,12 @@ EOF
 
     install_over() {
         echo -e "${green_text}启用相关服务${reset}"
-        systemctl enable --now ${core_service} 
+        systemctl enable --now ${core_service}  > /dev/null 2>&1
         sleep 2
-        systemctl enable --now ${core_service}-router
-        nft flush ruleset
-        nft -f /etc/nftables.conf
-        systemctl enable --now nftables
+        systemctl enable --now ${core_service}-router > /dev/null 2>&1
+        nft flush ruleset > /dev/null 2>&1
+        nft -f /etc/nftables.conf > /dev/null 2>&1
+        systemctl enable --now nftables > /dev/null 2>&1
     echo "=================================================================="
     echo -e "\t\t\t${core_service} 安装完毕"
     echo -e "\t\t\tPowered by www.herozmy.com 2025"
@@ -1684,22 +1712,22 @@ EOF
             echo -e "${yellow}正在卸载 $program...${reset}"
             case "$program" in
                 "mosdns")
-                    systemctl disable mosdns
-                    systemctl stop mosdns
+                    systemctl disable mosdns > /dev/null 2>&1
+                    systemctl stop mosdns  > /dev/null 2>&1
                     rm -rf /etc/mosdns
                     rm -rf /usr/local/bin/mosdns
                     rm -rf /etc/systemd/system/mosdns.service
                     ;;
                 "sing-box"|"mihomo")
-                    systemctl disable $program
-                    systemctl stop $program
-                    systemctl disable $program-router
+                    systemctl disable $program  > /dev/null 2>&1
+                    systemctl stop $program > /dev/null 2>&1
+                    systemctl disable $program-router  > /dev/null 2>&1
                     systemctl stop $program-router
                     # 如果是最后一个代理程序，清理防火墙规则
                     if ! [ -f "/usr/local/bin/sing-box" ] && ! [ -f "/usr/local/bin/mihomo" ]; then
                         echo " " > "/etc/nftables.conf"
-                        nft flush ruleset
-                        nft -f /etc/nftables.conf
+                        nft flush ruleset  > /dev/null 2>&1
+                        nft -f /etc/nftables.conf  > /dev/null 2>&1
                     fi
                     rm -rf /etc/$program
                     rm -rf /usr/local/bin/$program
