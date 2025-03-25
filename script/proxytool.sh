@@ -240,8 +240,8 @@ update_mosdns_core(){
     echo "系统架构是：$arch"
     cp -rf /usr/local/bin/mosdns /usr/local/bin/mosdns.bak
     mosdns_host="https://github.com/herozmy/StoreHouse/releases/download/mosdns/mosdns-linux-$arch.zip"
-    apt update && apt -y upgrade || { echo "更新失败！退出脚本"; exit 1; }
-    apt install curl wget git tar gawk sed cron unzip nano -y || { echo "更新失败！退出脚本"; exit 1; }
+    #apt update && apt -y upgrade || { echo "更新失败！退出脚本"; exit 1; }
+    #apt install curl wget git tar gawk sed cron unzip nano -y || { echo "更新失败！退出脚本"; exit 1; }
     wget "${mosdns_host}" || { echo -e "\e[31m下载失败！退出脚本\e[0m"; exit 1; }
     echo "开始解压"
     unzip ./mosdns-linux-$arch.zip 

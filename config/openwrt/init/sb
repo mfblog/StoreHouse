@@ -1,0 +1,80 @@
+#!/bin/sh /etc/rc.common
+START=92
+STOP=10
+
+# 配置路径和文件
+PID_FILE="/var/run/singbox.pid"
+CONFIG_FILE="/cus/singbox/config.json"
+LOG_FILE="/tmp/sbstart.log"
+
+start() {
+    echo "Starting sing-box..."
+    if [ -f $PID_FILE ]; then
+        PID=$(cat $PID_FILE)
+        if [ -d "/proc/$PID" ] && grep -q "sing-box" /proc/$PID/cmdline; then
+            echo "sing-box is already running (PID $PID)."
+            return 1
+        else
+            echo "Found stale PID file. Removing..."
+            rm -f $PID_FILE
+        fi
+    fi
+
+    # 动态检查是否已有运行的 sing-box
+    RUNNING_PID=$(pgrep -f "/cus/bin/sing-box")
+    if [ -n "$RUNNING_PID" ]; then
+        echo "sing-box is already running (PID $RUNNING_PID)."
+        return 1
+    fi
+
+    # 启动 sing-box
+    QUIC_GO_DISABLE_GSO=true /cus/bin/sing-box run -c $CONFIG_FILE > $LOG_FILE 2>&1 &
+    echo $! > $PID_FILE
+    echo "sing-box started (PID $!)."
+}
+
+stop() {
+    echo "Stopping sing-box..."
+    if [ -f $PID_FILE ]; then
+        PID=$(cat $PID_FILE)
+        if [ -d "/proc/$PID" ] && grep -q "sing-box" /proc/$PID/cmdline; then
+            echo "Killing process $PID..."
+            kill "$PID" || kill -9 "$PID"
+            sleep 1
+            if [ -d "/proc/$PID" ]; then
+                echo "Failed to stop sing-box process. Please check manually."
+                return 1
+            else
+                echo "Process $PID stopped successfully."
+                rm -f $PID_FILE
+            fi
+        else
+            echo "No such process (PID $PID). Removing stale PID file..."
+            rm -f $PID_FILE
+        fi
+    else
+        # 动态检测是否有运行的 sing-box
+        echo "Searching for running sing-box processes..."
+        RUNNING_PID=$(pgrep -f "/cus/bin/sing-box")
+        if [ -n "$RUNNING_PID" ]; then
+            echo "Found sing-box process (PID $RUNNING_PID). Stopping..."
+            kill "$RUNNING_PID" || kill -9 "$RUNNING_PID"
+            sleep 1
+            if [ -d "/proc/$RUNNING_PID" ]; then
+                echo "Failed to stop sing-box process. Please check manually."
+                return 1
+            else
+                echo "Process $RUNNING_PID stopped successfully."
+            fi
+        else
+            echo "No sing-box process is running."
+        fi
+    fi
+}
+
+restart() {
+    echo "Restarting sing-box..."
+    stop
+    sleep 1
+    start
+}
