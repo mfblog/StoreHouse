@@ -1974,7 +1974,7 @@ compile_install() {
     
     (
         echo -e "» 解压到: ${COLOR[cyan]}${build_dir}${COLOR[reset]}"
-        tar xzf "$pkg_path" -C "$build_dir" --strip-components=0 || die "解压失败"
+        tar xzf "${pkg_path}" -C "${build_dir}" --strip-components=0 || die "解压失败"
         
         # 自动进入源码目录
         cd "$build_dir"/*/ || die "无法进入源码目录"
@@ -2009,17 +2009,36 @@ make_unbound() {
     
     # 执行下载
     fetch_resource "$download_url" "$dest_file"
-    compile_install "unbound-${ver}.tar.gz" \
+    compile_install "/tmp/unbound-${ver}.tar.gz" \
         --prefix=/usr/local \
         --sbindir=/usr/local/bin \
         --sysconfdir=/etc \
         --enable-{subnet,cachedb,pie,relro-now,tfo-{client,server},dnscrypt,systemd} \
         --with-{libevent,libhiredis,ssl,libnghttp2}
-
+    cp "$build_dir"/*/contrib/unbound.service /etc/systemd/system/unbound.service || die "复制失败"
+    
     # 系统配置
-    adduser --system --group --no-create-home --disabled-login unbound || die "用户创建失败"
-    unbound-control-setup || die "控制初始化失败"
-    unbound-anchor
+    if adduser --system --group --no-create-home --disabled-login unbound; then
+        echo -e "${green_text}Unbound 用户创建成功${reset}"
+    else
+        echo -e "${red_text}创建 Unbound 用户失败${reset}"
+        exit 1
+    fi
+    sleep 1
+    if unbound-control-setup; then
+        echo -e "${green_text}Unbound 控制初始化成功${reset}"
+    else
+        echo -e "${red_text}初始化 Unbound 控制失败${reset}"
+        
+    fi
+echo -e "dasdasd"
+
+    if unbound-anchor; then
+        echo -e "${green_text}unbound-anchor控制初始化成功${reset}"
+    else
+        echo -e "${red_text}unbound-anchor控制失败${reset}"
+        
+    fi
 
     # 配置文件
     fetch_resource \
@@ -2036,11 +2055,12 @@ make_unbound() {
         "/etc/unbound/root.hints"
 
     # 服务管理
-    setup_service unbound \
-        "https://raw.githubusercontent.com/feiye2021/LinuxScripts/main/AIO/Configs/unbound/unbound/unbound.service"
-
+   # setup_service unbound "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/unbound.service"
+    # 服务管理
+    setup_service unbound #\
+        #"https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/unbound.service"
     # 验证端口
-    local port=$(ss -Hulpn "sport = :${ubport}" | awk '{print $5}' | cut -d: -f2)
+   local port=$(ss -Hulpn "sport = :${ubport}" | awk '{print $5}' | cut -d: -f2)
     echo -e "${COLOR[green]}[✓] Unbound 运行正常 (端口: ${port})${COLOR[reset]}"
 }
 
@@ -2057,7 +2077,8 @@ make_redis() {
     local dest_file="/tmp/redis-${ver}.tar.gz"
     # 下载编译
     fetch_resource "$download_url" "$dest_file"
-    compile_install "redis-${ver}.tar.gz"
+
+    compile_install "/tmp/redis-${ver}.tar.gz"
 
     # 配置文件
     mkdir -p /etc/redis
