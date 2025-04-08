@@ -2119,7 +2119,7 @@ make_redis() {
     echo -e "${green_text}Redir-ip代理方案${reset}"
     echo -e "3. ${yellow}Unbound+Redis DNS${reset}"
 
-    echo -e "0. ${red_text}卸载 Sing-Box | Mihomo | Mosdns | Unbound | Redis${reset}"
+    echo -e "0. ${red}卸载 Sing-Box | Mihomo | Mosdns | Unbound | Redis${reset}"
     echo -e "当前机器地址:${green_text}${local_ip}${reset}"
     echo "-------------------------------------------------"
     check_installed
