@@ -2012,7 +2012,7 @@ make_unbound() {
     compile_install "unbound-${ver}.tar.gz" \
         --prefix=/usr/local \
         --sbindir=/usr/local/bin \
-        --sysconfdir=/etc/unbound \
+        --sysconfdir=/etc \
         --enable-{subnet,cachedb,pie,relro-now,tfo-{client,server},dnscrypt,systemd} \
         --with-{libevent,libhiredis,ssl,libnghttp2}
 
@@ -2023,7 +2023,7 @@ make_unbound() {
 
     # 配置文件
     fetch_resource \
-        "https://raw.githubusercontent.com/feiye2021/LinuxScripts/main/AIO/Configs/unbound/unbound/unbound.conf" \
+        "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/unboud.conf" \
         "/etc/unbound/unbound.conf"
     sed -i.orig \
         -e "s|access-control: 10.0.0.0/24 allow|access-control: ${lan_ipv4} allow|" \
