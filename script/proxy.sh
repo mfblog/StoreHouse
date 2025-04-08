@@ -1761,7 +1761,7 @@ EOF
         #echo -e "----------------------------------------"
         
         # 查找已安装的程序
-        found_files=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" -o -name "mosdns" \))
+        found_files=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" -o -name "mosdns"  -o -name "unbound"  -o -name "redis-server" \))
         
         if [ -z "$found_files" ]; then
             #echo -e "${yellow}未检测到已安装的程序${reset}"
@@ -1787,6 +1787,19 @@ EOF
                         echo -e "  DNS服务: ${red_text}未运行${reset}"
                     fi
                     ;;
+                "unbound")
+                    if systemctl is-active --quiet unbound; then
+                        echo -e "  DNS服务: ${green_text}运行中${reset}"
+                    else
+                        echo -e "  DNS服务: ${red_text}未运行${reset}"
+                    fi
+                    ;;
+                "redis-server")
+                    if systemctl is-active --quiet redis; then
+                        echo -e "  Redis服务: ${green_text}运行中${reset}"
+                    else
+                        echo -e "  Redis服务: ${red_text}未运行${reset}"
+                    fi
             esac
         done
         
@@ -1920,8 +1933,8 @@ init_environment() {
         [yellow]='\033[1;33m' [cyan]='\033[1;36m'
         [reset]='\033[0m'
     )
-    set -eo pipefail
-    shopt -s extglob
+   # set -eo pipefail
+    #shopt -s extglob
 }
 
 die() {
@@ -1969,7 +1982,7 @@ compile_install() {
     echo -e "» 使用源码包: ${COLOR[cyan]}${pkg_path}${COLOR[reset]}"
     
     # 创建带版本号的构建目录
-    local build_dir="/tmp/build-${pkg_path##*/}"
+    build_dir="/tmp/build-${pkg_path##*/}"
     mkdir -p "$build_dir" || die "目录创建失败: $build_dir"
     
     (
@@ -2015,7 +2028,7 @@ make_unbound() {
         --sysconfdir=/etc \
         --enable-{subnet,cachedb,pie,relro-now,tfo-{client,server},dnscrypt,systemd} \
         --with-{libevent,libhiredis,ssl,libnghttp2}
-    cp "$build_dir"/*/contrib/unbound.service /etc/systemd/system/unbound.service || die "复制失败"
+   
     
     # 系统配置
     if adduser --system --group --no-create-home --disabled-login unbound; then
@@ -2031,15 +2044,7 @@ make_unbound() {
         echo -e "${red_text}初始化 Unbound 控制失败${reset}"
         
     fi
-echo -e "dasdasd"
-
-    if unbound-anchor; then
-        echo -e "${green_text}unbound-anchor控制初始化成功${reset}"
-    else
-        echo -e "${red_text}unbound-anchor控制失败${reset}"
-        
-    fi
-
+        unbound-anchor
     # 配置文件
     fetch_resource \
         "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/unboud.conf" \
@@ -2054,11 +2059,10 @@ echo -e "dasdasd"
     fetch_resource "https://www.internic.net/domain/named.cache" \
         "/etc/unbound/root.hints"
 
+
     # 服务管理
-   # setup_service unbound "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/unbound.service"
-    # 服务管理
-    setup_service unbound #\
-        #"https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/unbound.service"
+    setup_service unbound \
+        "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/unbound.service"
     # 验证端口
    local port=$(ss -Hulpn "sport = :${ubport}" | awk '{print $5}' | cut -d: -f2)
     echo -e "${COLOR[green]}[✓] Unbound 运行正常 (端口: ${port})${COLOR[reset]}"
@@ -2083,12 +2087,12 @@ make_redis() {
     # 配置文件
     mkdir -p /etc/redis
     fetch_resource \
-        "https://raw.githubusercontent.com/feiye2021/LinuxScripts/main/AIO/Configs/unbound/redis/redis.conf" \
+        "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/redis.conf" \
         "/etc/redis/redis.conf"
 
     # 服务管理
     setup_service redis \
-        "https://raw.githubusercontent.com/feiye2021/LinuxScripts/main/AIO/Configs/unbound/redis/redis.service"
+        "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/redis.service"
 
     # 版本验证
     echo -e "${COLOR[green]}[✓] Redis 运行正常 (版本: ${ver})${COLOR[reset]}"
@@ -2099,7 +2103,7 @@ make_redis() {
     quick_check() {
         echo -e "${yellow}查询脚本开始转快速启动...${reset}"
         sleep 2
-        wget --quiet --show-progress -O /usr/bin/check https://raw.githubusercontent.com/feiye2021/LinuxScripts/main/AIO/Configs/unbound/redis/check.sh
+        wget --quiet --show-progress -O /usr/bin/check https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/check.sh
         chmod +x /usr/bin/check
         echo -e "${green_text}查询脚本转快捷启动已完成， shell 界面输入 check 即可调用脚本显示 unboun 和 redis 命中率${reset}"
     }
