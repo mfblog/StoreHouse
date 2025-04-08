@@ -2116,10 +2116,10 @@ make_redis() {
     echo -e "1. ${yellow}TProxy Sing-Box | Mihomo Fake-ip ${reset}${green_text}<官方内核|喵佬P核|曦灵X核|S佬Y核|Mihomo内核>${reset}"
     echo -e "2. ${yellow}Mosdns Fake-ip分流${reset}"
     echo "------------------------------------------------- "
-    echo -e "${green_text}Redir-ip代理方案"
+    echo -e "${green_text}Redir-ip代理方案${reset}"
     echo -e "3. ${yellow}Unbound+Redis DNS${reset}"
 
-    echo -e "0. ${yellow}卸载 Sing-Box | Mihomo | Mosdns | Unbound | Redis${reset}"
+    echo -e "0. ${red_text}卸载 Sing-Box | Mihomo | Mosdns | Unbound | Redis${reset}"
     echo -e "当前机器地址:${green_text}${local_ip}${reset}"
     echo "-------------------------------------------------"
     check_installed
