@@ -27,6 +27,16 @@ detect_architecture() {
                 ;;
         esac
     }
+cus_core() {
+    wget -O /tmp/cus.zip ${cus_url} || {
+        echo -e "${red}下载cus失败${reset}"
+        exit 1
+    }
+    unzip -oq /tmp/cus.zip -d /etc/cus || {
+        echo -e "${red}解压cus失败${reset}" 
+        exit 1
+    }
+}
 
 proxy_menu() {
     echo -e "${green}1. 设置代理${reset}"
@@ -36,15 +46,6 @@ proxy_menu() {
     read -p "请选择操作: " choice
     case $choice in
         1)
-            
-            wget -O /tmp/cus.zip ${cus_url} || {
-                echo -e "${red}下载cus失败${reset}"
-                exit 1
-            }
-            unzip -oq /tmp/cus.zip -d /etc/cus || {
-                echo -e "${red}解压cus失败${reset}"
-                exit 1
-            }
             set_proxy
             ;;
         2)
@@ -155,10 +156,7 @@ disable_service() {
     if [ -f "/etc/init.d/$service" ]; then
         echo "停止服务..."
         /etc/init.d/$service stop 2>/dev/null
-        
-        # 强杀残留进程
-        pkill -9 -f "/usr/bin/$service" && echo "强制终止进程"
-        
+            
         # 禁用开机启动
         echo "移除开机启动..."
         /etc/init.d/$service disable 2>/dev/null
@@ -167,9 +165,7 @@ disable_service() {
         mv "/etc/init.d/$service" "/etc/init.d/$service.bak" 2>/dev/null && \
         echo "启动脚本已重命名"
     fi
-    
-    # 清理残留文件
-    rm -rf /etc/config/$service /usr/share/$service 2>/dev/null
+
 }
 proxy_init() {
 
@@ -218,13 +214,8 @@ proxy_init() {
         exit 1
     }
     #解压sing-box
-    tar -xzf /tmp/singbox.tar.gz -C /tmp/singbox || {
-        echo -e "${red}解压sing-box失败${reset}"
-        rm -f /tmp/singbox.tar.gz
-        exit 1
-    }
-
-    mv /tmp/singbox/sing-box /cus/bin/sing-box || {
+    tar -zxvf /tmp/singbox.tar.gz
+    mv sing-box /cus/bin/sing-box || {
         echo -e "${red}移动sing-box失败${reset}"
         rm -rf /tmp/singbox /tmp/singbox.tar.gz
         exit 1
@@ -253,8 +244,31 @@ proxy_init
 tree_firewall
 #设置代理
 cp /etc/config/network /etc/config/network.bak
-cat /etc/cus/network >> /etc/config/network
+cat /etc/cus/fw/network >> /etc/config/network
 }
 
-main
+delete_firewall() {
+FW_TYPE=$(check_firewall_type)
+
+case "$FW_TYPE" in
+    "nftables")
+        nft delete table inet singbox 2>/dev/null
+        ;;
+    "iptables")
+        echo -e "${yellow}使用传统iptables规则${reset}"
+        # iptables规则设置
+        sh /cus/fw/cleanipt.sh
+        ;;
+    *)
+        echo -e "${red}未找到可用的防火墙工具！${reset}"
+        exit 1
+        ;;
+    esac
+}
+unset_proxy(){
+
+    mv /etc/config/network.bak /etc/config/network
+    delete_firewall
+}
+proxy_menu
 
