@@ -1996,10 +1996,10 @@ compile_install() {
         # 智能编译判断
         if [ -f configure ]; then
             echo -e "${COLOR[yellow]}» 检测到configure脚本${COLOR[reset]}"
-            ./configure "${@:2}" && make -j$(nproc) && sudo make install
+            ./configure "${@:2}" && make -j$(nproc) && make install
         elif [ -f Makefile ] || [ -f makefile ]; then
             echo -e "${COLOR[yellow]}» 直接执行make${COLOR[reset]}"
-            make -j$(nproc) && sudo make install
+            make -j$(nproc) && make install
         elif [ -f CMakeLists.txt ]; then
             echo -e "${COLOR[yellow]}» 检测到CMake项目${COLOR[reset]}"
             cmake . && make -j$(nproc) && sudo make install
