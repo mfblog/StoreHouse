@@ -127,7 +127,7 @@ case $choice in
             echo -e "输入任意键进入快捷脚本 * "
             echo -e "返回主菜单输入 n ? "
         read -rp "请输入: " input
-        case "$input" ins
+        case "$input" in
             g)  . $DIRPATH/init.sh unbound /usr/local/bin/unbound* /etc/unbound && 
                 . $DIRPATH/init.sh redis /usr/local/bin/redis* /etc/redis && 
                 . $DIRPATH/unbound.sh ;;

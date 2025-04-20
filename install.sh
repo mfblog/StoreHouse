@@ -25,7 +25,7 @@ yellow() {
 }
 ################################################# 变量定义
 local_ip=$(hostname -I | awk '{print $1}')
-url="https://raw.githubusercontent.com/herozmy/StoreHouse/latest/"
+url="https://raw.githubusercontent.com/herozmy/StoreHouse/latest"
 #url="https://d.herozmy.com/"
 #cn_url='https://fastly.jsdelivr.net/gh/herozmy/StoreHouse@latest'
 
@@ -104,13 +104,14 @@ error_download(){
 }
 get_script(){
     # 下载脚本
-    download tmp/StoreHouse.tar.gz $url/bin/StoreHouse.tar.gz
+    download /tmp/StoreHouse.tar.gz $url/bin/StoreHouse.tar.gz
 	if [ "$result" != "200" ]; then
 		echo -e "${red_text}文件下载失败！${reset}"
 		error_download
 		exit 1
 	else
     # 解压脚本
+	mkdir -p $DIRPATH
     if ! tar -zxvf /tmp/StoreHouse.tar.gz -C $DIRPATH; then
         echo -e "${red_text}文件解压失败！${reset}"
         exit 1
@@ -122,7 +123,7 @@ quick(){
         touch /usr/bin/tools 2>/dev/null && {
             cat >/usr/bin/tools <<EOF
             #!/bin/bash
-            $DIRPATH/menu.sh \$1 \$2 \$3 \$4 \$5
+            . $DIRPATH/menu.sh \$1 \$2 \$3 \$4 \$5
 EOF
             chmod +x /usr/bin/tools
         }
@@ -134,7 +135,7 @@ install(){
     echo -e "${green_text}安装完成！${reset}"
     quick
 	echo -----------------------------------------------
-	$echo "\033[33m输入\033[30;47m tools \033[0;33m命令即可管理！！！\033[0m"
+	echo -e "\033[33m输入\033[30;47m tools \033[0;33m命令即可管理！！！\033[0m"
 	echo ----------------------------------------------- 
 }
 # 检查是否是 root 用户
