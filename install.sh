@@ -104,7 +104,7 @@ error_download(){
 }
 get_script(){
     # 下载脚本
-    download tmp/StoreHouse.tar.gz $url/StoreHouse.tar.gz
+    download tmp/StoreHouse.tar.gz $url/bin/StoreHouse.tar.gz
 	if [ "$result" != "200" ]; then
 		echo -e "${red_text}文件下载失败！${reset}"
 		error_download
