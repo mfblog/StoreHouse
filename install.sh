@@ -11,7 +11,7 @@ green_text="\033[32m"
 yellow_text="\033[33m"
 red_text="\033[31m"
 reset="\033[0m" 
-DIRPATH="/usr/local/bin/tools/"
+DIRPATH="/usr/local/bin/tools"
 red() {
     echo -e "\e[31m$1\e[0m"
 }

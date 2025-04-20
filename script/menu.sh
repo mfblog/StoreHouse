@@ -105,7 +105,7 @@ case $choice in
         case "$input" in
             g) . $DIRPATH/init.sh mosdns /usr/local/bin/mosdns /etc/mosdns  && . $DIRPATH/mosdns.sh ;;
             n) . $DIRPATH/menu.sh ;;
-            *) . $DIRPATH/proxytools.sh ;;
+            *) . $DIRPATH/proxytool.sh ;;
         esac
     elif [ "$service_status" -eq 0 ]; then
         echo "Mosdns 服务未运行，是否启动服务？(y/n)"
@@ -118,7 +118,7 @@ case $choice in
             echo "未启动 Mosdns 服务。"
         fi
     else
-        .$DIRPATH/mosdns.sh
+        . $DIRPATH/mosdns.sh
     fi
         ;;
     2) 
@@ -132,7 +132,7 @@ case $choice in
                 . $DIRPATH/init.sh redis /usr/local/bin/redis* /etc/redis && 
                 . $DIRPATH/unbound.sh ;;
             n) . $DIRPATH/menu.sh ;;
-            *) . $DIRPATH/proxytools.sh ;;
+            *) . $DIRPATH/proxytool.sh ;;
         esac
     elif [ "$service_status" -eq 0 ]; then
         echo "Unbound+Redis DNS 服务未运行，是否启动服务？(y/n)"
@@ -159,7 +159,7 @@ case $choice in
             g) . $DIRPATH/init.sh sing-box /usr/local/bin/sing-box /etc/sing-box /etc/nftables.conf /etc/systemd/system/tproxy-router.service && 
                 . $DIRPATH/sing-box.sh ;;
             n) . $DIRPATH/menu.sh ;;
-            *) . $DIRPATH/proxytools.sh ;;
+            *) . $DIRPATH/proxytool.sh ;;
         esac
     elif [ "$service_status" -eq 0 ]; then
         echo "sing-box 服务未运行，是否启动服务？(y/n)"
@@ -185,7 +185,7 @@ case $choice in
             g)  . $DIRPATH/init.sh mihomo /usr/local/bin/mihomo /etc/mihomo /etc/nftables /etc/systemd/system/tproxy-router.service && 
                 . $DIRPATH/mihomo.sh ;;
             n) . $DIRPATH/menu.sh ;;
-            *) . $DIRPATH/proxytools.sh ;;
+            *) . $DIRPATH/proxytool.sh ;;
         esac
     elif [ "$service_status" -eq 0 ]; then
         echo "mihomo 服务未运行，是否启动服务？(y/n)"
