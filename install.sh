@@ -115,7 +115,9 @@ get_script(){
         echo -e "${red_text}文件解压失败！${reset}"
         exit 1
     fi    
+    fi
 }
+
 quick(){
         touch /usr/bin/tools 2>/dev/null && {
             cat >/usr/bin/tools <<EOF
