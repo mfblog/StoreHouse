@@ -144,7 +144,7 @@ if [ "$(id -u)" != "0" ]; then
     echo -e "请执行以下命令切换用户：\n  sudo su -"
     exit 1
 fi
-if [ -n "$DIRPATH" ]; then
+if [ -d "$DIRPATH" ]; then
     echo -e "${green_text}检测到旧的安装目录$DIRPATH${reset}"
     echo -e "${yellow_text}是否删除旧的安装目录？${reset}"
     read -p "请输入(y/n): " choice
