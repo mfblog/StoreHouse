@@ -581,8 +581,8 @@ EOF
         
         fi
         echo -e "${green_text}${core_service} 服务创建完成${reset}"
-        systemctl daemon-reload
-        systemctl enable ${core_service} > /dev/null 2>&1
+      systemctl daemon-reload
+        systemctl enable ${core_service} > /dev/null 2>&1  
     }
     install_singbox_tproxy(){
         echo -e "${yellow}配置tproxy${reset}"
@@ -2044,7 +2044,7 @@ make_unbound() {
         echo -e "${red_text}初始化 Unbound 控制失败${reset}"
         
     fi
-        unbound-anchor
+    unbound-anchor > /dev/null 2>&1
     # 配置文件
     fetch_resource \
         "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/unboud.conf" \
