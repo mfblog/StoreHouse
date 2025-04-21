@@ -6,7 +6,7 @@ reset="\033[0m"
 sub_host="https://sub-singbox.herozmy.com"
 json_file="&file=https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box.json"
 local_ip=$(hostname -I | awk '{print $1}')
-DIRPATH="/usr/local/bin/tools/"
+DIRPATH="/usr/local/bin/tools"
 red() {
     echo -e "\e[31m$1\e[0m"
 }
@@ -446,7 +446,7 @@ yellow() {
                 nft -f "$NFT_RULESET"  # 重新加载配置
                 sleep 1
                 echo -e "${green_text}防火墙规则已生效${reset}"
-                [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"; [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl start "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
+                #[ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"; [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] systemctl start "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
             else
                 echo -e "${red_text}配置错误，回滚修改${reset}"
                 sed -i '/\(223.5.5.5\/32\|223.6.6.6\/32\|2400:3200::1\/128\|2400:3200:baba::1\/128\),/d' "$NFT_RULESET"
@@ -527,10 +527,9 @@ yellow() {
         esac
     }
     choose_singbox
-    && install_core
-    && install_josn_config
-    && check_resolved
-    && check_aio
+    install_core
+    install_josn_config
+    check_resolved
     sleep 1
     echo -e "${yellow}配置系统服务文件${reset}"
     sleep 1
@@ -566,6 +565,7 @@ yellow() {
     sleep 1
     echo -e "拉取sing-box UI管理界面"
     check_ui
+    check_aio
     echo -e "${green_text}启用相关服务${reset}"
     systemctl enable --now sing-box  > /dev/null 2>&1
     sleep 2
@@ -577,20 +577,21 @@ yellow() {
     echo -e "\t\t\tSing-box 安装完毕"
     echo -e "\t\t\tPowered by www.herozmy.com 2025"
     echo -e "\n"
+    echo -e "${green_text}请使用${reset} ${yellow_text}proxytool${reset} ${green_text}管理sing-box${reset}"
     echo -e "Sing-box运行目录为/etc/sing-box"
     echo -e "Sing-box WebUI地址:${green_text}http://${local_ip}:9090${reset}"
     echo -e "本脚本仅适用于学习与研究等个人用途，请勿用于任何违反国家法律的活动！"
     echo "=================================================================="
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl start sing-box${reset} ${green_text}启动服务${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl enable sing-box${reset} ${green_text}设置开机自启${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl status sing-box${reset} ${green_text}查看服务状态${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl restart sing-box${reset} ${green_text}重启服务${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl stop sing-box${reset} ${green_text}停止服务${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl disable sing-box${reset} ${green_text}禁用开机自启${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl restart nftables${reset} ${green_text}重启nftables${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl status nftables${reset} ${green_text}查看nftables状态${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl restart tproxy-router${reset} ${green_text}重启路由${reset}"
-    echo -e "${green_text}请使用${reset} ${yellow}systemctl status tproxy-router${reset} ${green_text}查看路由状态${reset}" 
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl start sing-box${reset} ${green_text}启动服务${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl enable sing-box${reset} ${green_text}设置开机自启${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl status sing-box${reset} ${green_text}查看服务状态${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl restart sing-box${reset} ${green_text}重启服务${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl stop sing-box${reset} ${green_text}停止服务${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl disable sing-box${reset} ${green_text}禁用开机自启${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl restart nftables${reset} ${green_text}重启nftables${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl status nftables${reset} ${green_text}查看nftables状态${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl restart tproxy-router${reset} ${green_text}重启路由${reset}"
+    echo -e "${green_text}请使用${reset} ${yellow_text}systemctl status tproxy-router${reset} ${green_text}查看路由状态${reset}" 
 
     
 

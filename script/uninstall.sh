@@ -67,8 +67,8 @@
                 "sing-box"|"mihomo")
                     systemctl disable $program  > /dev/null 2>&1
                     systemctl stop $program > /dev/null 2>&1
-                    systemctl disable $program-router  > /dev/null 2>&1
-                    systemctl stop $program-router
+                    systemctl disable tproxy-router  > /dev/null 2>&1
+                    systemctl stop tproxy-router
                     # 如果是最后一个代理程序，清理防火墙规则
                     if ! [ -f "/usr/local/bin/sing-box" ] && ! [ -f "/usr/local/bin/mihomo" ]; then
                         echo " " > "/etc/nftables.conf"
@@ -78,7 +78,7 @@
                     rm -rf /etc/$program
                     rm -rf /usr/local/bin/$program
                     rm -rf /etc/systemd/system/$program.service
-                    rm -rf /etc/systemd/system/$program-router.service
+                    rm -rf /etc/systemd/system/tproxy-router.service
                     ;;
                 "unbound")
                     systemctl disable unbound > /dev/null 2>&1

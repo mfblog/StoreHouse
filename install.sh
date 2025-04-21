@@ -127,7 +127,7 @@ quick(){
         touch /usr/bin/tools 2>/dev/null && {
             cat >/usr/bin/tools <<EOF
             #!/bin/bash
-            . $DIRPATH/menu.sh \$1 \$2 \$3 \$4 \$5
+            . $DIRPATH/menu.sh
 EOF
             chmod +x /usr/bin/tools
         }
@@ -139,8 +139,15 @@ install(){
     echo -e "${green_text}安装完成！${reset}"
     quick
 	echo -----------------------------------------------
-	echo -e "\033[33m输入\033[30;47m tools \033[0;33m命令即可管理！！！\033[0m"
+	echo -e "\033[33m输入\033[30;47m tools \033[0;33m命令即可快速安装！！！\033[0m"
 	echo ----------------------------------------------- 
+    echo -e "是否直接进入安装菜单？y确认 n忽略"
+    read -p "请输入(y/n): " choice
+    if [ "$choice" = "y" ]; then
+        . $DIRPATH/menu.sh
+    elif [ "$choice" = "n" ]; then
+        exit 1
+    fi
 }
 # 检查是否是 root 用户
 if [ "$(id -u)" != "0" ]; then

@@ -7,7 +7,7 @@ reset="\033[0m"
 sub_host="https://sub-singbox.herozmy.com"
 json_file="&file=https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box.json"
 local_ip=$(hostname -I | awk '{print $1}')
-DIRPATH="/usr/local/bin/tools/"
+DIRPATH="/usr/local/bin/tools"
 
     # 修改架构检测函数为最新标准
     detect_architecture() {
