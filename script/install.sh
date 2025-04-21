@@ -1,9 +1,9 @@
 #! /bin/bash
 ########################################################
-# 代理方案选择脚本
+# 更新脚本
 # 作者: herozmy
 # 版本: 1.0
-# 日期: 2025-04-13
+# 日期: 2025-04-21
 ########################################################
 
 ################################################# 颜色定义
@@ -124,6 +124,8 @@ fi
 }
 
 quick(){
+        echo -e "${green_text}安装tools命令...${reset}"
+        echo “ ” > /usr/bin/tools
         touch /usr/bin/tools 2>/dev/null && {
             cat >/usr/bin/tools <<EOF
             #!/bin/bash
@@ -140,7 +142,7 @@ install(){
     quick
 	echo -----------------------------------------------
 	echo -e "\033[33m输入\033[30;47m tools \033[0;33m命令进入菜单页面！！！\033[0m"
-    echo -e "${green_text}后期直接执行${reset} ${yellow_text}tools${reset} ${green_text}更新相关脚本，无需重新安装！！！${reset}"
+    echo -e "${green_text}后期直接执行${reset} ${yellow_text}tools${reset} ${green_text}选择更新脚本，无需重新安装！！！${reset}"
 	echo ----------------------------------------------- 
     echo -e "是否直接进入安装菜单？y确认 n忽略"
     read -p "请输入(y/n): " choice
@@ -150,7 +152,6 @@ install(){
         exit 1
     fi
 }
-rm -f -- "$0"
 # 检查是否是 root 用户
 if [ "$(id -u)" != "0" ]; then
     echo -e "\033[31m错误：请使用 root 用户执行此脚本！\033[0m"

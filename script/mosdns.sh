@@ -132,7 +132,7 @@ DIRPATH="/usr/local/bin/tools"
                 nft -f "$NFT_RULESET"  # 重新加载配置
                 sleep 1
                 echo -e "${green_text}防火墙规则已生效${reset}"
-                [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"; [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl start "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
+               # [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"; [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl start "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
             else
                 echo -e "${red_text}配置错误，回滚修改${reset}"
                 sed -i '/\(223.5.5.5\/32\|223.6.6.6\/32\|2400:3200::1\/128\|2400:3200:baba::1\/128\),/d' "$NFT_RULESET"
@@ -213,3 +213,10 @@ DIRPATH="/usr/local/bin/tools"
         sleep 1
         systemctl restart mosdns
         check_aio
+        echo -----------------------------------------------
+        echo -e "${green_text}请使用${reset} ${yellow_text}systemctl restart mosdns${reset} ${green_text}重启mosdns${reset}"
+        echo -e "${green_text}请使用${reset} ${yellow_text}systemctl stop mosdns${reset} ${green_text}停止mosdns${reset}"
+        echo -e "${green_text}请使用${reset} ${yellow_text}systemctl enable mosdns${reset} ${green_text}设置开机自启动${reset}"
+        echo -e "${green_text}请使用${reset} ${yellow_text}systemctl disable mosdns${reset} ${green_text}禁用开机自启动${reset}"
+        echo -----------------------------------------------
+        echo -e "${green_text}请使用${reset} ${yellow_text}proxytool${reset} ${green_text}快速管理mosdns${reset}"

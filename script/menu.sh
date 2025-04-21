@@ -85,6 +85,7 @@ echo -e "3. ${yellow}sing-box ${reset}"
 #echo -e "4. ${yellow}mihomo ${reset}"
 echo "**************************************************"
 echo -e "0. ${red}卸载 Sing-Box | Mihomo | Mosdns | Unbound | Redis${reset}"
+echo -e "999. ${yellow}更新脚本${reset}"
 echo -e "当前机器地址:${green_text}${local_ip}${reset}"
 echo "-------------------------------------------------"
 #check_core_status
@@ -215,6 +216,9 @@ case $choice in
         ;;
     0) 
         . $DIRPATH/uninstall.sh
+        ;;
+    999) 
+        . $DIRPATH/install.sh
         ;;
     *)
         echo "无效的选项，请重新运行脚本并选择有效的选项."

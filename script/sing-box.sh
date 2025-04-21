@@ -592,6 +592,8 @@ yellow() {
     echo -e "${green_text}请使用${reset} ${yellow_text}systemctl status nftables${reset} ${green_text}查看nftables状态${reset}"
     echo -e "${green_text}请使用${reset} ${yellow_text}systemctl restart tproxy-router${reset} ${green_text}重启路由${reset}"
     echo -e "${green_text}请使用${reset} ${yellow_text}systemctl status tproxy-router${reset} ${green_text}查看路由状态${reset}" 
-
+	echo -----------------------------------------------
+	echo -e "${green_text}请使用${reset} ${yellow_text}proxytool${reset} ${green_text}管理sing-box${reset}"
+	echo ----------------------------------------------- 
     
 
