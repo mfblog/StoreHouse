@@ -136,21 +136,14 @@ EOF
 }
 
 install(){
-    echo -e "${green_text}安装脚本...${reset}"
+    echo -e "${green_text}更新脚本...${reset}"
     get_script
-    echo -e "${green_text}安装完成！${reset}"
+    echo -e "${green_text}更新完成！${reset}"
     quick
 	echo -----------------------------------------------
 	echo -e "\033[33m输入\033[30;47m tools \033[0;33m命令进入菜单页面！！！\033[0m"
-    echo -e "${green_text}后期直接执行${reset} ${yellow_text}tools${reset} ${green_text}选择更新脚本，无需重新安装！！！${reset}"
 	echo ----------------------------------------------- 
-    echo -e "是否直接进入安装菜单？y确认 n忽略"
-    read -p "请输入(y/n): " choice
-    if [ "$choice" = "y" ]; then
-        . $DIRPATH/menu.sh
-    elif [ "$choice" = "n" ]; then
-        exit 1
-    fi
+
 }
 # 检查是否是 root 用户
 if [ "$(id -u)" != "0" ]; then

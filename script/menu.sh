@@ -85,11 +85,12 @@ echo -e "3. ${yellow}sing-box ${reset}"
 #echo -e "4. ${yellow}mihomo ${reset}"
 echo "**************************************************"
 echo -e "0. ${red}卸载 Sing-Box | Mihomo | Mosdns | Unbound | Redis${reset}"
-echo -e "999. ${yellow}更新脚本${reset}"
+echo -e "\n"
 echo -e "当前机器地址:${green_text}${local_ip}${reset}"
 echo "-------------------------------------------------"
 #check_core_status
 #service_status=$?  # 获取服务状态
+echo -e "999. ${yellow_text}更新脚本${reset}"
 echo "================================================="
 echo -e "请选择:"
 read choice
