@@ -54,6 +54,91 @@ DIRPATH="/usr/local/bin/tools/"
         fi
 
     }
+
+    check_aio() {
+        local NEED_ADJUST=0
+        local NFT_RULESET="/etc/nftables.conf"
+        
+        # 定义核心二进制检测路径数组
+        local MOSDNS_PATHS="/usr/local/bin/mosdns"
+        
+        local PROXY_PATHS=(
+            "/usr/local/bin/mihomo"
+            "/usr/local/bin/sing-box"
+        )
+
+        # 增强型二进制检测函数
+        check_binary() {
+            local paths=("$@")
+            for path in "${paths[@]}"; do
+                if [ -x "$path" ] && file "$path" | grep -qE "ELF.*executable"; then
+                    return 0
+                fi
+            done
+            return 1
+        }
+
+        # 检测组件存在性
+        local HAS_MOSDNS=0
+        local HAS_PROXY=0
+        
+        check_binary "${MOSDNS_PATHS[@]}" && HAS_MOSDNS=1
+        check_binary "${PROXY_PATHS[@]}" && HAS_PROXY=1
+
+        echo -e "${yellow}=== 组件检测结果 ===${reset}"
+        echo -e "MosDNS 存在: $([ $HAS_MOSDNS -eq 1 ] && 
+            echo "${green_text}是✓${reset}" || 
+            echo "${red}否✗${reset}")"
+            
+        echo -e "代理核心存在: $([ $HAS_PROXY -eq 1 ] && 
+            echo "${green_text}是✓${reset}" || 
+            echo "${red}否✗${reset}")"
+
+        # 判断调整条件
+        if [ $HAS_MOSDNS -eq 1 ] && [ $HAS_PROXY -eq 1 ]; then
+            NEED_ADJUST=1
+            echo -e "${yellow}检测到DNS与代理核心共存，需要调整防火墙规则${reset}"
+        else
+            echo -e "${green_text}未检测到需要调整的组合${reset}"
+        fi
+
+        # 应用规则调整
+        if [ $NEED_ADJUST -eq 1 ]; then
+            # 定义要添加的IPv4/IPv6地址
+            local ADD_IPV4=("223.5.5.5/32" "223.6.6.6/32")
+            local ADD_IPV6=("2400:3200::1/128" "2400:3200:baba::1/128")
+            
+            # 处理IPv4规则
+            for ip in "${ADD_IPV4[@]}"; do
+                if ! grep -q "$ip" "$NFT_RULESET"; then
+                    echo -e "${yellow}添加IPv4 $ip...${reset}"
+                    sed -i "/10.0.0.0\/8,/a\      $ip," "$NFT_RULESET"
+                fi
+            done
+            
+            # 处理IPv6规则
+            for ip in "${ADD_IPV6[@]}"; do
+                if ! grep -q "$ip" "$NFT_RULESET"; then
+                    echo -e "${yellow}添加IPv6 $ip...${reset}"
+                    sed -i "/100::\/64,/a\      $ip," "$NFT_RULESET" 
+                fi
+            done
+            
+            # 统一验证配置
+            if nft -c -f "$NFT_RULESET"; then
+                # 刷新防火墙规则
+                echo -e "${yellow}正在刷新防火墙...${reset}"
+                nft flush ruleset    # 清空现有规则
+                nft -f "$NFT_RULESET"  # 重新加载配置
+                sleep 1
+                echo -e "${green_text}防火墙规则已生效${reset}"
+                [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"; [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl start "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
+            else
+                echo -e "${red_text}配置错误，回滚修改${reset}"
+                sed -i '/\(223.5.5.5\/32\|223.6.6.6\/32\|2400:3200::1\/128\|2400:3200:baba::1\/128\),/d' "$NFT_RULESET"
+            fi
+        fi
+    }
 ######主安装脚本
         arch=$(detect_architecture)
         echo "系统架构是：$arch"
@@ -127,3 +212,4 @@ DIRPATH="/usr/local/bin/tools/"
         echo -e "${green_text}mosdns开机启动完成${reset}"
         sleep 1
         systemctl restart mosdns
+        check_aio

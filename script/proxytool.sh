@@ -369,16 +369,14 @@ main() {
         
         read -p "请输入选择: " input
         case $input in
-            1)
-                if $found_singbox; then
-                    manage_singbox
-                else
-                    echo -e "${red}无效选择${reset}"
-                fi
-                ;;
-            2)
-                if $found_mosdns; then
-                    manage_mosdns
+            [1-9])
+                # 转换为数组索引
+                index=$((input-1))
+                if (( index >= 0 && index < ${#installed[@]} )); then
+                    case "${installed[$index]}" in
+                        "sing-box") manage_singbox ;;
+                        "mosdns") manage_mosdns ;;
+                    esac
                 else
                     echo -e "${red}无效选择${reset}"
                 fi

@@ -112,10 +112,14 @@ get_script(){
 	else
     # 解压脚本
 	mkdir -p $DIRPATH
-    if ! tar -zxvf /tmp/StoreHouse.tar.gz -C $DIRPATH; then
-        echo -e "${red_text}文件解压失败！${reset}"
-        exit 1
-    fi    
+# 解压安装包
+if ! tar -zxvf "/tmp/StoreHouse.tar.gz" -C "$DIRPATH" >/dev/null 2>&1; then
+    echo -e "${red_text}错误：文件解压失败！可能原因：${reset}"
+    echo "1. 压缩包损坏"
+    echo "2. 目标目录无写入权限：$DIRPATH"
+    echo "3. 磁盘空间不足（当前剩余：$(df -h $DIRPATH | awk 'NR==2 {print $4}')）"
+    exit 1
+fi 
     fi
 }
 
@@ -146,7 +150,7 @@ if [ "$(id -u)" != "0" ]; then
 fi
 if [ -d "$DIRPATH" ]; then
     echo -e "${green_text}检测到旧的安装目录$DIRPATH${reset}"
-    echo -e "${yellow_text}是否删除旧的安装目录？${reset}"
+    echo -e "${yellow_text}是否删除旧的安装目录？y确认 n忽略${reset}"
     read -p "请输入(y/n): " choice
     if [ "$choice" = "y" ]; then
         rm -rf $DIRPATH
