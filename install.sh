@@ -158,7 +158,7 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 if [ -d "$DIRPATH" ]; then
-    echo -e "${green_text}检测到旧的安装目录$DIRPATH${reset}"
+    echo -e "${green_text}检测到 已安装${reset}"
     echo -e "${yellow_text}是否删除旧的安装目录？y确认 n忽略${reset}"
     read -p "请输入(y/n): " choice
     if [ "$choice" = "y" ]; then

@@ -16,7 +16,7 @@ GREY_FILE="$RULES_DIR/greylist.txt"
 # 专用版本变量
 singbox_version=""
 mosdns_version=""
-
+DIRPATH="/usr/local/bin/tools"
 # 修改架构检测函数为最新标准
 detect_architecture() {
     case $(uname -m) in
@@ -280,6 +280,7 @@ manage_singbox() {
                 echo -e "\n${green}开始更新 Sing-Box...${reset}"
                 # 这里添加实际更新逻辑
                 echo -e "${green}更新完成，当前版本：$(sing-box version | awk '{print $3}')${reset}"
+                bash /usr/local/bin/tools/sing-box.sh update_core
                 ;;
             2)
                 systemctl status sing-box -l

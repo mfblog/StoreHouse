@@ -142,7 +142,12 @@ case $choice in
                 . $DIRPATH/init.sh redis /usr/local/bin/redis* /etc/redis && 
                 . $DIRPATH/unbound.sh ;;
             n) . $DIRPATH/menu.sh ;;
-            *) . $DIRPATH/proxytool.sh ;;
+            *) 
+            if [ ! -f /usr/bin/proxytool ]; then
+                cp /usr/local/bin/tools/proxytool.sh /usr/bin/proxytool
+                chmod +x /usr/bin/proxytool
+            fi  
+            proxytool ;;
         esac
     elif [ "$unbound_status" -eq 0 ] || [ "$redis_status" -eq 0 ]; then
         echo "Unbound+Redis DNS 服务未运行，是否启动服务？(y/n)"
@@ -171,7 +176,12 @@ case $choice in
             g) . $DIRPATH/init.sh sing-box /usr/local/bin/sing-box /etc/sing-box && 
                 . $DIRPATH/sing-box.sh ;;
             n) . $DIRPATH/menu.sh ;;
-            *) . $DIRPATH/proxytool.sh ;;
+            *) 
+            if [ ! -f /usr/bin/proxytool ]; then
+                cp /usr/local/bin/tools/proxytool.sh /usr/bin/proxytool
+                chmod +x /usr/bin/proxytool
+            fi  
+            proxytool ;;
         esac
     elif [ "$singbox_status" -eq 0 ]; then
         echo "sing-box 服务未运行，是否启动服务？(y/n)"
@@ -199,7 +209,12 @@ case $choice in
             g)  . $DIRPATH/init.sh mihomo /usr/local/bin/mihomo /etc/mihomo  && 
                 . $DIRPATH/mihomo.sh ;;
             n) . $DIRPATH/menu.sh ;;
-            *) . $DIRPATH/proxytool.sh ;;
+            *) 
+            if [ ! -f /usr/bin/proxytool ]; then
+                cp /usr/local/bin/tools/proxytool.sh /usr/bin/proxytool
+                chmod +x /usr/bin/proxytool
+            fi  
+            proxytool ;;
         esac
     elif [ "$mihomo_status" -eq 0 ]; then
         echo "mihomo 服务未运行，是否启动服务？(y/n)"

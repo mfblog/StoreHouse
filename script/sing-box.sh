@@ -180,7 +180,66 @@ yellow() {
 
         rm -f sing-box.tar.gz
     }
+    # 检查核心类型
+    check_core_type() {
+        local version_file="/etc/sing-box/version"
+    
+        if [ ! -f "$version_file" ]; then
+            echo -e "${red}未检测到核心类型${reset}"
+            return 1
+        fi
+    
+        local core_type=$(cat "$version_file")
+        case "$core_type" in
+            official|puer|xiling|s-y)
+                echo "$core_type"
+                return 0
+                ;;
+            *)
+                echo -e "${red}未知核心类型：$core_type${reset}"
+                return 1
+                ;;
+        esac
+}
+# 更新核心
+    update_singbox_core() {
+    # 获取当前核心类型
+    if ! core_type=$(check_core_type); then
+        echo -e "${red}无法确定当前核心，请先选择安装类型${reset}"
+        choose_singbox
+        return 1
+    fi
 
+    systemctl stop tproxy-router > /dev/null 2>&1
+    # 根据核心类型执行更新
+    case "$core_type" in
+        official)
+            echo -e "${green}正在更新官方核心...${reset}"
+            singbox_install_make && install_core
+            ;;
+        puer)
+            echo -e "${green}正在更新Puer核心...${reset}"
+            singbox_p_install && install_core
+            ;;
+        xiling)
+            echo -e "${green}正在更新曦灵核心...${reset}"
+            singbox_x_install && install_core
+            ;;
+        s-y)
+            echo -e "${green}正在更新S-Y核心...${reset}"
+            singbox_s_install && install_core
+            ;;
+        *)
+            echo -e "${red}未知核心类型${reset}"
+            return 1
+            ;;
+    esac
+    
+    # 重启服务
+    systemctl restart sing-box > /dev/null 2>&1
+    systemctl restart tproxy-router > /dev/null 2>&1
+    echo -e "${green}核心更新完成${reset}"
+}
 ##安装配置文件
     ### 自定义设置
     customize_settings() {
@@ -266,11 +325,13 @@ yellow() {
     install_josn_config(){
     ###官方内核配置文件
     if [[ "$core_choice" == "1" ]]; then
+    mkdir -p /etc/sing-box
+    echo "official" > /etc/sing-box/version
     customize_settings
         # 仅在订阅地址有效时生成配置
         if [ -n "$suburl" ]; then
-         
-            mkdir -p /etc/sing-box
+            
+            
             if [ -f "config.json" ]; then
                 mv config.json /etc/sing-box/config.json || {
                     echo -e "${red}配置文件移动失败${reset}"
@@ -282,10 +343,14 @@ yellow() {
         echo -e "${green_text}Sing-box配置文件写入成功！${reset}"
     ###Puer喵佬核心配置文件
         elif [[ "$core_choice" == "2" ]]; then
-            get_subscription_url
+            
+            
             mkdir -p /etc/sing-box
             mkdir -p /etc/sing-box/providers
             mkdir -p /etc/sing-box/rule
+            echo "puer" > /etc/sing-box/version
+            get_subscription_url
+
             if curl -o /etc/sing-box/config.json https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box-p.json; then
                 echo -e "${green_text} 配置文件下载成功${reset}"
                 sed -i "s|\"download_url\": \"机场订阅\"|\"download_url\": \"$suburl\"|g" /etc/sing-box/config.json
@@ -298,8 +363,11 @@ yellow() {
             rm -f /etc/sing-box/p_rule.tar.gz
     ###曦灵X核心配置文件
         elif [[ "$core_choice" == "3" ]]; then
-            get_subscription_url
+            
+            
             mkdir -p /etc/sing-box
+            echo "xiling" > /etc/sing-box/version
+            get_subscription_url
             if curl -o /etc/sing-box/config.json https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box-x.json; then
                 echo -e "${green_text} 配置文件下载成功${reset}"
                 sed -i "s|\"download_url\": \"机场订阅\"|\"download_url\": \"$suburl\"|g" /etc/sing-box/config.json
@@ -309,8 +377,11 @@ yellow() {
             fi
     ###S佬Y核心配置文件
         elif [[ "$core_choice" == "4" ]]; then
-            get_subscription_url
+            
+            
             mkdir -p /etc/sing-box
+            echo "s-y" > /etc/sing-box/version
+            get_subscription_url
             if curl -o /etc/sing-box/config.json https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box-y.json; then
                 echo -e "${green_text} 配置文件下载成功${reset}"
                 sed -i "s|\"url\": \"机场订阅\"|\"url\": \"$suburl\"|g" /etc/sing-box/config.json
@@ -446,7 +517,7 @@ yellow() {
                 nft -f "$NFT_RULESET"  # 重新加载配置
                 sleep 1
                 echo -e "${green_text}防火墙规则已生效${reset}"
-                #[ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"; [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] systemctl start "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
+                # [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] && systemctl stop "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"; [ -f /usr/local/bin/sing-box -o -f /usr/local/bin/mihomo ] systemctl start "$([ -f /usr/local/bin/sing-box ] && echo 'sing-box' || echo 'mihomo')-router"
             else
                 echo -e "${red_text}配置错误，回滚修改${reset}"
                 sed -i '/\(223.5.5.5\/32\|223.6.6.6\/32\|2400:3200::1\/128\|2400:3200:baba::1\/128\),/d' "$NFT_RULESET"
@@ -518,7 +589,7 @@ yellow() {
                 echo -e "${green_text}Sing-Box 二进制安装完成${reset}"
                 ;;
             0)
-                main
+                choose_singbox
                 ;;
             *)
                 echo -e "无效选择，退出脚本"
@@ -526,6 +597,24 @@ yellow() {
                 ;;
         esac
     }
+# 多函数调用    
+case "$1" in
+    update_core)
+        # 检查是否安装过sing-box
+        if [ ! -f "/etc/sing-box/version" ]; then
+            echo -e "${red}未检测到Sing-Box安装，请先安装 sing-box${reset}"
+            exit 1
+        fi
+        
+        # 调用更新函数
+        echo -e "${green}开始更新Sing-Box核心...${reset}"
+        #source $DIRPATH/sing-box.sh && update_singbox_core
+        update_singbox_core
+        exit 0  # 新增退出指令
+        ;;
+
+esac
+
     choose_singbox
     install_core
     install_josn_config
@@ -577,7 +666,7 @@ yellow() {
     echo -e "\t\t\tSing-box 安装完毕"
     echo -e "\t\t\tPowered by www.herozmy.com 2025"
     echo -e "\n"
-    echo -e "${green_text}请使用${reset} ${yellow_text}proxytool${reset} ${green_text}管理sing-box${reset}"
+
     echo -e "Sing-box运行目录为/etc/sing-box"
     echo -e "Sing-box WebUI地址:${green_text}http://${local_ip}:9090${reset}"
     echo -e "本脚本仅适用于学习与研究等个人用途，请勿用于任何违反国家法律的活动！"
