@@ -9,7 +9,7 @@
 ### 脚本
 * `proxy.sh` 脚本
 ``` shell
-wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/script/proxy.sh && bash proxy.sh
+wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/install.sh && bash install.sh
 ```
 ### 文档
 * `docs` 文档
