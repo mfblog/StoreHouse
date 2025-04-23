@@ -124,23 +124,25 @@ fi
 }
 
 quick(){
-        touch /usr/bin/tools 2>/dev/null && {
-            cat >/usr/bin/tools <<EOF
+        touch /usr/bin/menu 2>/dev/null && {
+            cat >/usr/bin/menu <<EOF
             #!/bin/bash
             . $DIRPATH/menu.sh
 EOF
-            chmod +x /usr/bin/tools
+            chmod +x /usr/bin/menu
+	    cp -r $DIRPATH/proxytool.sh /usr/bin/proxytool
+            chmod +x /usr/bin/proxytool
         }
 }
-
+t
 install(){
     echo -e "${green_text}安装脚本...${reset}"
     get_script
     echo -e "${green_text}安装完成！${reset}"
     quick
 	echo -----------------------------------------------
-	echo -e "\033[33m输入\033[30;47m tools \033[0;33m命令进入菜单页面！！！\033[0m"
-    echo -e "${green_text}后期直接执行${reset} ${yellow_text}tools${reset} ${green_text}更新相关脚本，无需重新安装！！！${reset}"
+	echo -e "\033[33m输入\033[30;47m menu \033[0;33m命令进入菜单页面！！！\033[0m"
+    echo -e "${green_text}后期直接执行${reset} ${yellow_text}menu${reset} ${green_text}更新相关脚本，无需重新安装！！！${reset}"
 	echo ----------------------------------------------- 
     echo -e "是否直接进入安装菜单？y确认 n忽略"
     read -p "请输入(y/n): " choice
