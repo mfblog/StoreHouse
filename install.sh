@@ -150,7 +150,7 @@ install(){
         exit 1
     fi
 }
-rm -rf $0
+rm -rf $0 >/dev/null 2>&1
 # 检查是否是 root 用户
 if [ "$(id -u)" != "0" ]; then
     echo -e "\033[31m错误：请使用 root 用户执行此脚本！\033[0m"

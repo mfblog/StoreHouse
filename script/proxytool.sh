@@ -270,7 +270,7 @@ manage_singbox() {
     while true; do
         echo -e "\n${green}=== Sing-Box 管理 (v${singbox_version}) ===${reset}"
         echo "1. 更新核心"
-        echo "2. 查看运行状态"
+        echo "2. 更新UI面板"
         echo "3. 重启服务"
         echo "4. 返回主菜单"
         
@@ -278,12 +278,14 @@ manage_singbox() {
         case $choice in
             1)
                 echo -e "\n${green}开始更新 Sing-Box...${reset}"
-                # 这里添加实际更新逻辑
+                bash /usr/local/bin/tools/sing-box.sh update_core    
                 echo -e "${green}更新完成，当前版本：$(sing-box version | awk '{print $3}')${reset}"
-                bash /usr/local/bin/tools/sing-box.sh update_core
+
                 ;;
             2)
-                systemctl status sing-box -l
+                echo -e "\n${green}开始更新 UI 面板...${reset}"
+                bash /usr/local/bin/tools/sing-box.sh update_ui
+                echo -e "${green}UI 面板更新完成${reset}"
                 ;;
             3)
                 systemctl restart sing-box

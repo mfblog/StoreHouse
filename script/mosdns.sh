@@ -189,11 +189,27 @@ DIRPATH="/usr/local/bin/tools"
             ;;
         2)
             (
-                wget --quiet --show-progress -O mosdns.zip https://github.com/herozmy/StoreHouse/raw/refs/heads/latest/config/mosdns/ph/mosdns2025302.zip &&
+                wget --quiet --show-progress -O mosdns.zip https://github.com/herozmy/StoreHouse/raw/refs/heads/latest/config/mosdns/ph/mosdns20250401.zip &&
                 mkdir -p /etc/mosdns/ &&
-                unzip mosdns.zip -d /etc/mosdns/ &&
-                mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml &&
-                
+                unzip mosdns.zip -d /etc/mosdns/
+                echo -e "${green_text}请选择：20250401规则版本${reset}"
+                echo "
+                ————————————————
+                1. leak版  <默认>
+                2. noleak版
+                "
+                read -p "请输入选择 [1-2] 回车默认1: " num
+                case "${num}" in
+                1)
+                    mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml &&
+                    ;;
+                2)
+                    mv /etc/mosdns/config_noleak.yaml /etc/mosdns/config.yaml &&
+                    ;;
+                *)
+                    mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml &&
+                    ;;
+                esac
                 rm -f mosdns.zip
             ) || {
                 echo "下载或解压失败，请检查网络连接和目标目录权限。"
