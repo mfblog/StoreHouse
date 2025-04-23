@@ -778,7 +778,7 @@ case "$1" in
         exit 0  # 新增退出指令
         ;;
     update_ui)
-        git_ui
+        check_ui
         exit 0  # 新增退出指令
         ;;
     update_home)
