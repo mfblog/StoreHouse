@@ -612,6 +612,10 @@ case "$1" in
         update_singbox_core
         exit 0  # 新增退出指令
         ;;
+    update_ui)
+        git_ui
+        exit 0  # 新增退出指令
+        ;;
 
 esac
 
