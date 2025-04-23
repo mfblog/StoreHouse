@@ -553,7 +553,8 @@ yellow() {
         openssl ecparam -genkey -name prime256v1 -out /root/hysteria/private.key && openssl req -new -x509 -days 36500 -key /root/hysteria/private.key -out /root/hysteria/cert.pem -subj "/CN=bing.com"
         while true; do
             # 提示用户输入域名
-            read -p "请输入家庭DDNS域名: " domain
+            echo -e "${yellow_text}请输入家庭DDNS域名${reset}"
+            read -p "域名: " domain
             # 检查域名格式是否正确
             if [[ $domain =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
                 break
@@ -563,7 +564,8 @@ yellow() {
         done  
         # 输入端口号
         while true; do
-            read -p "请输入hy2协议端口号: 默认：8443 " hyport
+            echo -e "${yellow_text}请输入hy2协议端口号${reset}"
+            read -p "端口号: " hyport
             hyport="${hyport:-8443}"
 
             # 检查端口号是否为数字
@@ -573,14 +575,13 @@ yellow() {
                 echo "端口号格式不正确，请重新输入"
             fi
         done
-        read -p "请输入密码: " password
+        echo -e "${yellow_text}请输入密码${reset}"
+        read -p "密码: " password
         password="${password:-password}"
-        echo "您输入的域名是: $domain"
-        echo "您输入的端口号是: $hyport"
-        echo "您输入的密码是: $password"
-        read -p "你的家庭内网段: " ip_cidr
+        echo -e "${yellow_text}请输入你的家庭内网段${reset}"
+        read -p "内网段: " ip_cidr
         ip_cidr="${ip_cidr:-10.10.10.0/24}"
-        echo "您输入的内网段是: $ip_cidr"
+
         sleep 2
         echo "开始生成配置文件"
         # 检查sb配置文件是否存在
@@ -669,10 +670,10 @@ yellow() {
         echo -e "${yellow_text}请输入：mosdns地址 默认：10.10.10.53${reset}"
         read -p "DNS地址: " mosdns_address
         mosdns_address="${mosdns_address:-10.10.10.53}"
-        echo -e "${yellow_text}请输入：家里wifi bssid 默认 <用于回家直连，请自行获取>${reset}"
+        echo -e "${yellow_text}请输入：家里wifi bssid <用于回家直连，请自行获取>${reset}"
         read -p "家里wifi bssid: " wifi_bssid
         wifi_bssid="${wifi_bssid:-e8:9f:80:8b:9c:59}"
-        if ! wget -O /root/go_home.json https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/ph_hy2-home.json; then
+        if ! wget -O /root/go_home.json https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/ph_hy2-home-20250418.json; then
             echo -e "${red}客户端配置生成失败${reset}"
             exit 1
         fi
@@ -680,7 +681,7 @@ yellow() {
         sed -i "s/home_domain/${domain}/g" /root/go_home.json
         sed -i "s/home_port/${hyport}/g" /root/go_home.json
         sed -i "s/home_password/${password}/g" /root/go_home.json
-        sed -i "s/home_ipcidr/${ip_cidr}/g" /root/go_home.json
+        sed -i "s#home_ipcidr#${ip_cidr//\//\\/}#g" /root/go_home.json
         sed -i "s/home_wifi_bssid/${wifi_bssid}/g" /root/go_home.json
         sed -i "s/home_mosdns_address/${mosdns_address}/g" /root/go_home.json
         echo -e "${green}客户端配置生成完成${reset}"
