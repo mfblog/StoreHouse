@@ -773,16 +773,22 @@ case "$1" in
         
         # 调用更新函数
         echo -e "${green}开始更新Sing-Box核心...${reset}"
+        systemctl stop tproxy-router > /dev/null 2>&1
         #source $DIRPATH/sing-box.sh && update_singbox_core
         update_singbox_core
+        systemctl start tproxy-router > /dev/null 2>&1
         exit 0  # 新增退出指令
         ;;
     update_ui)
+        systemctl stop tproxy-router > /dev/null 2>&1
         check_ui
+        systemctl start tproxy-router > /dev/null 2>&1
         exit 0  # 新增退出指令
         ;;
     update_home)
+        systemctl stop tproxy-router > /dev/null 2>&1
         install_hy2-gohome
+        systemctl start tproxy-router > /dev/null 2>&1
         exit 0  # 新增退出指令
         ;;
 
