@@ -272,7 +272,8 @@ manage_singbox() {
         echo "1. 更新核心"
         echo "2. 更新UI面板"
         echo "3. 重启服务"
-        echo "4. 返回主菜单"
+        echo "4. 安装回家配置"
+        echo "5. 返回主菜单"
         
         read -p "请选择操作: " choice
         case $choice in
@@ -292,6 +293,9 @@ manage_singbox() {
                 echo -e "${green}服务已重启${reset}"
                 ;;
             4)
+                bash /usr/local/bin/tools/sing-box.sh update_home
+                ;;
+            5)
                 break
                 ;;
             *)

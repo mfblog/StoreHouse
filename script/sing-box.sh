@@ -524,6 +524,170 @@ yellow() {
             fi
         fi
     }
+    #安装hy2回家配置
+    hy2-gohome(){
+        echo -e "${yellow}是否安装hy2回家配置 y/n${reset}"
+        read -p "请输入选择 (y/n): " hy2_choice
+        case "${hy2_choice}" in
+            y)
+                echo -e "${green_text}安装hy2回家配置${reset}"
+                install_hy2-gohome
+                ;;
+            n)
+                echo -e "${yellow}不安装hy2回家配置${reset}"
+                echo -e "${yellow}如后期需要安装hy2回家配置${reset},${green_text}proxytool${reset}安装即可"
+                ;;
+            *)
+                echo -e "${red}无效选择，退出脚本${reset}"
+                exit 1
+                ;;
+        esac
+
+    }
+    #安装hy2回家配置
+    install_hy2-gohome(){
+        echo -e "hysteria2 回家 自签证书"
+        echo -e "开始创建证书存放目录"
+        mkdir -p /root/hysteria 
+        echo -e "自签bing.com证书100年"
+        openssl ecparam -genkey -name prime256v1 -out /root/hysteria/private.key && openssl req -new -x509 -days 36500 -key /root/hysteria/private.key -out /root/hysteria/cert.pem -subj "/CN=bing.com"
+        while true; do
+            # 提示用户输入域名
+            read -p "请输入家庭DDNS域名: " domain
+            # 检查域名格式是否正确
+            if [[ $domain =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+                break
+            else
+                echo "域名格式不正确，请重新输入"
+            fi
+        done  
+        # 输入端口号
+        while true; do
+            read -p "请输入hy2协议端口号: 默认：8443 " hyport
+            hyport="${hyport:-8443}"
+
+            # 检查端口号是否为数字
+            if [[ $hyport =~ ^[0-9]+$ ]]; then
+                break
+            else
+                echo "端口号格式不正确，请重新输入"
+            fi
+        done
+        read -p "请输入密码: 默认 password " password
+        password="${password:-password}"
+        echo "您输入的域名是: $domain"
+        echo "您输入的端口号是: $hyport"
+        echo "您输入的密码是: $password"
+        read -p "你的家庭内网段: 默认：10.10.10.0/24 " ip_cidr
+        ip_cidr="${ip_cidr:-10.10.10.0/24}"
+        echo "您输入的内网段是: $ip_cidr"
+        sleep 2
+        echo "开始生成配置文件"
+        # 检查sb配置文件是否存在
+        config_file="/etc/sing-box/config.json"
+        if [ ! -f "$config_file" ]; then
+            echo "错误：配置文件 $config_file 不存在"
+            echo "请配置singbox或者Puer喵佬核或者X核的singbox config.json脚本"
+            
+            exit 1
+        fi   
+        hy_config='{
+        "type": "hysteria2",
+        "tag": "hy2-in",
+        "listen": "::",
+        "listen_port": '"${hyport}"',
+        "sniff": true,
+        "sniff_override_destination": false,
+        "sniff_timeout": "100ms",
+        "users": [
+            {
+            "password": "'"${password}"'"
+            }
+        ],
+        "ignore_client_bandwidth": true,
+        "tls": {
+            "enabled": true,
+            "alpn": [
+            "h3"
+            ],
+            "certificate_path": "/root/hysteria/cert.pem",
+            "key_path": "/root/hysteria/private.key"
+        }
+        },
+    '
+    line_num=$(grep -n 'inbounds' /etc/sing-box/config.json | cut -d ":" -f 1)
+    # 如果找到了行号，则在其后面插入 JSON 字符串，否则不进行任何操作
+    if [ ! -z "$line_num" ]; then
+        # 将文件分成两部分，然后在中间插入新的 JSON 字符串
+        head -n "$line_num" /etc/sing-box/config.json > tmpfile
+        echo "$hy_config" >> tmpfile
+        tail -n +$(($line_num + 1)) /etc/sing-box/config.json >> tmpfile
+        mv tmpfile /etc/sing-box/config.json
+    fi
+        echo "HY2回家配置写入完成"
+        echo "开始重启sing-box"
+        systemctl restart sing-box
+        echo "开始生成sing-box回家-手机配置"
+        sleep 1
+        echo -e "请选择生成sing-box回家-客户端配置"
+        echo -e "${yellow}1. 全回家分流 <PH佬规则>${reset}"
+        echo -e "${yellow}2. 客户端规则分流 <O佬规则> 注意：需自行添加飞机节点${reset}"
+        read -p "请输入选择 (1/2/0): " hy2_config
+        case "${hy2_config}" in
+        1)
+            echo "开始生成sing-box回家-全回家分流 <PH佬规则>"
+            ph_home_config
+            ;;
+        2)
+            echo "开始生成sing-box回家-规则分流 <O佬规则> 注意：需自行添加飞机节点"
+            home_config
+            ;;
+        *)
+            echo -e "无效选择，退出脚本"
+            exit 1
+            ;;
+        esac
+
+    }
+
+        home_config(){
+        if ! wget -O /root/go_home.json https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/o_hy2-home.json; then
+            echo -e "${red}客户端配置生成失败${reset}"
+            exit 1
+        fi
+        echo -e "${yellow_text}修正客户端配置${reset}"
+        sed -i "s/home_domain/${domain}/g" /root/go_home.json
+        sed -i "s/home_port/${hyport}/g" /root/go_home.json
+        sed -i "s/home_password/${password}/g" /root/go_home.json
+        sed -i "s/home_ipcidr/${ip_cidr}/g" /root/go_home.json
+        echo -e "${green}客户端配置生成完成${reset}"
+        echo -e "${yellow}客户端配置生成路径为: /root/go_home.json${reset}"
+        echo -e "${yellow}请自行复制至客户端${reset}"
+
+    }
+    ph_home_config(){
+        echo -e "${yellow_text}请输入：mosdns地址 默认：10.10.10.53${reset}"
+        read -p "DNS地址: " mosdns_address
+        mosdns_address="${mosdns_address:-10.10.10.53}"
+        echo -e "${yellow_text}请输入：家里wifi bssid 默认 <用于回家直连，请自行获取>${reset}"
+        read -p "家里wifi bssid: " wifi_bssid
+        wifi_bssid="${wifi_bssid:-e8:9f:80:8b:9c:59}"
+        if ! wget -O /root/go_home.json https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/ph_hy2-home.json; then
+            echo -e "${red}客户端配置生成失败${reset}"
+            exit 1
+        fi
+        echo -e "${yellow_text}修正客户端配置${reset}"
+        sed -i "s/home_domain/${domain}/g" /root/go_home.json
+        sed -i "s/home_port/${hyport}/g" /root/go_home.json
+        sed -i "s/home_password/${password}/g" /root/go_home.json
+        sed -i "s/home_ipcidr/${ip_cidr}/g" /root/go_home.json
+        sed -i "s/wifi_bssid/${wifi_bssid}/g" /root/go_home.json
+        sed -i "s/mosdns_address/${mosdns_address}/g" /root/go_home.json
+        echo -e "${green}客户端配置生成完成${reset}"
+        echo -e "${yellow}客户端配置生成路径为: /root/go_home.json${reset}"
+        echo -e "${yellow}请自行复制至客户端${reset}"
+    }
+
 ######选择安装sing-box 核心
     choose_singbox(){
         echo -e "请选择${green_text}程序${reset}"
@@ -614,6 +778,10 @@ case "$1" in
         ;;
     update_ui)
         git_ui
+        exit 0  # 新增退出指令
+        ;;
+    update_home)
+        install_hy2-gohome
         exit 0  # 新增退出指令
         ;;
 

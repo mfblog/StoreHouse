@@ -1,0 +1,166 @@
+{   
+    "log": {   
+        "disabled": false,
+        "level": "debug"
+    },   
+    "dns": {   
+        "servers": [   
+            {   
+                "tag": "dnsdirect",    
+                "address": "tcp://home_mosdns_address:53",
+                "detour": "direct"   
+            },  
+            {   
+                "tag": "dnshome",   
+                "address": "tcp://home_mosdns_address:53",   
+                "detour": "home"   
+            },  
+            {   
+                "tag": "dnsmobile",   
+                "address": "quic://223.5.5.5",
+                "detour": "directm"   
+            },  
+            {   
+                "tag": "nodedns",   
+                "address": "quic://223.5.5.5",
+                "detour": "direct"   
+            }   
+        ],   
+        "rules": [   
+            {   
+                "outbound": "any",   
+                "server": "nodedns" 
+            },
+            { 
+                "query_type": [ 
+                "HTTPS",
+                "SVCB",
+                "PTR"
+                ], 
+                "action": "reject"
+            },
+            {   
+                "wifi_bssid": "home_wifi_bssid",    
+                "server": "dnsdirect"   
+            }, 
+            {
+                "type": "logical",
+                "mode": "and",
+                "rules": [
+                    {
+                        "query_type": "A"
+                    },
+                    {
+                        "ip_cidr": ["28.0.0.0/8"]
+                    }
+                ],
+                "server": "dnshome"
+            },
+            {
+                "type": "logical",
+                "mode": "and",
+                "rules": [
+                  {
+                    "type": "logical",
+                    "mode": "or",
+                    "rules": [
+                      {
+                        "ip_cidr": ["::/0"],
+                        "invert": true
+                      },
+                      {
+                        "ip_cidr": ["f2b0::/18"]
+                      }
+                    ]
+                  },
+                  {
+                    "query_type": "AAAA"
+                  }
+                ],
+                "server": "dnshome"
+            },
+            {   
+                "query_type": "AAAA",    
+                "server": "dnsmobile"   
+            }
+        ],   
+        "final": "nodedns"   
+    },  
+    "route": {   
+        "rules": [   
+            {
+                "port": 123,
+                "outbound": "direct"
+            },
+            {
+                "port": 53,
+                "action": "hijack-dns"
+            },
+            {   
+                "wifi_bssid": "home_wifi_bssid",    
+                "outbound": "direct"   
+            }, 
+            {  
+            "ip_cidr": [ 
+                "home_ipcidr",
+                "28.0.0.0/8",
+                "f2b0::/18",
+                 "91.108.56.0/22",  
+                 "91.108.4.0/22",  
+                 "91.108.8.0/22",  
+                 "91.108.16.0/22",  
+                 "91.108.12.0/22",  
+                 "149.154.160.0/20",  
+                 "91.105.192.0/23",  
+                 "91.108.20.0/22", 
+                 "95.161.64.0/20",  
+                 "185.76.151.0/24"
+               ],  
+                "outbound": "home"  
+            }, 
+            {   
+                "ip_cidr": ["::/0"],    
+                "outbound": "directm"    
+            }],   
+        "final": "direct",   
+        "auto_detect_interface": true   
+    },  
+    "inbounds": [   
+        {  
+            "type": "tun",  
+            "tag": "tun-in",  
+            "address": [ 
+              "172.18.0.1/30", 
+              "fdfe:dcba:9876::1/126" 
+             ],
+            "auto_route": true,
+            "strict_route": false
+        }   
+    ],   
+    "outbounds": [   
+       {  
+         "tag": "home",
+         "type": "hysteria2",
+         "server": "home_domain",
+         "server_port": "home_port",
+         "password": "home_password",
+         "ip_cidr": "home_ipcidr"
+        },
+        {   
+            "type": "direct",   
+            "tag": "direct"   
+        },  
+        {   
+            "type": "direct",  
+            "network_strategy": "hybrid",
+            "network_type": "cellular",
+            "tag": "directm"   
+        } 
+    ],
+    "experimental": {   
+        "cache_file": {   
+            "enabled": true,   
+            "path": "cache.db"   
+        }   
+    }   
+}

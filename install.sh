@@ -129,9 +129,9 @@ quick(){
             #!/bin/bash
             . $DIRPATH/menu.sh
 EOF
-            chmod +x /usr/bin/menu
-	    cp -r $DIRPATH/proxytool.sh /usr/bin/proxytool
-            chmod +x /usr/bin/proxytool
+
+	        cp -r $DIRPATH/proxytool.sh /usr/bin/proxytool
+            chmod +x /usr/bin/proxytool /usr/bin/menu
         }
 }
 t
