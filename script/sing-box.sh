@@ -573,12 +573,12 @@ yellow() {
                 echo "端口号格式不正确，请重新输入"
             fi
         done
-        read -p "请输入密码: 默认 password " password
+        read -p "请输入密码: " password
         password="${password:-password}"
         echo "您输入的域名是: $domain"
         echo "您输入的端口号是: $hyport"
         echo "您输入的密码是: $password"
-        read -p "你的家庭内网段: 默认：10.10.10.0/24 " ip_cidr
+        read -p "你的家庭内网段: " ip_cidr
         ip_cidr="${ip_cidr:-10.10.10.0/24}"
         echo "您输入的内网段是: $ip_cidr"
         sleep 2
@@ -659,7 +659,7 @@ yellow() {
         sed -i "s/home_domain/${domain}/g" /root/go_home.json
         sed -i "s/home_port/${hyport}/g" /root/go_home.json
         sed -i "s/home_password/${password}/g" /root/go_home.json
-        sed -i "s/home_ipcidr/${ip_cidr}/g" /root/go_home.json
+        sed -i "s#home_ipcidr#${ip_cidr//\//\\/}#g" /root/go_home.json
         echo -e "${green}客户端配置生成完成${reset}"
         echo -e "${yellow}客户端配置生成路径为: /root/go_home.json${reset}"
         echo -e "${yellow}请自行复制至客户端${reset}"
@@ -681,8 +681,8 @@ yellow() {
         sed -i "s/home_port/${hyport}/g" /root/go_home.json
         sed -i "s/home_password/${password}/g" /root/go_home.json
         sed -i "s/home_ipcidr/${ip_cidr}/g" /root/go_home.json
-        sed -i "s/wifi_bssid/${wifi_bssid}/g" /root/go_home.json
-        sed -i "s/mosdns_address/${mosdns_address}/g" /root/go_home.json
+        sed -i "s/home_wifi_bssid/${wifi_bssid}/g" /root/go_home.json
+        sed -i "s/home_mosdns_address/${mosdns_address}/g" /root/go_home.json
         echo -e "${green}客户端配置生成完成${reset}"
         echo -e "${yellow}客户端配置生成路径为: /root/go_home.json${reset}"
         echo -e "${yellow}请自行复制至客户端${reset}"

@@ -138,13 +138,22 @@
         }   
     ],   
     "outbounds": [   
-       {  
-         "tag": "home",
-         "type": "hysteria2",
-         "server": "home_domain",
-         "server_port": "home_port",
-         "password": "home_password",
-         "ip_cidr": "home_ipcidr"
+        {
+            "type": "hysteria2",
+            "server": "home_domain",       
+            "server_port": "home_port", 
+            "tag": "home", 
+            "up_mbps": 50,
+            "down_mbps": 500,
+            "password": "home_password",
+            "tls": {
+            "enabled": true,
+            "server_name": "bing.com",   
+            "insecure": true,
+            "alpn": [
+            "h3"
+            ]
+            }
         },
         {   
             "type": "direct",   
