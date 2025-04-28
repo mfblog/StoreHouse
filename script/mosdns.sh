@@ -201,13 +201,13 @@ DIRPATH="/usr/local/bin/tools"
                 read -p "请输入选择 [1-2] 回车默认1: " num
                 case "${num}" in
                 1)
-                    mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml &&
+                    mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml
                     ;;
                 2)
-                    mv /etc/mosdns/config_noleak.yaml /etc/mosdns/config.yaml &&
+                    mv /etc/mosdns/config_noleak.yaml /etc/mosdns/config.yaml
                     ;;
                 *)
-                    mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml &&
+                    mv /etc/mosdns/config_leak.yaml /etc/mosdns/config.yaml
                     ;;
                 esac
                 rm -f mosdns.zip
