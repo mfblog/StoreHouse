@@ -43,8 +43,6 @@ jobs:
       - name: Get `sing-box reF1nd_dev` version
         id: reF1nd_dev
         run: |
-         # git remote add sekai https://github.com/SagerNet/sing-box.git
-         # git fetch --tags sekai
           reF1nd_dev_version=$(CGO_ENABLED=0 go run ./cmd/internal/read_tag)
           echo "reF1nd_dev_version=$reF1nd_dev_version" >> $GITHUB_OUTPUT
           echo reF1nd_dev_tags=with_quic,with_dhcp,with_wireguard,with_shadowsocksr,with_ech,with_utls,with_clash_api,with_gvisor >> $GITHUB_OUTPUT
