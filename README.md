@@ -7,7 +7,7 @@
 * `mosdns` 魔改版本
 
 ### 脚本
-* `proxy.sh` 脚本
+* `install.sh` 脚本
 ``` shell
 wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/install.sh && bash install.sh
 ```
