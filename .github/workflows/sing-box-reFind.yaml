@@ -101,7 +101,7 @@ jobs:
 
       - name: Build `sing-box reF1nd_dev  ` core
         id: reF1nd_dev
-        run: go build -v -trimpath -ldflags "-checklinkname=0 -X 'github.com/sagernet/sing-box/constant.Version=${reF1nd_dev_VERSION}' -s -w -buildid=" -tags "${reF1nd_dev_TAGS}" ./cmd/sing-box
+        run: go build -v -trimpath -ldflags "-checklinkname=0 -X 'github.com/reF1nd/sing-box/constant.Version=${reF1nd_dev_VERSION}' -s -w -buildid=" -tags "${reF1nd_dev_TAGS}" ./cmd/sing-box
 
       - name: Upload files to workspace
         uses: actions/upload-artifact@v4
