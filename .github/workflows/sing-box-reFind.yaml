@@ -137,9 +137,9 @@ jobs:
           mkdir -p ./sing-box/
           mv -f ./tmp-sing-box/compress/* ./sing-box/
           # `reF1nd-dev` cores for Windows
-          mv -f ./tmp-sing-box/sing-box-reF1nd-dev-windows-amd64/sing-box.exe ./sing-box/sing-box-reF1nd-dev-windows-amd64.exe
-          mv -f ./tmp-sing-box/sing-box-reF1nd-dev-windows-amd64-v3/sing-box.exe ./sing-box/sing-box-reF1nd-dev-windows-amd64v3.exe
-          mv -f ./tmp-sing-box/sing-box-reF1nd-dev-windows-arm64/sing-box.exe ./sing-box/sing-box-reF1nd-dev-windows-arm64.exe
+          mv -f ./tmp-sing-box/sing-box-reF1nd_dev-windows-amd64/sing-box.exe ./sing-box/sing-box-reF1nd_dev-windows-amd64.exe
+          mv -f ./tmp-sing-box/sing-box-reF1nd_dev-windows-amd64-v3/sing-box.exe ./sing-box/sing-box-reF1nd_dev-windows-amd64v3.exe
+          mv -f ./tmp-sing-box/sing-box-reF1nd_dev-windows-arm64/sing-box.exe ./sing-box/sing-box-reF1nd_dev-windows-arm64.exe
 
       - name: Release and upload `sing-box` assets
         uses: svenstaro/upload-release-action@v2
