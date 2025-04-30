@@ -131,30 +131,14 @@ jobs:
       - name: Get `sing-box reF1nd` version
         id: reF1nd_dev
         run: |
-          echo "==== 当前分支 HEAD 所在提交 ===="
-          git log -1 --oneline
-
-          echo "==== 与当前 HEAD 相关的 tag ===="
-          git tag --contains HEAD || echo "无 tag 包含当前 HEAD"
-
-          echo "==== git describe 输出版本 ===="
-          # 尝试使用 git describe 来输出标签信息
-          git describe --tags --long --always || echo "git describe 找不到 tag"
-
-          echo "==== 执行 read_tag 读取版本 ===="
-          reF1nd_dev_version=$(CGO_ENABLED=0 go run ./cmd/internal/read_tag)
-          echo "reF1nd_dev_version=$reF1nd_dev_version" >> $GITHUB_OUTPUT
-
-          echo "==== 设置构建标签 ===="
-          echo "reF1nd_dev_tags=with_quic,with_dhcp,with_wireguard,with_shadowsocksr,with_ech,with_utls,with_clash_api,with_gvisor" >> $GITHUB_OUTPUT
-
-          echo "==== 提取版本时间 ===="
-          # 提取提交哈希并获取版本时间
-          commit_hash=$(echo "$reF1nd_dev_version" | awk -F'-' '{print $3}')
-          reF1nd_dev_time=$(git log -1 --format=%cd --date=format:'%Y-%m-%d' $commit_hash)
-          echo "reF1nd_dev_time=$reF1nd_dev_time" >> $GITHUB_OUTPUT
-
-
+        
+         # git remote add sekai https://github.com/SagerNet/sing-box.git
+         # git fetch --tags sekai
+          reF1nd_version=$(CGO_ENABLED=0 go run ./cmd/internal/read_tag)
+          echo "reF1nd_version=$reF1nd_version" >> $GITHUB_OUTPUT
+          echo reF1nd_tags=with_quic,with_dhcp,with_wireguard,with_shadowsocksr,with_ech,with_utls,with_clash_api,with_gvisor >> $GITHUB_OUTPUT
+          reF1nd_time=$(git log -1 --format=%cd --date=format:'%Y-%m-%d' $(echo "$reF1nd_version" | awk -F'-' '{print $3}'))
+          echo "reF1nd_time=$reF1nd_time" >> $GITHUB_OUTPUT
 
   reF1nd_dev_cross:
     strategy:
