@@ -141,10 +141,6 @@ jobs:
         run: |
           mkdir -p ./sing-box/
           mv -f ./tmp-sing-box/compress/* ./sing-box/
-          # `reF1nd` cores for Windows
-          mv -f ./tmp-sing-box/sing-box-reF1nd-windows-amd64/sing-box.exe ./sing-box/sing-box-reF1nd-windows-amd64.exe
-          mv -f ./tmp-sing-box/sing-box-reF1nd-windows-amd64-v3/sing-box.exe ./sing-box/sing-box-reF1nd-windows-amd64v3.exe
-          mv -f ./tmp-sing-box/sing-box-reF1nd-windows-arm64/sing-box.exe ./sing-box/sing-box-reF1nd-windows-arm64.exe
           # `reF1nd-dev` cores for Windows
           mv -f ./tmp-sing-box/sing-box-reF1nd-dev-windows-amd64/sing-box.exe ./sing-box/sing-box-reF1nd-dev-windows-amd64.exe
           mv -f ./tmp-sing-box/sing-box-reF1nd-dev-windows-amd64-v3/sing-box.exe ./sing-box/sing-box-reF1nd-dev-windows-amd64v3.exe
