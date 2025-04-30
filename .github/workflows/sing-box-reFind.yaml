@@ -138,8 +138,8 @@ jobs:
           git tag --contains HEAD || echo "无 tag 包含当前 HEAD"
 
           echo "==== git describe 输出版本 ===="
-          git describe --tags --long --always || echo "git describe 找不到 tag"
-
+          # git describe --tags --long --always || echo "git describe 找不到 tag"
+          git describe --tags --long --match 'v1.*-reF1nd'
           echo "==== 执行 read_tag 读取版本 ===="
           reF1nd_dev_version=$(CGO_ENABLED=0 go run ./cmd/internal/read_tag)
           echo "reF1nd_dev_version=$reF1nd_dev_version" >> $GITHUB_OUTPUT
