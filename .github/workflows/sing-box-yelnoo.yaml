@@ -91,8 +91,7 @@ jobs:
           repository: YelNoo/sing-box
           ref: main
 
-      - name: Fix sniff
-        run: sed -i 's/sniffHosts/sniffHost/' ./experimental/clashapi/trafficontrol/tracker.go
+
 
       - name: Setup `Go`
         uses: actions/setup-go@v5
