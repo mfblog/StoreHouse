@@ -180,6 +180,23 @@ yellow() {
 
         rm -f sing-box.tar.gz
     }
+    # reF1nd佬 R核心
+    singbox_r_install(){
+        arch=$(detect_architecture)
+        download_url="https://github.com/herozmy/StoreHouse/releases/download/sing-box-reF1nd/sing-box-reF1nd-dev-linux-${arch}.tar.gz"
+        echo -e "${yellow}开始下载reF1nd佬 R核心...${reset}"
+        if ! wget -O sing-box.tar.gz $download_url; then
+            echo -e "${yellow}下载失败，请检查网络连接${reset}"
+            exit 1
+        fi
+        
+        echo -e "${green_text}下载完成，开始安装${reset}"
+        tar -zxvf sing-box.tar.gz > /dev/null 2>&1
+        mv sing-box_linux_amd64 sing-box
+
+        rm -f sing-box.tar.gz
+        
+    }
     # 检查核心类型
     check_core_type() {
         local version_file="/etc/sing-box/version"
@@ -191,7 +208,7 @@ yellow() {
     
         local core_type=$(cat "$version_file")
         case "$core_type" in
-            official|puer|xiling|s-y)
+            official|puer|xiling|s-y|reF1nd)
                 echo "$core_type"
                 return 0
                 ;;
@@ -228,6 +245,10 @@ yellow() {
         s-y)
             echo -e "${green}正在更新S-Y核心...${reset}"
             singbox_s_install && install_core
+            ;;
+        reF1nd)
+            echo -e "${green}正在更新reF1nd核心...${reset}"
+            singbox_r_install && install_core
             ;;
         *)
             echo -e "${red}未知核心类型${reset}"
@@ -389,6 +410,18 @@ yellow() {
                 echo -e "${red}配置文件下载失败${reset}"
                 exit 1
             fi
+    ###reF1nd佬 R核心配置文件
+        elif [[ "$core_choice" == "5" ]]; then
+            
+            mkdir -p /etc/sing-box
+            echo "reF1nd" > /etc/sing-box/version
+            get_subscription_url
+            if curl -o /etc/sing-box/config.json https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box-r.json; then
+                echo -e "${green_text} 配置文件下载成功${reset}"
+                sed -i "s|\"download_url\": \"机场订阅\"|\"download_url\": \"$suburl\"|g" /etc/sing-box/config.json
+            else
+                echo -e "${red}配置文件下载失败${reset}"
+                exit 1  
             fi
     }
     # 拉取sing-box UI管理界面
@@ -696,8 +729,9 @@ yellow() {
         echo -e "${yellow}2. Sing-boxPuer喵佬核心${reset} <支持订阅> ${green_text}停更${reset}"
         echo -e "${yellow}3. Sing-box曦灵X核心${reset} <支持订阅> ${green_text}停更${reset}"
         echo -e "${yellow}4. Sing-box S佬Y核心${reset} <支持订阅> ${green_text}推荐${reset}"
+        echo -e "${yellow}5. Sing-box reF1nd佬 R核心${reset} ${green_text}推荐${reset}"
         echo -e "${yellow}0. 返回主菜单${reset}"
-        read -p "请输入选择 (1/2/3/4/0): " core_choice
+        read -p "请输入选择 (1/2/3/4/5/0): " core_choice
         case "$core_choice" in
             1)
                 echo -e "当前选择: ${green_text}Sing-BOX${reset}官方核心"        
@@ -716,6 +750,10 @@ yellow() {
             4)
                 echo -e "当前选择: ${green_text}Sing-BOX${reset}S佬Y核心"
                 update_version && singbox_s_install
+                ;;
+            5)
+                echo -e "当前选择: ${green_text}Sing-BOX${reset}reF1nd佬 R核心"
+                update_version && singbox_r_install
                 ;;
             0)
                 main
