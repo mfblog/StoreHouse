@@ -134,7 +134,7 @@ EOF
             chmod +x /usr/bin/proxytool /usr/bin/menu
         }
 }
-t
+
 install(){
     echo -e "${green_text}安装脚本...${reset}"
     get_script
