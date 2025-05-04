@@ -423,6 +423,7 @@ yellow() {
                 echo -e "${red}配置文件下载失败${reset}"
                 exit 1  
             fi
+    fi
     }
     # 拉取sing-box UI管理界面
         ###检测ui是否存在
