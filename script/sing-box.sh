@@ -177,8 +177,7 @@ yellow() {
         echo -e "${green_text}下载完成，开始安装${reset}"
         tar -zxvf sing-box.tar.gz > /dev/null 2>&1
         mv sing-box_linux_amd64 sing-box
-
-        rm -f sing-box.tar.gz
+        rm -f sing-box.tar.gz > /dev/null 2>&1   
     }
     # reF1nd佬 R核心
     singbox_r_install(){
@@ -191,10 +190,8 @@ yellow() {
         fi
         
         echo -e "${green_text}下载完成，开始安装${reset}"
-        tar -zxvf sing-box.tar.gz > /dev/null 2>&1
-        mv sing-box_linux_amd64 sing-box
-
-        rm -f sing-box.tar.gz
+        tar -zxvf sing-box.tar.gz > /dev/null 2>&1       
+        rm -f sing-box.tar.gz > /dev/null 2>&1   
         
     }
     # 检查核心类型
