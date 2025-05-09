@@ -388,6 +388,9 @@ case "$1" in
     get_mosdns_rule)
         get_mosdns_rule
         ;;
+    mosdns_logrotate)
+        mosdns_logrotate
+        ;;
 esac
 mosdns_install
 mosdns_rule
