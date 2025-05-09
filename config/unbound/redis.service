@@ -6,7 +6,6 @@ After=network.target
 ExecStart=/usr/local/bin/redis-server /etc/redis/redis.conf --daemonize no
 ExecStop=/usr/local/bin/redis-cli shutdown
 Restart=always
-LimitNOFILE=65536
 RuntimeDirectory=redis
 RuntimeDirectoryMode=777
 

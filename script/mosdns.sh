@@ -24,6 +24,115 @@ DIRPATH="/usr/local/bin/tools"
                 ;;
         esac
     }
+    get_mosdns_rule(){
+    MOSDNS_INSTALL_DIR="/opt/mosdns_install"
+    RULESET_URLS=(
+    "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/direct-list.txt geosite_cn.txt"
+    "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/proxy-list.txt geosite_no_cn.txt"
+    "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/gfw.txt gfw.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaAllNetwork_IPv4.txt ChinaAllNetwork_IPv4.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaAllNetwork_IPv6.txt ChinaAllNetwork_IPv6.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaEducation_IPv4.txt ChinaEducation_IPv4.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaEducation_IPv6.txt ChinaEducation_IPv6.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaMobile_IPv4.txt ChinaMobile_IPv4.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaMobile_IPv6.txt ChinaMobile_IPv6.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaSciences_IPv4.txt ChinaSciences_IPv4.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaSciences_IPv6.txt ChinaSciences_IPv6.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaTelecom_IPv4.txt ChinaTelecom_IPv4.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaTelecom_IPv6.txt ChinaTelecom_IPv6.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaUnicom_IPv4.txt ChinaUnicom_IPv4.txt"
+    "https://file.bairuo.net/iplist/output/Aggregated_ChinaUnicom_IPv6.txt ChinaUnicom_IPv6.txt"
+)
+
+# 创建安装目录
+install -d -m 755 "$MOSDNS_INSTALL_DIR" || {
+    echo "无法创建目录: $MOSDNS_INSTALL_DIR" >&2
+    exit 1
+}
+
+# 下载文件函数
+download_files() {
+    local retry_count=3
+    for entry in "${RULESET_URLS[@]}"; do
+        local url="${entry%% *}"
+        local filename="${entry##* }"
+        
+        for ((i=1; i<=retry_count; i++)); do
+            if curl -sSfL --connect-timeout 30 --retry 2 -o "$MOSDNS_INSTALL_DIR/$filename" "$url"; then
+                if [ -s "$MOSDNS_INSTALL_DIR/$filename" ]; then
+                    echo "[成功] 下载: $filename"
+                    break
+                else
+                    echo "[警告] 空文件: $filename" >&2
+                    rm -f "$MOSDNS_INSTALL_DIR/$filename"
+                fi
+            else
+                if [ $i -eq $retry_count ]; then
+                    echo "[错误] 下载失败: $filename" >&2
+                    return 1
+                fi
+                sleep 1
+            fi
+        done
+    done
+}
+
+# 验证文件完整性
+validate_files() {
+    local ipv4_files=()
+    local ipv6_files=()
+    
+    while IFS= read -r file; do
+        if grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/[0-9]+)?$' "$file"; then
+            ipv4_files+=("$file")
+        elif grep -qE '^[0-9a-fA-F:]+(/[0-9]+)?$' "$file"; then
+            ipv6_files+=("$file")
+        else
+            echo "[错误] 无效IP文件: $(basename "$file")" >&2
+            return 1
+        fi
+    done < <(find "$MOSDNS_INSTALL_DIR" -maxdepth 1 -type f \( -name "*IPv4.txt" -o -name "*IPv6.txt" \))
+
+    if [ ${#ipv4_files[@]} -lt 6 ] || [ ${#ipv6_files[@]} -lt 6 ]; then
+        echo "[错误] 缺少必要的IP文件" >&2
+        return 1
+    fi
+}
+
+# 合并IP文件
+merge_ip_files() {
+    cat "$MOSDNS_INSTALL_DIR/"*IPv4.txt > "$MOSDNS_INSTALL_DIR/geoip_cn.txt"
+    cat "$MOSDNS_INSTALL_DIR/"*IPv6.txt >> "$MOSDNS_INSTALL_DIR/geoip_cn.txt"
+    
+    if [ -s "$MOSDNS_INSTALL_DIR/geoip_cn.txt" ]; then
+        echo "[成功] 生成geoip_cn.txt"
+    else
+        echo "[错误] 生成geoip文件失败" >&2
+        return 1
+    fi
+}
+
+    echo "=== 开始更新MosDNS规则集 ==="
+    
+    if ! download_files; then
+        echo "下载失败，请检查网络连接" >&2
+        exit 1
+    fi
+    
+    if ! validate_files; then
+        echo "文件验证失败" >&2
+        exit 2
+    fi
+    
+    if ! merge_ip_files; then
+        exit 3
+    fi
+    
+    # 复制非IP文件
+    find "$MOSDNS_INSTALL_DIR" -maxdepth 1 -type f \( -not -name "*IPv4*" -and -not -name "*IPv6*" \) \
+        -exec cp -v {} /etc/mosdns \;    
+    echo "=== 更新完成 ==="
+}
 
     check_resolved(){
         if [ -f /etc/systemd/resolved.conf ]; then
@@ -139,7 +248,38 @@ DIRPATH="/usr/local/bin/tools"
             fi
         fi
     }
+cn_mosdns_install(){
+    echo -e "${green_text}安装cn佬mosdns嵌套规则${reset}"
+    mkdir -p /etc/systemd/system/mosdns.service.d
+    touch /etc/systemd/system/mosdns.service.d/override.conf
+    cat <<EOF > /etc/systemd/system/mosdns.service.d/override.conf
+[Service]
+LimitNOFILE=65536
+EOF
+    systemctl daemon-reexec
+    systemctl daemon-reload
+    systemctl enable mosdns.service
+    wget --quiet --show-progress -O mosdns.zip https://github.com/herozmy/StoreHouse/raw/refs/heads/latest/config/mosdns/cn_mosdns/cn_mosdns.zip &&
+    mkdir -p /etc/mosdns/ &&
+    unzip mosdns.zip -d /etc/mosdns/
+    rm -f mosdns.zip
+   
+}
+mosdns_logrotate(){
+    cat <<EOF > /etc/logrotate.d/mosdns
+/etc/mosdns/mosdns.log {
+        copytruncate
+        rotate 3
+        daily
+        missingok
+        notifempty
+        compress
+}
+EOF
+echo "57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/mosdns" >> /etc/crontab
+}
 ######主安装脚本
+mosdns_install(){
         arch=$(detect_architecture)
         echo "系统架构是：$arch"
         mosdns_host="https://github.com/herozmy/StoreHouse/releases/download/mosdns/mosdns-linux-$arch.zip"
@@ -155,6 +295,8 @@ DIRPATH="/usr/local/bin/tools"
         echo -e "\n设置时区为Asia/Shanghai"
         timedatectl set-timezone Asia/Shanghai || { echo -e "\e[31m时区设置失败！退出脚本\e[0m"; exit 1; }
         echo -e "\e[32m时区设置成功\e[0m"
+}
+mosdns_rule(){
         echo -e "\n自定义设置（以下设置可直接回车使用默认值）"
         read -p "输入sing-box/mihomo入站地址（默认10.10.10.147:6666）：" uiport
         uiport="${uiport:-10.10.10.147:6666}"
@@ -223,6 +365,8 @@ DIRPATH="/usr/local/bin/tools"
         echo -e "${green_text}Mosdns规则拉取成功${reset}"
         echo -e "${yellow}配置mosdns${reset}"
         sed -i "s/- addr: 10.10.10.147:6666/- addr: ${uiport}/g" /etc/mosdns/config.yaml
+}
+mosdns_service(){
         echo -e "${yellow}设置mosdns开机自启动${reset}"
         mosdns service install -d /etc/mosdns -c /etc/mosdns/config.yaml
         echo -e "${green_text}mosdns开机启动完成${reset}"
@@ -236,3 +380,16 @@ DIRPATH="/usr/local/bin/tools"
         echo -e "${green_text}请使用${reset} ${yellow_text}systemctl disable mosdns${reset} ${green_text}禁用开机自启动${reset}"
         echo -----------------------------------------------
         echo -e "${green_text}请使用${reset} ${yellow_text}proxytool${reset} ${green_text}快速管理mosdns${reset}"
+}
+case "$1" in
+    cn_mosdns)
+        mosdns_install && cn_mosdns_install
+        ;;
+    get_mosdns_rule)
+        get_mosdns_rule
+        ;;
+esac
+mosdns_install
+mosdns_rule
+mosdns_logrotate
+mosdns_service
