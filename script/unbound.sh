@@ -64,19 +64,6 @@ die() {
         exit 1
         fi
     }
-
-
-setup_service() {
-    local service=$1 config_url=$2
-    fetch_resource "$config_url" "/etc/systemd/system/$service.service"
-    systemctl daemon-reload
-    systemctl enable --now "$service" || {
-        journalctl -u "$service" -n 20 --no-pager | grep -iC3 error >&2
-        die "服务启动失败"
-    }
-}
-
-
 # 修正后的版本获取逻辑
 get_unbound_version() {
     local page_content=$(curl -fsSL "https://www.nlnetlabs.nl/downloads/unbound/")
@@ -103,26 +90,12 @@ make_unbound() {
  export CFLAGS="-flto" 
  export CXXFLAGS="-flto"
 
- ./configure \
-  --prefix=/usr/local \
-  --sbindir=/usr/local/bin \
-  --sysconfdir=/etc \
-  --libdir=/usr/local/lib \
-  --includedir=/usr/local/include \
-  --datarootdir=/usr/local/share \
-  # 保持原有功能参数
-  --enable-subnet \
-  --with-libevent \
-  --with-libhiredis \
-  --enable-cachedb \
-  --enable-pie \
-  --enable-relro-now \
-  --enable-tfo-client \
-  --enable-tfo-server \
-  --enable-dnscrypt \
-  --with-ssl \
-  --with-libnghttp2 \
-  --enable-systemd
+        ./configure \
+        --prefix=/usr/local \
+        --sbindir=/usr/local/bin \
+        --sysconfdir=/etc \
+        --enable-{subnet,cachedb,pie,relro-now,tfo-{client,server},dnscrypt,systemd} \
+        --with-{libevent,libhiredis,ssl,libnghttp2}
 
     make -j$(nproc)
     make install   
@@ -277,7 +250,7 @@ for param in "${!PARAMS[@]}"; do
     process_parameter "$param" "${PARAMS[$param]}"
 done
 cp /etc/redis/redis.conf /etc/redis/redis.conf.bak > /dev/null 2>&1
-rm -f /etc/redis/redis.conf
+
     # 服务管理
     wget --quiet --show-progress -O /etc/systemd/system/redis.service "https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/unbound/redis.service"
     mkdir -p /etc/systemd/system/redis.service.d
@@ -288,7 +261,6 @@ LimitNOFILE=65536
 EOF
     systemctl daemon-reload
     systemctl enable redis.service
-    systemctl enable redis-server.service 
     echo -e "${green_text}Redis 自启动服务文件配置成功${reset}"
 }
 unbound_logrotate(){
@@ -352,6 +324,6 @@ echo "57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/unbound" >> /etc/cront
             . $DIRPATH/mosdns.sh mosdns_logrotate
         fi
     fi
-    systemctl start redis-server.service
+    systemctl start redis.service
     systemctl start unbound.service
     quick_check
