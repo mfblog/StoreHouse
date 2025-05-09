@@ -90,7 +90,7 @@ make_unbound() {
     
     # 获取准确版本
     local ver=$(get_unbound_version)
-    echo -e "${COLOR[green]}✓ 检测到最新版本: ${ver}${COLOR[reset]}"
+    echo -e "${green_text}✓ 检测到最新版本: ${ver}${reset}"
     
     # 构建完整下载链接
     local download_url="https://nlnetlabs.nl/downloads/unbound/unbound-${ver}.tar.gz"
@@ -195,7 +195,7 @@ get_redis_version() {
 make_redis() {
     # 版本获取
     local ver=$(get_redis_version)
-    echo -e "${COLOR[green]}✓ 检测到最新版本: ${ver}${COLOR[reset]}"
+    echo -e "${green_text}✓ 检测到最新版本: ${ver}${reset}"
 
     local download_url="https://download.redis.io/releases/redis-${ver}.tar.gz"
     # 下载编译
