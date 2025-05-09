@@ -112,7 +112,7 @@ yellow() {
         source /etc/profile.d/golang.sh  # 立即生效
 
         # 编译 Sing-Box
-        if ! go install -v -tags with_quic,with_grpc,with_dhcp,with_wireguard,with_ech,with_utls,with_reality_server,with_clash_api,with_gvisor,with_v2ray_api,with_lwip,with_acme github.com/sagernet/sing-box/cmd/sing-box@latest; then
+        if ! go install -v -tags with_quic,with_grpc,with_dhcp,with_wireguard,with_utls,with_clash_api,with_gvisor,with_v2ray_api,with_lwip,with_acme github.com/sagernet/sing-box/cmd/sing-box@latest; then
             echo -e "Sing-Box 编译失败！退出脚本"
             exit 1
         fi
@@ -128,7 +128,8 @@ yellow() {
         curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-${arch}.tar.gz"
         tar -zxvf sing-box.tar.gz > /dev/null 2>&1
         cd sing-box-${VERSION}-linux-${arch} || { echo "进入解压目录失败！"; exit 1; }
-        mv sing-box ../ || { echo "移动 sing-box 失败！"; exit 1; }
+        mv sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
+        chmod +x /usr/local/bin/sing-box
         cd ..
         rm -rf sing-box-${VERSION}-linux-${arch} sing-box.tar.gz
         rm -rf sing-box.tar.gz
@@ -345,19 +346,13 @@ yellow() {
     if [[ "$core_choice" == "1" ]]; then
     mkdir -p /etc/sing-box
     echo "official" > /etc/sing-box/version
-    customize_settings
-        # 仅在订阅地址有效时生成配置
-        if [ -n "$suburl" ]; then
-            
-            
+    customize_settings            
             if [ -f "config.json" ]; then
                 mv config.json /etc/sing-box/config.json || {
                     echo -e "${red}配置文件移动失败${reset}"
                     exit 1
                 }
             fi        
-        # 无订阅地址时的处理
-       fi
         echo -e "${green_text}Sing-box配置文件写入成功！${reset}"
     ###Puer喵佬核心配置文件
         elif [[ "$core_choice" == "2" ]]; then
@@ -738,20 +733,20 @@ yellow() {
                 ;;
             2)
                 echo -e "当前选择: ${green_text} Sing-BOX ${reset}Puer喵佬核心"
-                update_version &&singbox_p_install
+                update_version &&singbox_p_install && install_core
                
                 ;;
             3)
                 echo -e "当前选择: ${green_text}Sing-BOX${reset}曦灵X核心"
-                update_version && singbox_x_install 
+                update_version && singbox_x_install && install_core
                 ;;
             4)
                 echo -e "当前选择: ${green_text}Sing-BOX${reset}S佬Y核心"
-                update_version && singbox_s_install
+                update_version && singbox_s_install && install_core
                 ;;
             5)
                 echo -e "当前选择: ${green_text}Sing-BOX${reset}reF1nd佬 R核心"
-                update_version && singbox_r_install
+                update_version && singbox_r_install && install_core
                 ;;
             0)
                 main
@@ -786,7 +781,7 @@ yellow() {
                 echo -e "当前选择: ${green_text} Sing-BOX ${reset}二进制安装"
                 update_version
                 singbox_install_core
-                install_core
+                # install_core
                 echo -e "${green_text}Sing-Box 二进制安装完成${reset}"
                 ;;
             0)
@@ -831,7 +826,6 @@ case "$1" in
 esac
 
     choose_singbox
-    install_core
     install_josn_config
     check_resolved
     sleep 1

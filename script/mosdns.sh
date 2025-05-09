@@ -287,7 +287,7 @@ mosdns_install(){
         apt install curl wget git tar gawk sed cron unzip nano -y || { echo "更新失败！退出脚本"; exit 1; }
         wget "${mosdns_host}" || { echo -e "\e[31m下载失败！退出脚本\e[0m"; exit 1; }
         echo "开始解压"
-        unzip ./mosdns-linux-$arch.zip 
+        unzip -o ./mosdns-linux-$arch.zip 
         sleep 1
         mv -v ./mosdns /usr/local/bin/
         rm -rf mosdns-linux-$arch.zip
@@ -384,12 +384,15 @@ mosdns_service(){
 case "$1" in
     cn_mosdns)
         mosdns_install && cn_mosdns_install
+        exit 0
         ;;
     get_mosdns_rule)
         get_mosdns_rule
+        exit 0
         ;;
     mosdns_logrotate)
         mosdns_logrotate
+        exit 0
         ;;
 esac
 mosdns_install
