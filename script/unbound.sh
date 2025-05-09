@@ -193,6 +193,7 @@ get_redis_version() {
 
 # Redis 安装函数
 make_redis() {
+    cd ~
     # 版本获取
     local ver=$(get_redis_version)
     echo -e "${green_text}✓ 检测到最新版本: ${ver}${reset}"
