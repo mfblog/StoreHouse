@@ -283,12 +283,12 @@ echo "57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/unbound" >> /etc/cront
         chmod +x /usr/bin/check
         echo -e "${green_text}查询脚本转快捷启动已完成， shell 界面输入 check 即可调用脚本显示 unboud 和 redis 命中率${reset}"
     }
-    custom_settings(){
+    cn_mosdns_custom_settings(){
         echo -e "\n自定义设置（以下设置可直接回车使用默认值）"
         read -p "输入sing-box/mihomo入站地址（默认10.10.10.147:6666）：" uiport
         uiport="${uiport:-10.10.10.147:6666}"
         echo -e "已设置sing-box/mihomo入站地址：\e[36m$uiport\e[0m"
-        echo "
+        red "
         proxy_ip.txt填写10.0.0.10  ，则客户端返回真实ip，包括国内外也是真实ip。
         fake_ip.txt填写10.0.0.11  ，则客户端国内域名返回真实ip，国外域名返回fake-ip。
         不在这两个表内的客户端，    则客户端国内域名返回真实ip，国外域名返回nxmodian。
@@ -298,7 +298,7 @@ echo "57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/unbound" >> /etc/cront
         echo -e "${yellow}本脚本默认使用fake模式${reset}"
         read -p "输入fake_ip.txt文件内容（默认0.0.0.0/0）：" fake_ip
         fake_ip="${fake_ip:-0.0.0.0/0}"
-        echo "$fake_ip" > /etc/mosdns/config/fake_ip.txt
+        echo "$fake_ip" > /etc/mosdns/rule/fake_ip.txt
         echo -e "${green_text}已设置fake_ip内容：\e[36m$fake_ip${reset}"
     }
     unbound_customize_settings
@@ -313,15 +313,14 @@ echo "57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/unbound" >> /etc/cront
             . $DIRPATH/mosdns.sh cn_mosdns
             echo -e "${green_text}mosdns嵌套安装成功${reset}"
             sleep 1
-            custom_settings
+            cn_mosdns_custom_settings
             echo -e "${yellow}修正mosdns嵌套规则${reset}"
             sleep 1
             sed -i "s/8053/$ubport/g" /etc/mosdns/config.yaml
             sed -i "s/- addr: \"10.0.0.6:53\"/- addr: \"${uiport}\"/g" /etc/mosdns/config.yaml
             echo -e "${green_text}mosdns嵌套规则修正成功${reset}"
-            . $DIRPATH/mosdns.sh get_mosdns_rule
-            systemctl restart mosdns.service
-            . $DIRPATH/mosdns.sh mosdns_logrotate
+            . $DIRPATH/mosdns.sh get_mosdns_rule && . $DIRPATH/mosdns.sh mosdns_logrotate && . $DIRPATH/mosdns.sh mosdns_service
+            systemctl enable --now mosdns.service
         fi
     fi
     systemctl start redis.service

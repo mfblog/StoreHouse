@@ -258,12 +258,10 @@ LimitNOFILE=65536
 EOF
     systemctl daemon-reexec
     systemctl daemon-reload
-    systemctl enable mosdns.service
     wget --quiet --show-progress -O mosdns.zip https://github.com/herozmy/StoreHouse/raw/refs/heads/latest/config/mosdns/cn_mosdns/cn_mosdns.zip &&
     mkdir -p /etc/mosdns/ &&
     unzip mosdns.zip -d /etc/mosdns/
     rm -f mosdns.zip
-   
 }
 mosdns_logrotate(){
     cat <<EOF > /etc/logrotate.d/mosdns
@@ -384,15 +382,19 @@ mosdns_service(){
 case "$1" in
     cn_mosdns)
         mosdns_install && cn_mosdns_install
-        exit 0
+        return 0
         ;;
     get_mosdns_rule)
         get_mosdns_rule
-        exit 0
+        return 0
         ;;
     mosdns_logrotate)
         mosdns_logrotate
-        exit 0
+        return 0
+        ;;
+    mosdns_service)
+        mosdns_service
+        return 0
         ;;
 esac
 mosdns_install
