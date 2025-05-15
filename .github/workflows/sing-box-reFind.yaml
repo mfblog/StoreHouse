@@ -50,6 +50,9 @@ jobs:
           echo reF1nd_dev_tags=with_quic,with_dhcp,with_wireguard,with_shadowsocksr,with_utls,with_clash_api,with_gvisor >> $GITHUB_OUTPUT
           reF1nd_dev_time=$(git log -1 --format=%cd --date=format:'%Y-%m-%d' $(echo "$reF1nd_dev_version" | awk -F'-' '{print $3}'))
           echo "reF1nd_dev_time=$reF1nd_dev_time" >> $GITHUB_OUTPUT
+          echo "Version: ${{ steps.reF1nd_dev.outputs.reF1nd_dev_version }}"
+          echo "Tags: ${{ steps.reF1nd_dev.outputs.reF1nd_dev_tags }}"
+          echo "Build Time: ${{ steps.reF1nd_dev.outputs.reF1nd_dev_time }}"
   reF1nd_dev_cross:
     strategy:
       matrix:
@@ -98,7 +101,7 @@ jobs:
 
       - name: Build `sing-box reF1nd-dev` core
         id: dev
-        run: go build -v -trimpath -ldflags "-checklinkname=0 -X 'github.com/sagernet/sing-box/constant.Version=${reF1nd_dev_VERSION}' -s -w -buildid=" -tags "${reF1nd_dev_TAGS}" ./cmd/sing-box
+        run: go build -v -trimpath -ldflags "-checklinkname=0 -X 'github.com/SagerNet/sing-box/constant.Version=${reF1nd_dev_VERSION}' -s -w -buildid=" -tags "${reF1nd_dev_TAGS}" ./cmd/sing-box
 
       - name: Upload files to workspace
         uses: actions/upload-artifact@v4
