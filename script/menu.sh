@@ -234,6 +234,7 @@ case $choice in
         . $DIRPATH/uninstall.sh
         ;;
     999) 
+        systemctl stop tproxy-router > /dev/null 2>&1
         . $DIRPATH/install.sh
         ;;
     *)

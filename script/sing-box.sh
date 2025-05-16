@@ -714,6 +714,35 @@ yellow() {
         echo -e "${yellow}客户端配置生成路径为: /root/go_home.json${reset}"
         echo -e "${yellow}请自行复制至客户端${reset}"
     }
+    switch_core(){
+        singbox_version=$(cat /etc/sing-box/version)
+        echo -e "${green_text}当前核心为: $singbox_version${reset}"
+        read -p "是否切换核心 y/n: " core_choice
+        case "$core_choice" in
+            y)
+                choose_singbox
+                ;;
+            n)
+                echo -e "已取消切换核心"
+                exit 0
+                ;;
+        esac
+        green "已切换核心为: ${singbox_version}核心"
+        yellow "更新config.json配置文件"
+        cp /etc/sing-box/config.json /etc/sing-box/${singbox_version}.config.json.bak
+        install_josn_config
+        green "配置文件更新完成"
+        yellow "开始重启sing-box"
+        sleep 1
+        systemctl restart sing-box
+        green "sing-box重启完成"
+        yellow "开始重启tproxy-router"
+        sleep 1
+        systemctl restart tproxy-router
+        green "tproxy-router重启完成"
+        green "核心切换完毕"
+    }
+    
 
 ######选择安装sing-box 核心
     choose_singbox(){
@@ -800,8 +829,7 @@ case "$1" in
         if [ ! -f "/etc/sing-box/version" ]; then
             echo -e "${red}未检测到Sing-Box安装，请先安装 sing-box${reset}"
             exit 1
-        fi
-        
+        fi        
         # 调用更新函数
         echo -e "${green}开始更新Sing-Box核心...${reset}"
         systemctl stop tproxy-router > /dev/null 2>&1
@@ -820,6 +848,11 @@ case "$1" in
         systemctl stop tproxy-router > /dev/null 2>&1
         install_hy2-gohome
         systemctl start tproxy-router > /dev/null 2>&1
+        exit 0  # 新增退出指令
+        ;;
+    switch_core)
+        systemctl stop tproxy-router > /dev/null 2>&1
+        switch_core
         exit 0  # 新增退出指令
         ;;
 

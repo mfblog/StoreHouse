@@ -261,19 +261,22 @@ check_singbox() {
 check_mosdns() {
     if [ -f "/usr/local/bin/mosdns" ]; then
         found_mosdns=true
-        mosdns_version=$(mosdns version | awk '/Version/{print $2}')
+        mosdns_version=$(mosdns version)
     fi
 }
 
 # 独立管理函数
 manage_singbox() {
     while true; do
-        echo -e "\n${green}=== Sing-Box 管理 (v${singbox_version}) ===${reset}"
+        echo -e "${green}=== Sing-Box 管理  ===${reset}"
+        echo -e "${yellow}当前核心为: $(cat /etc/sing-box/version)${reset}"
+        echo -e "${green}当前版本：v${singbox_version}${reset}"
         echo "1. 更新核心"
-        echo "2. 更新UI面板"
-        echo "3. 重启服务"
-        echo "4. 安装回家配置"
-        echo "5. 返回主菜单"
+        echo "2. 切换核心"
+        echo "3. 更新UI面板"
+        echo "4. 重启服务"
+        echo "5. 安装回家配置"
+        echo "0. 返回主菜单"
         
         read -p "请选择操作: " choice
         case $choice in
@@ -284,18 +287,23 @@ manage_singbox() {
 
                 ;;
             2)
+                echo -e "\n${green}开始切换核心...${reset}"
+                bash /usr/local/bin/tools/sing-box.sh switch_core
+                echo -e "${green}核心切换完成${reset}"
+                ;;
+            3)
                 echo -e "\n${green}开始更新 UI 面板...${reset}"
                 bash /usr/local/bin/tools/sing-box.sh update_ui
                 echo -e "${green}UI 面板更新完成${reset}"
                 ;;
-            3)
-                systemctl restart sing-box
+            4)
+                systemctl restart sing-box && systemctl restart tproxy-router && systemctl restart nftables
                 echo -e "${green}服务已重启${reset}"
                 ;;
-            4)
+            5)
                 bash /usr/local/bin/tools/sing-box.sh update_home
                 ;;
-            5)
+            0)
                 break
                 ;;
             *)
