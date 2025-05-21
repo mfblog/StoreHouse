@@ -43,13 +43,13 @@ jobs:
       - name: Get `sing-box reF1nd` version
         id: reF1nd_dev
         run: |
-         #  git remote add sekai https://github.com/SagerNet/sing-box.git
-         #  git fetch --tags sekai
+          # git remote add sekai https://github.com/SagerNet/sing-box.git
+          # git fetch --tags sekai
           reF1nd_dev_version=$(CGO_ENABLED=0 go run ./cmd/internal/read_tag)
           echo "reF1nd_dev_version=$reF1nd_dev_version" >> $GITHUB_OUTPUT
           echo reF1nd_dev_tags=with_quic,with_dhcp,with_wireguard,with_shadowsocksr,with_utls,with_clash_api,with_gvisor >> $GITHUB_OUTPUT
           reF1nd_dev_time=$(git log -1 --format=%cd --date=format:'%Y-%m-%d' $(echo "$reF1nd_dev_version" | awk -F'-' '{print $3}'))
-          echo "reF1nd_dev_time=$reF1nd_dev_time" >> $GITHUB_OUTPUT
+          # echo "reF1nd_dev_time=$reF1nd_dev_time" >> $GITHUB_OUTPUT
   reF1nd_dev_cross:
     strategy:
       matrix:
@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       reF1nd_dev_VERSION: ${{ needs.reF1nd_dev.outputs.reF1nd_dev_version }}
-      reF1nd_dev_TIME: ${{ needs.reF1nd_dev.outputs.reF1nd_dev_time }}
+      # reF1nd_dev_TIME: ${{ needs.reF1nd_dev.outputs.reF1nd_dev_time }}
     steps:
       - name: Clone Repository
         uses: actions/checkout@main
@@ -155,6 +155,6 @@ jobs:
           overwrite: true
           body: |
 
-            更新 [sing-box reF1nd-dev 版](https://github.com/reF1nd/sing-box/tree/build)至 v${{ env.reF1nd_dev_VERSION }}，发布于 ${{ env.reF1nd_dev_TIME }}
+            更新 [sing-box reF1nd-dev 版](https://github.com/reF1nd/sing-box/tree/build)至 v${{ env.reF1nd_dev_VERSION }}
           file_glob: true
           file: ./sing-box/*
