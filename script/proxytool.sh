@@ -270,7 +270,7 @@ manage_singbox() {
     while true; do
         echo -e "${green}=== Sing-Box 管理  ===${reset}"
         echo -e "${yellow}当前核心为: $(cat /etc/sing-box/version)${reset}"
-        echo -e "${green}当前版本：v${singbox_version}${reset}"
+        echo -e "${green}当前版本：$(sing-box version | awk '{print $3}')${reset}"
         echo "1. 更新核心"
         echo "2. 切换核心"
         echo "3. 更新UI面板"
@@ -284,17 +284,19 @@ manage_singbox() {
                 echo -e "\n${green}开始更新 Sing-Box...${reset}"
                 bash /usr/local/bin/tools/sing-box.sh update_core    
                 echo -e "${green}更新完成，当前版本：$(sing-box version | awk '{print $3}')${reset}"
-
+                exit 0
                 ;;
             2)
                 echo -e "\n${green}开始切换核心...${reset}"
                 bash /usr/local/bin/tools/sing-box.sh switch_core
                 echo -e "${green}核心切换完成${reset}"
+                exit 0
                 ;;
             3)
                 echo -e "\n${green}开始更新 UI 面板...${reset}"
                 bash /usr/local/bin/tools/sing-box.sh update_ui
                 echo -e "${green}UI 面板更新完成${reset}"
+                exit 0
                 ;;
             4)
                 systemctl restart sing-box && systemctl restart tproxy-router && systemctl restart nftables
@@ -302,6 +304,7 @@ manage_singbox() {
                 ;;
             5)
                 bash /usr/local/bin/tools/sing-box.sh update_home
+                exit 0
                 ;;
             0)
                 break

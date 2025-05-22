@@ -13,10 +13,6 @@
             {
                 "tag": "fakeipDNS",
                 "address": "fakeip"
-            },
-            {
-                "tag": "block",
-                "address": "rcode://success"
             }
         ],
         "rules": [{
@@ -57,6 +53,14 @@
             "listen_port": 6666
         },
         {
+            "type": "redirect",
+            "tag": "redirect-in",
+            "listen": "::",
+            "sniff_override_destination": true,
+            "listen_port": 7877,
+            "sniff": true
+        },
+        {
             "type": "tproxy",
             "tag": "tproxy-in",
             "listen": "::",
@@ -77,33 +81,19 @@
         {
             "type": "direct",
             "tag": "direct"
-        },
-        {
-            "type": "block",
-            "tag": "block"
-        },
-        {
-            "type": "dns",
-            "tag": "dns-out"
         }
     ],
     "route": {
-        "rules": [{
-                "inbound": "dns-in",
-                "outbound": "dns-out"
-            },
+        "rules": [
             {
-                "clash_mode": "direct",
-                "outbound": "direct"
-            },
-            {
-                "clash_mode": "global",
-                "outbound": "♾️Global"
-            },
+                "inbound": "in-dns",
+                "action": "hijack-dns"
+              },
             {
                 "network": "udp",
                 "port": 443,
-                "outbound": "block"
+                "action": "reject",
+                "method": "drop"
             },
             {
                 "ip_is_private": true,

@@ -57,10 +57,10 @@ yellow() {
                 green "53端口占用已解除"
             elif [ "$dns_stub_listener" = "DNSStubListener=no" ]; then
                 # 如果 DNSStubListener 已为 no，提示用户无需修改
-                echo -e "${yellow}53端口未被占用，无需操作${reset}"
+                echo -e "${yellow_text}53端口未被占用，无需操作${reset}"
             fi
         else
-            echo -e "${yellow} /etc/systemd/resolved.conf 不存在，无需操作${reset}"
+            echo -e "${yellow_text} /etc/systemd/resolved.conf 不存在，无需操作${reset}"
         fi
 
     }
@@ -110,16 +110,76 @@ yellow() {
         # 设置 Go 环境变量
         echo 'export PATH=$PATH:/usr/local/go/bin' > /etc/profile.d/golang.sh
         source /etc/profile.d/golang.sh  # 立即生效
+        rm -rf sing-box
+        git clone https://github.com/SagerNet/sing-box.git && cd sing-box
+        echo -e "${yellow}请选择1.稳定版/2.开发版：${reset}"
+        read -p " 1/2：" sb_choice
+        # 拉取远程分支
+        git fetch origin main dev || {
+        echo -e "${red}拉取分支失败${reset}"
+        exit 1
+        }
 
-        # 编译 Sing-Box
-        if ! go install -v -tags with_quic,with_grpc,with_dhcp,with_wireguard,with_utls,with_clash_api,with_gvisor,with_v2ray_api,with_lwip,with_acme github.com/sagernet/sing-box/cmd/sing-box@latest; then
-            echo -e "Sing-Box 编译失败！退出脚本"
+        case $sb_choice in
+            1)
+                git checkout main || {
+                echo -e "${red}切换至 main 分支失败${reset}"
+                exit 1
+        }
+                sing_box_tags="with_quic,with_grpc,with_dhcp,with_wireguard,with_utls,with_clash_api,with_gvisor,with_v2ray_api,with_lwip,with_acme"
+            ;;
+            2)
+                git checkout dev || {
+                echo -e "${red}切换至 dev 分支失败${reset}"
+                exit 1
+            }
+                sing_box_tags="with_quic,with_dhcp,with_shadowsocksr,with_utls,with_clash_api,with_gvisor"  # 示例标签
+            ;;
+            *)
+            echo -e "${red}输入错误，请输入稳定版/开发版${reset}"
+            exit 1
+            ;;
+        esac
+
+# 检查版本号工具是否存在
+        if [ ! -f ./cmd/internal/read_tag/main.go ]; then
+            echo -e "${red}错误：找不到版本号读取工具${reset}"
             exit 1
         fi
-        echo -e "编译完成"
+
+    # 获取版本号
+        local sing_box_version=$(CGO_ENABLED=0 go run ./cmd/internal/read_tag) || {
+            echo -e "${red}获取版本号失败${reset}"
+            exit 1
+        }
+        echo -e "Sing-Box 版本: $sing_box_version"
+
+    # 编译
+        if ! go build -v -trimpath \
+            -ldflags "-checklinkname=0 -X 'github.com/sagernet/sing-box/constant.Version=${sing_box_version}' -s -w -buildid=" \
+            -tags "${sing_box_tags}" \
+            ./cmd/sing-box; then
+            echo -e "${red}Sing-Box 编译失败！退出脚本${reset}"
+            exit 1
+        fi
+
+        echo -e "${green}编译完成${reset}"
         sleep 1
     }
-
+## mihomo安装
+    mihomo_install(){
+        arch=$(detect_architecture)
+        download_url="https://github.com/herozmy/StoreHouse/releases/download/mihomo/mihomo-meta-linux-${arch}.tar.gz"
+        echo -e "${yellow}开始下载mihomo核心...${reset}"
+        if ! wget -O mihomo.tar.gz $download_url; then
+            echo -e "${yellow}下载失败，请检查网络连接${reset}"
+            exit 1
+        fi
+        
+        echo -e "${green_text}下载完成，开始安装${reset}"
+        tar -zxvf mihomo.tar.gz > /dev/null 2>&1
+        rm -f mihomo.tar.gz
+    }
 ## singbox二进制安装
     singbox_install_core(){
         # 替换原有架构判断
@@ -286,12 +346,10 @@ yellow() {
                 echo -e "${yellow}剩余尝试次数: ${remaining}${reset}"
             fi
         
-        
-        echo -e "${red}连续3次生成配置文件失败，请检查订阅地址有效性${reset}"
-        exit 1
         done
-
-  
+        echo -e "${red}连续3次生成配置文件失败，请检查订阅地址有效性${reset}"
+        echo "请手动编写config配置文件,默认模版仓库地址：https://github.com/herozmy/StoreHouse/tree/main/config"
+        sleep 2
     }
 
     # 新增订阅地址获取函数
@@ -339,7 +397,19 @@ yellow() {
             return 1
         fi
     }
-
+install_mihomo_config(){
+            
+            mkdir -p /etc/mihomo
+            echo "mihomo" > /etc/mihomo/version
+            get_subscription_url
+            if curl -o /etc/mihomo/config.yaml https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/mihomo/mihomo.yaml; then
+                echo -e "${green_text} 配置文件下载成功${reset}"
+                sed -i "s|\"download_url\": \"机场订阅\"|\"download_url\": \"$suburl\"|g" /etc/mihomo/config.yaml
+            else
+                echo -e "${red}配置文件下载失败${reset}"
+                exit 1
+            fi
+}
     ### 安装配置文件
     install_josn_config(){
     ###官方内核配置文件
@@ -353,7 +423,7 @@ yellow() {
                     exit 1
                 }
             fi        
-        echo -e "${green_text}Sing-box配置文件写入成功！${reset}"
+        # echo -e "${green_text}Sing-box配置文件写入成功！${reset}"
     ###Puer喵佬核心配置文件
         elif [[ "$core_choice" == "2" ]]; then
             
@@ -802,7 +872,7 @@ yellow() {
                 echo -e "当前选择: ${green_text}Sing-BOX${reset}编译安装"              
                 update_version
                 singbox_install_make
-                cp "$(go env GOPATH)/bin/sing-box" /usr/local/bin/ || { echo "复制文件失败！退出脚本"; exit 1; }
+                cp -r /root/sing-box/sing-box /usr/local/bin/ || { echo "复制文件失败！退出脚本"; exit 1; }
                 chmod +x /usr/local/bin/sing-box 
                 echo -e "${green_text}Sing-Box 编译安装完成${reset}" 
                 ;;
@@ -822,6 +892,7 @@ yellow() {
                 ;;
         esac
     }
+
 # 多函数调用    
 case "$1" in
     update_core)
@@ -833,7 +904,8 @@ case "$1" in
         # 调用更新函数
         echo -e "${green}开始更新Sing-Box核心...${reset}"
         systemctl stop tproxy-router > /dev/null 2>&1
-        #source $DIRPATH/sing-box.sh && update_singbox_core
+        singbox_version=$(sing-box version | awk '/sing-box version/ {print $3}')
+        cp -r /usr/local/bin/sing-box /usr/local/bin/sing-box-$(cat /etc/sing-box/version)-${singbox_version}.bak
         update_singbox_core
         systemctl start tproxy-router > /dev/null 2>&1
         exit 0  # 新增退出指令
@@ -852,8 +924,43 @@ case "$1" in
         ;;
     switch_core)
         systemctl stop tproxy-router > /dev/null 2>&1
+        singbox_version=$(sing-box version | awk '/sing-box version/ {print $3}')
+        cp -r /usr/local/bin/sing-box /usr/local/bin/sing-box-$(cat /etc/sing-box/version)-${singbox_version}.bak
         switch_core
         exit 0  # 新增退出指令
+        ;;
+    mihomo)
+        mihomo_install
+        install_mihomo_config
+        check_resolved
+        cp $DIRPATH/mihomo.service /etc/systemd/system/
+        cp $DIRPATH/tproxy-router.service /etc/systemd/system/
+        check_interfaces
+        echo "" > "/etc/nftables.conf"
+        cat $DIRPATH/nft-tproxy.conf >> "/etc/nftables.conf"
+        echo -e "修正nftables规则"
+        sed -i "s/eth0/${interface_name}/g" "/etc/nftables.conf"
+        sed -i "s|interface-name: eth0|interface-name: $interface_name|" /etc/mihomo/config.yaml
+        echo -e "${green_text}nftables 规则写入完成${reset}"
+        echo -e "拉取mihomo UI管理界面"
+        check_ui
+        check_aio
+        echo -e "${green_text}启用相关服务${reset}"
+        systemctl enable --now mihomo > /dev/null 2>&1
+        systemctl enable --now tproxy-router > /dev/null 2>&1
+        nft flush ruleset > /dev/null 2>&1
+        nft -f /etc/nftables.conf > /dev/null 2>&1
+        systemctl enable --now nftables > /dev/null 2>&1
+        echo -e "请使用 ${yellow_text}proxytool${reset} ${green_text}管理mihomo${reset}"
+        echo "=================================================================="
+        echo -e "\t\t\tMihomo 安装完毕"
+        echo -e "\t\t\tPowered by www.herozmy.com 2025"
+        echo -e "\n"
+        echo -e "Mihomo运行目录为/etc/mihomo"
+        echo -e "Mihomo WebUI地址:${green_text}http://${local_ip}:9090${reset}"
+        echo -e "本脚本仅适用于学习与研究等个人用途，请勿用于任何违反国家法律的活动！"
+        echo "=================================================================="
+        exit 0
         ;;
 
 esac

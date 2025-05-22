@@ -82,7 +82,7 @@ echo -e "2. ${yellow}Unbound+Redis DNS${reset}"
 echo "------------------------------------------------- "
 echo -e "${green_text}Proxy代理 ${reset}"
 echo -e "3. ${yellow}sing-box ${reset}"
-#echo -e "4. ${yellow}mihomo ${reset}"
+echo -e "4. ${yellow}mihomo ${reset}"
 echo "**************************************************"
 echo -e "0. ${red}卸载 Sing-Box | Mihomo | Mosdns | Unbound | Redis${reset}"
 echo -e "\n"
@@ -207,7 +207,7 @@ case $choice in
         read -rp "请输入: " input
         case "$input" in
             g)  . $DIRPATH/init.sh mihomo /usr/local/bin/mihomo /etc/mihomo  && 
-                . $DIRPATH/mihomo.sh ;;
+                . $DIRPATH/sing-box.sh mihomo ;;
             n) . $DIRPATH/menu.sh ;;
             *) 
             if [ ! -f /usr/bin/proxytool ]; then
@@ -227,7 +227,7 @@ case $choice in
             echo "未启动 mihomo 服务。"
         fi
     else
-        . $DIRPATH/mihomo.sh
+        . $DIRPATH/sing-box.sh mihomo
     fi
         ;;
     0) 
