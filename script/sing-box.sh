@@ -71,7 +71,7 @@ yellow() {
                 echo "更新失败！退出脚本"; 
                 exit 1; 
             }
-            apt -y install curl git gawk build-essential libssl-dev libevent-dev zlib1g-dev gcc-mingw-w64 nftables || { 
+            apt -y install curl git gawk build-essential libssl-dev libevent-dev zlib1g-dev gcc-mingw-w64 nftables jq || { 
                 echo "软件包安装失败！退出脚本"; 
                 exit 1; 
             }
@@ -183,8 +183,21 @@ yellow() {
 ## singbox二进制安装
     singbox_install_core(){
         # 替换原有架构判断
-        arch=$(detect_architecture)       
-        VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep tag_name | cut -d ":" -f2 | sed 's/[\",v ]//g')
+        arch=$(detect_architecture)  
+        echo -e "请选择下载版本：1.稳定版/2.开发版"     
+        read -p "1/2：" version_choice
+        case $version_choice in
+            1)
+                VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest| grep tag_name | cut -d ":" -f2 | sed 's/[\",v ]//g')
+                ;;
+            2)
+                VERSION=$(curl -sSL https://api.github.com/repos/SagerNet/sing-box/releases | jq -r '[.[] | select(.tag_name | test("alpha|beta|rc"))][0].tag_name' | sed 's/[\",v ]//g')
+                ;;
+            *)
+                echo -e "${red}输入错误，请输入稳定版/开发版${reset}"
+                exit 1
+                ;;
+        esac
         curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-${arch}.tar.gz"
         tar -zxvf sing-box.tar.gz > /dev/null 2>&1
         mv /root/sing-box-${VERSION}-linux-${arch}/sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
