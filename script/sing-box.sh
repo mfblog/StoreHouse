@@ -187,12 +187,10 @@ yellow() {
         VERSION=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | grep tag_name | cut -d ":" -f2 | sed 's/[\",v ]//g')
         curl -Lo sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${VERSION}/sing-box-${VERSION}-linux-${arch}.tar.gz"
         tar -zxvf sing-box.tar.gz > /dev/null 2>&1
-        cd sing-box-${VERSION}-linux-${arch} || { echo "进入解压目录失败！"; exit 1; }
-        mv sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
+        mv /root/sing-box-${VERSION}-linux-${arch}/sing-box /usr/local/bin/ || { echo "移动 sing-box 失败！"; exit 1; }
         chmod +x /usr/local/bin/sing-box
         cd ..
         rm -rf sing-box-${VERSION}-linux-${arch} sing-box.tar.gz
-        rm -rf sing-box.tar.gz
     }
     # p核
     singbox_p_install(){
@@ -266,7 +264,7 @@ yellow() {
     
         local core_type=$(cat "$version_file")
         case "$core_type" in
-            official|puer|xiling|s-y|reF1nd)
+            official|puer|xiling|s-y|reF1nd|official-core)
                 echo "$core_type"
                 return 0
                 ;;
@@ -289,8 +287,15 @@ yellow() {
     # 根据核心类型执行更新
     case "$core_type" in
         official)
+            echo -e "${green}正在编译更新官方核心...${reset}"
+            singbox_install_make
+            cp -r /root/sing-box/sing-box /usr/local/bin/ || { echo "复制文件失败！退出脚本"; exit 1; }
+            chmod +x /usr/local/bin/sing-box 
+            ;;
+        official-core)
             echo -e "${green}正在更新官方核心...${reset}"
-            singbox_install_make && install_core
+            singbox_install_core 
+
             ;;
         puer)
             echo -e "${green}正在更新Puer核心...${reset}"
@@ -415,7 +420,11 @@ install_mihomo_config(){
     ###官方内核配置文件
     if [[ "$core_choice" == "1" ]]; then
     mkdir -p /etc/sing-box
-    echo "official" > /etc/sing-box/version
+        if [[ "$official_choice" == "1" ]]; then
+            echo "official" > /etc/sing-box/version
+        else 
+        echo "official-core" > /etc/sing-box/version
+        fi
     customize_settings            
             if [ -f "config.json" ]; then
                 mv config.json /etc/sing-box/config.json || {
@@ -866,13 +875,13 @@ install_mihomo_config(){
         echo -e "${yellow}1. Sing-box编译安装${reset}"
         echo -e "${yellow}2. Sing-box二进制安装${reset}"
         echo -e "${yellow}0. 返回核心选择主菜单${reset}"
-        read -p "请输入选择 (1/2/0): " choice
-        case "$choice" in
+        read -p "请输入选择 (1/2/0): " official_choice
+        case "$official_choice" in
             1)
                 echo -e "当前选择: ${green_text}Sing-BOX${reset}编译安装"              
                 update_version
                 singbox_install_make
-                cp -r /root/sing-box/sing-box /usr/local/bin/ || { echo "复制文件失败！退出脚本"; exit 1; }
+                mv -f /root/sing-box/sing-box /usr/local/bin/ || { echo "复制文件失败！退出脚本"; exit 1; }
                 chmod +x /usr/local/bin/sing-box 
                 echo -e "${green_text}Sing-Box 编译安装完成${reset}" 
                 ;;
@@ -896,6 +905,7 @@ install_mihomo_config(){
 # 多函数调用    
 case "$1" in
     update_core)
+        rm -rf /root/sing-box*
         # 检查是否安装过sing-box
         if [ ! -f "/etc/sing-box/version" ]; then
             echo -e "${red}未检测到Sing-Box安装，请先安装 sing-box${reset}"
@@ -964,7 +974,7 @@ case "$1" in
         ;;
 
 esac
-
+    rm -rf /root/sing-box*
     choose_singbox
     install_josn_config
     check_resolved
