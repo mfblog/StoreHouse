@@ -1,0 +1,10 @@
+[Unit]
+Description=clash auto run
+ 
+[Service]
+Type=simple
+ 
+ExecStart=/usr/local/bin/mihomo -c /etc/mihomo/mihomo.yaml
+ 
+[Install]
+WantedBy=default.target

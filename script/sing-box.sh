@@ -960,7 +960,7 @@ case "$1" in
         cp $DIRPATH/tproxy-router.service /etc/systemd/system/
         check_interfaces
         echo "" > "/etc/nftables.conf"
-        cat $DIRPATH/nft-tproxy.conf >> "/etc/nftables.conf"
+        cat $DIRPATH/nft-tproxy-redirect.conf >> "/etc/nftables.conf"
         echo -e "修正nftables规则"
         sed -i "s/eth0/${interface_name}/g" "/etc/nftables.conf"
         sed -i "s|interface-name: eth0|interface-name: $interface_name|" /etc/mihomo/config.yaml
@@ -970,6 +970,7 @@ case "$1" in
         check_aio
         echo -e "${green_text}启用相关服务${reset}"
         systemctl enable --now mihomo > /dev/null 2>&1
+        sleep 1
         systemctl enable --now tproxy-router > /dev/null 2>&1
         nft flush ruleset > /dev/null 2>&1
         nft -f /etc/nftables.conf > /dev/null 2>&1
@@ -1018,7 +1019,7 @@ esac
     sleep 1
     ####写入nftables
     echo "" > "/etc/nftables.conf"
-    cat $DIRPATH/nft-tproxy.conf >> "/etc/nftables.conf"
+    cat $DIRPATH/nft-tproxy-redirect.conf >> "/etc/nftables.conf"
     check_interfaces
     echo -e "修正nftables规则"
     sed -i "s/eth0/${interface_name}/g" "/etc/nftables.conf"
