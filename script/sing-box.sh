@@ -179,6 +179,8 @@ yellow() {
         echo -e "${green_text}下载完成，开始安装${reset}"
         tar -zxvf mihomo.tar.gz > /dev/null 2>&1
         rm -f mihomo.tar.gz
+        mv mihomo /usr/local/bin/
+        chmod +x /usr/local/bin/mihomo
     }
 ## singbox二进制安装
     singbox_install_core(){
