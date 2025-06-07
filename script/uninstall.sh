@@ -69,12 +69,9 @@
                     systemctl stop $program > /dev/null 2>&1
                     systemctl disable tproxy-router  > /dev/null 2>&1
                     systemctl stop tproxy-router
-                    # 如果是最后一个代理程序，清理防火墙规则
-                    if ! [ -f "/usr/local/bin/sing-box" ] && ! [ -f "/usr/local/bin/mihomo" ]; then
-                        echo " " > "/etc/nftables.conf"
-                        nft flush ruleset  > /dev/null 2>&1
-                        nft -f /etc/nftables.conf  > /dev/null 2>&1
-                    fi
+                    echo " " > "/etc/nftables.conf"
+                    nft flush ruleset  > /dev/null 2>&1
+                    nft -f /etc/nftables.conf  > /dev/null 2>&1
                     rm -rf /etc/$program
                     rm -rf /usr/local/bin/$program
                     rm -rf /etc/systemd/system/$program.service

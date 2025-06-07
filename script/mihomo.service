@@ -4,7 +4,7 @@ Description=clash auto run
 [Service]
 Type=simple
  
-ExecStart=/usr/local/bin/mihomo -c /etc/mihomo/mihomo.yaml
+ExecStart=/usr/local/bin/mihomo -d /etc/mihomo/
  
 [Install]
 WantedBy=default.target

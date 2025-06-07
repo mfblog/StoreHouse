@@ -82,6 +82,50 @@ yellow() {
             }
             echo -e "\e[32m时区设置成功\e[0m"
     }
+check_and_install_yq() {
+    # 只检测是否存在，不检查版本
+    if command -v yq &>/dev/null; then
+        echo "yq 已存在，跳过安装"
+        return 0
+    fi
+
+    # 安装最新版
+    echo "开始安装 yq..."
+    temp_dir=$(mktemp -d)
+    trap 'rm -rf "$temp_dir"' EXIT
+
+    # 架构检测
+    case $(uname -m) in
+        x86_64) arch="amd64" ;;
+        aarch64) arch="arm64" ;;
+        *)
+            echo "不支持的架构: $(uname -m)"
+            return 1
+            ;;
+    esac
+
+    # 下载验证
+    if ! curl -fsSL -o "$temp_dir/yq" "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${arch}"; then
+        echo "下载失败"
+        return 1
+    fi
+
+    # 安装验证
+    if ! sudo install -m 755 "$temp_dir/yq" /usr/local/bin/yq; then
+        echo "安装失败"
+        return 1
+    fi
+
+    # 最终存在性验证
+    if ! command -v yq &>/dev/null; then
+        echo "安装后验证失败"
+        return 1
+    fi
+
+    echo "yq 安装成功"
+    return 0
+}
+
 ######编译sing-box 官核
     singbox_install_make(){
     echo -e "编译Sing-Box 最新版本"
@@ -375,8 +419,8 @@ yellow() {
     # 新增订阅地址获取函数
     get_subscription_url() {
         echo -e "是否选择生成配置？(y/n) ${green_text}生成配置文件需要添加机场订阅，如自建vps请选择n${reset}"
-        read choice
-        if [ "$choice" = "y" ]; then
+        read sub_choice
+        if [ "$sub_choice" = "y" ]; then
             read -p "输入订阅连接：" suburl
             suburl="${suburl:-https://}"
             echo "已设置订阅连接地址：$suburl"
@@ -384,7 +428,6 @@ yellow() {
             echo "请手动编写config配置文件,默认模版仓库地址：https://github.com/herozmy/StoreHouse/tree/main/config"
             
         fi
-        check_interfaces
     }
 
     # 新增配置文件生成函数
@@ -417,18 +460,39 @@ yellow() {
             return 1
         fi
     }
-install_mihomo_config(){
-            
+install_mihomo_config(){           
             mkdir -p /etc/mihomo
             echo "mihomo" > /etc/mihomo/version
             get_subscription_url
-            if curl -o /etc/mihomo/config.yaml https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/mihomo/mihomo.yaml; then
-                echo -e "${green_text} 配置文件下载成功${reset}"
-                sed -i "s|\"download_url\": \"机场订阅\"|\"download_url\": \"$suburl\"|g" /etc/mihomo/config.yaml
-            else
-                echo -e "${red}配置文件下载失败${reset}"
-                exit 1
+            if [[ "${sub_choice}" == "y" ]]; then
+                if curl -o /etc/mihomo/config.yaml https://raw.githubusercontent.com/luestr/ProxyResource/main/Tool/Clash/Config/Clash_Sample_Configuration_By_iKeLee.yaml; then
+                    echo -e "${green_text} 配置文件下载成功${reset}"
+                    sleep 1
+                    echo -e "${yellow}开始修正配置以适应方案${reset}"
+                    check_interfaces
+                    # 更改tproxy-port端口
+                    sed -i "s|tproxy-port: 7894|tproxy-port: 7896|g" /etc/mihomo/config.yaml
+                    # 更改redir-port端口
+                    sed -i "s|redir-port: 7893|redir-port: 7877|g" /etc/mihomo/config.yaml
+                    # 更改网卡名称
+                    sed -i -e '/^interface-name:/d' -e "10i interface-name: $interface_name" /etc/mihomo/config.yaml
+                    # 更改UI路径
+                    sed -i 's/^#* *external-ui: *ui/external-ui: \/etc\/mihomo\/ui/' /etc/mihomo/config.yaml
+                    # 删除 tun 配置块
+                    yq eval 'del(.tun)' -i /etc/mihomo/config.yaml
+                    # 删除机场名称2 配置块
+                    yq eval 'del(.proxy-providers."机场名称2")' -i /etc/mihomo/config.yaml
+                    sed -i 's/!!merge <<: \*/<<: \*/g' /etc/mihomo/config.yaml
+                    sed -i 's/FilterAll: &FilterAll.*$/FilterAll: \&FilterAll/' /etc/mihomo/config.yaml
+                # 更改订阅URL
+                    sed -i "s|url: '机场1的订阅URL'|url: '$suburl'|g" /etc/mihomo/config.yaml
+                    echo -e "${green_text}mihomo配置修正完成${reset}"
+                    else
+                    echo -e "${red}配置文件下载失败${reset}"
+                    exit 1
+                    fi
             fi
+            
 }
     ### 安装配置文件
     install_josn_config(){
@@ -955,19 +1019,29 @@ case "$1" in
         exit 0  # 新增退出指令
         ;;
     mihomo)
+    if ! check_and_install_yq; then
+        echo "必需依赖 yq 安装失败，退出脚本"
+        exit 1
+    fi
         mihomo_install
         install_mihomo_config
         check_resolved
+        echo -e "${yellow_text}配置mihomo自启动配置${reset}"
         cp $DIRPATH/mihomo.service /etc/systemd/system/
+        echo -e "${green_text}mihomo自启动配置完成${reset}"
+        sleep 1
+        echo -e "${yellow_text}配置tproxy路由${reset}"
         cp $DIRPATH/tproxy-router.service /etc/systemd/system/
-        check_interfaces
+        echo -e "${green_text}tproxy路由配置完成${reset}"
+        sleep 1
+        echo -e "${yellow_text}配置nftables规则${reset}"
         echo "" > "/etc/nftables.conf"
-        cat $DIRPATH/nft-tproxy-redirect.conf >> "/etc/nftables.conf"
-        echo -e "修正nftables规则"
+        cat $DIRPATH/nft-tproxy.conf >> "/etc/nftables.conf"
+        echo -e "${yellow_text}修正nftables规则${reset}"
         sed -i "s/eth0/${interface_name}/g" "/etc/nftables.conf"
-        sed -i "s|interface-name: eth0|interface-name: $interface_name|" /etc/mihomo/config.yaml
-        echo -e "${green_text}nftables 规则写入完成${reset}"
-        echo -e "拉取mihomo UI管理界面"
+        echo -e "${green_text}nftables规则配置完成${reset}"
+        sleep 1
+        echo -e "${yellow_text}拉取mihomo UI管理界面${reset}"
         check_ui
         check_aio
         echo -e "${green_text}启用相关服务${reset}"
