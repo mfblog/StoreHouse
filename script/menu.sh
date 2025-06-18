@@ -122,30 +122,24 @@ read -rp "请选择: " choice
 case $choice in
     1)
         case $mosdns_status in
-            1) 
-                # --- 您的优秀方案 ---
-                # 根据 /cus/mosdns 目录是否存在，来决定清理哪个配置目录
+            1)
                 if [ -d "/cus/mosdns" ]; then
-                    # 如果是自定义UI版，清理 /cus/mosdns
-                    # 同时也清理 /etc/mosdns 以防残留
                     cleanup_cmd=". ${DIRPATH}/init.sh mosdns /usr/local/bin/mosdns /cus/mosdns && rm -rf /cus/mosdns && rm -rf /etc/mosdns"
                     handle_running_service "Mosdns (魔改UI版)" "$cleanup_cmd" ". $DIRPATH/mosdns.sh" 
                 else
-                    # 否则，清理标准的 /etc/mosdns
                     cleanup_cmd=". ${DIRPATH}/init.sh mosdns /usr/local/bin/mosdns /etc/mosdns && rm -rf /etc/mosdns"
                     handle_running_service "Mosdns (标准版)" "$cleanup_cmd" ". $DIRPATH/mosdns.sh" 
                 fi
-                ;; # case 1 的结尾
+                ;; # 这是 mosdns_status case 1) 的正确结尾
             0) handle_stopped_service "mosdns" "Mosdns" ;;
             9) . "$DIRPATH/mosdns.sh" ;;
         esac
-        ;; # case mosdns_status 的结尾
+        ;; # <--- 这是 choice case 1) 的正确结尾，之前这里多了一个
     2)
         case $unbound_redis_status in
             1) 
-                # 移除了通配符 *
-                unbound_cleanup=". $DIRPATH/init.sh unbound /usr/local/bin/unbound /etc/unbound && rm -rf /etc/unbound"
-                redis_cleanup=". $DIRPATH/init.sh redis-server /usr/local/bin/redis-server /etc/redis && rm -rf /etc/redis"
+                unbound_cleanup=". $DIRPATH/init.sh unbound /usr/local/bin/unbound* /etc/unbound && rm -rf /etc/unbound"
+                redis_cleanup=". $DIRPATH/init.sh redis-server /usr/local/bin/redis* /etc/redis && rm -rf /etc/redis"
                 handle_running_service "Unbound+Redis" "$unbound_cleanup && $redis_cleanup" ". $DIRPATH/unbound.sh"
                 ;;
             0)
