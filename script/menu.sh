@@ -8,7 +8,6 @@ grey_text="\033[90m"
 reset="\033[0m"
 DIRPATH="/usr/local/bin/tools"
 
-
 # 获取本机IP
 local_ip=$(hostname -I | awk '{print $1}')
 
@@ -23,31 +22,19 @@ ensure_proxytool() {
     proxytool
 }
 
-# 获取服务状态，不输出任何信息，只返回状态码
-# 0: 已安装但未运行, 1: 运行中, 9: 未安装
+# 获取服务状态
 get_service_status() {
     local program_name=$1
     local program_path="/usr/local/bin/$program_name"
     local service_name=$program_name
-
-    # 特殊情况处理
     [ "$program_name" == "redis-server" ] && service_name="redis"
-
-    if [ ! -f "$program_path" ]; then
-        return 9 # 未安装
-    fi
-
-    if systemctl is-active --quiet "$service_name"; then
-        return 1 # 运行中
-    else
-        return 0 # 未运行
-    fi
+    if [ ! -f "$program_path" ]; then return 9; fi
+    if systemctl is-active --quiet "$service_name"; then return 1; else return 0; fi
 }
 
-# 根据状态码生成用于菜单显示的文本
+# 格式化状态显示
 format_status_for_menu() {
-    local status_code=$1
-    case $status_code in
+    case $1 in
         1) echo -e "${green_text}[运行中]${reset}" ;;
         0) echo -e "${red_text}[未运行]${reset}" ;;
         9) echo -e "${grey_text}[未安装]${reset}" ;;
@@ -57,8 +44,8 @@ format_status_for_menu() {
 # 处理“服务已运行”的交互逻辑
 handle_running_service() {
     local display_name=$1
-    local install_cmd=$2
-    local menu_script=$3
+    local cleanup_cmd=$2
+    local install_script=$3
 
     echo -e "${display_name} 服务已运行，继续安装将进行${yellow_text}覆盖安装${reset}。"
     echo -e "输入 ${green_text}g${reset} 进行覆盖安装"
@@ -66,7 +53,12 @@ handle_running_service() {
     echo -e "输入 ${green_text}任意其他键${reset} 进入 ${display_name} 快捷管理脚本"
     read -rp "请输入: " input
     case "$input" in
-        g|G) eval "$install_cmd" && eval "$menu_script" ;; # 执行安装和后续脚本
+        g|G) 
+            echo "正在执行覆盖安装前的清理操作..."
+            eval "$cleanup_cmd"
+            echo "清理完成，开始执行安装脚本..."
+            eval "$install_script"
+            ;;
         n|N) . "$DIRPATH/menu.sh" ;;
         *) ensure_proxytool ;;
     esac
@@ -76,7 +68,6 @@ handle_running_service() {
 handle_stopped_service() {
     local service_name=$1
     local display_name=$2
-
     echo "${display_name} 服务未运行，是否启动服务？ (y/n)"
     read -rp "请输入: " start_input
     if [[ "$start_input" == "y" || "$start_input" == "Y" ]]; then
@@ -89,35 +80,25 @@ handle_stopped_service() {
 
 # --- 核心逻辑 ---
 
-# 1. 在显示菜单前，预先检查所有服务的状态
-get_service_status "mosdns"
-mosdns_status=$?
+# 1. 预先检查所有服务的状态
+get_service_status "mosdns"; mosdns_status=$?
 mosdns_display=$(format_status_for_menu $mosdns_status)
 
-get_service_status "unbound"
-unbound_status=$?
-get_service_status "redis-server"
-redis_status=$?
-# Unbound+Redis 的组合状态
-if [ "$unbound_status" -eq 1 ] && [ "$redis_status" -eq 1 ]; then
-    unbound_redis_status=1
-elif [ "$unbound_status" -eq 9 ] && [ "$redis_status" -eq 9 ]; then
-    unbound_redis_status=9
-else
-    unbound_redis_status=0
-fi
+get_service_status "unbound"; unbound_status=$?
+get_service_status "redis-server"; redis_status=$?
+if [ "$unbound_status" -eq 1 ] && [ "$redis_status" -eq 1 ]; then unbound_redis_status=1
+elif [ "$unbound_status" -eq 9 ] && [ "$redis_status" -eq 9 ]; then unbound_redis_status=9
+else unbound_redis_status=0; fi
 unbound_redis_display=$(format_status_for_menu $unbound_redis_status)
 
-get_service_status "sing-box"
-singbox_status=$?
+get_service_status "sing-box"; singbox_status=$?
 singbox_display=$(format_status_for_menu $singbox_status)
 
-get_service_status "mihomo"
-mihomo_status=$?
+get_service_status "mihomo"; mihomo_status=$?
 mihomo_display=$(format_status_for_menu $mihomo_status)
 
 
-# 2. 显示带有状态的菜单
+# 2. 显示菜单
 clear
 echo "-------------------------------------------------"
 echo -e "${green_text}DNS服务${reset}"
@@ -137,18 +118,36 @@ echo -e "当前机器地址: ${green_text}${local_ip}${reset}"
 echo "-------------------------------------------------"
 read -rp "请选择: " choice
 
-# 3. 根据用户的选择和预先获取的状态进行操作
+# 3. 根据选择和状态进行操作
 case $choice in
     1)
         case $mosdns_status in
-            1) handle_running_service "Mosdns" ". $DIRPATH/init.sh mosdns /usr/local/bin/mosdns /etc/mosdns" ". $DIRPATH/mosdns.sh" ;;
+            1) 
+                # --- 您的优秀方案 ---
+                # 根据 /cus/mosdns 目录是否存在，来决定清理哪个配置目录
+                if [ -d "/cus/mosdns" ]; then
+                    # 如果是自定义UI版，清理 /cus/mosdns
+                    # 同时也清理 /etc/mosdns 以防残留
+                    cleanup_cmd=". ${DIRPATH}/init.sh mosdns /usr/local/bin/mosdns /cus/mosdns && rm -rf /cus/mosdns && rm -rf /etc/mosdns"
+                    handle_running_service "Mosdns (魔改UI版)" "$cleanup_cmd" ". $DIRPATH/mosdns.sh" 
+                else
+                    # 否则，清理标准的 /etc/mosdns
+                    cleanup_cmd=". ${DIRPATH}/init.sh mosdns /usr/local/bin/mosdns /etc/mosdns && rm -rf /etc/mosdns"
+                    handle_running_service "Mosdns (标准版)" "$cleanup_cmd" ". $DIRPATH/mosdns.sh" 
+                fi
+                ;; # case 1 的结尾
             0) handle_stopped_service "mosdns" "Mosdns" ;;
             9) . "$DIRPATH/mosdns.sh" ;;
         esac
-        ;;
+        ;; # case mosdns_status 的结尾
     2)
         case $unbound_redis_status in
-            1) handle_running_service "Unbound+Redis" ". $DIRPATH/init.sh unbound /usr/local/bin/unbound* /etc/unbound && . $DIRPATH/init.sh redis /usr/local/bin/redis* /etc/redis" ". $DIRPATH/unbound.sh" ;;
+            1) 
+                # 移除了通配符 *
+                unbound_cleanup=". $DIRPATH/init.sh unbound /usr/local/bin/unbound /etc/unbound && rm -rf /etc/unbound"
+                redis_cleanup=". $DIRPATH/init.sh redis-server /usr/local/bin/redis-server /etc/redis && rm -rf /etc/redis"
+                handle_running_service "Unbound+Redis" "$unbound_cleanup && $redis_cleanup" ". $DIRPATH/unbound.sh"
+                ;;
             0)
                 echo "Unbound 或 Redis 未完全运行，是否尝试启动？ (y/n)"
                 read -rp "请输入: " start_input
@@ -165,16 +164,16 @@ case $choice in
         ;;
     3)
         case $singbox_status in
-            1) handle_running_service "sing-box" ". $DIRPATH/init.sh sing-box /usr/local/bin/sing-box /etc/sing-box" ". $DIRPATH/sing-box.sh" ;;
+            1) handle_running_service "sing-box" ". $DIRPATH/init.sh sing-box /usr/local/bin/sing-box /etc/sing-box && rm -rf /etc/sing-box" ". $DIRPATH/sing-box.sh" ;;
             0) handle_stopped_service "sing-box" "sing-box" ;;
             9) . "$DIRPATH/sing-box.sh" ;;
         esac
         ;;
     4)
         case $mihomo_status in
-            1) handle_running_service "mihomo" ". $DIRPATH/init.sh mihomo /usr/local/bin/mihomo /etc/mihomo" ". $DIRPATH/sing-box.sh mihomo" ;;
+            1) handle_running_service "mihomo" ". $DIRPATH/init.sh mihomo /usr/local/bin/mihomo /etc/mihomo && rm -rf /etc/mihomo" ". $DIRPATH/sing-box.sh mihomo" ;;
             0) handle_stopped_service "mihomo" "mihomo" ;;
-            9) . $DIRPATH/sing-box.sh mihomo ;;
+            9) . "$DIRPATH/sing-box.sh" mihomo ;;
         esac
         ;;
     0)
