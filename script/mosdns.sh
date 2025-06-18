@@ -35,13 +35,7 @@ main() {
         mosdns_logrotate)  task_setup_logrotate_mosdns ;;
         mosdns_service)    task_setup_service_mosdns ;;
         check_aio)         task_check_aio_and_apply_rules ;;
-        "" | "install")    task_install_mosdns ;;
-        "help" | "-h" | "--help") print_help ;;
-        *)
-            log_error "未知参数: '$1'"
-            print_help
-            exit 1
-            ;;
+        *)                 task_install_mosdns ;;
     esac
 }
 
