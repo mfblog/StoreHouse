@@ -275,7 +275,7 @@ check_services() {
 
     if command -v mosdns &>/dev/null; then
         found_mosdns=true
-        mosdns_version=$(mosdns version | awk '/Version/ {print $2}' || echo "N/A")
+        mosdns_version=$(mosdns version || echo "N/A")
     fi
 }
 
