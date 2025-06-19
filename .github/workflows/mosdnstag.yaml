@@ -1,14 +1,14 @@
 name: Release mosdns
 
 on:
-  workflow_dispatch:  # 保留手动触发
+  workflow_dispatch:  # 允许手动触发
   schedule:
-    - cron: "30 20 * * *"  # 保留定时任务
+    - cron: "30 20 * * *"  # 定时触发
   push:
     branches:
-      - latest  # 仅监控latest分支
+      - latest  # 仅监控 latest 分支
     paths:
-      - ".github/workflows/mosdns.yaml"
+      - ".github/workflows/mosdns.yaml" # 当工作流文件本身改变时也触发
 
 jobs:
   build-release:
@@ -19,51 +19,48 @@ jobs:
         with:
           repository: yyysuo/mosdns
           path: mosdns
-          fetch-depth: 0 # 必须获取所有历史记录才能正确生成版本信息
+          fetch-depth: 0
 
-      - name: Generate Version and Commit Info
+      - name: Generate Unique Version and Commit Info
         id: version
         run: |
           cd mosdns
-          # 获取短哈希和完整哈希
           COMMIT_SHORT_HASH=$(git rev-parse --short HEAD)
           COMMIT_FULL_HASH=$(git rev-parse HEAD)
-          
-          # 获取 Commit 日期
           COMMIT_DATE=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S')
-          
-          # 生成用于版本号的日期字符串 (例如: 20231027-153000)
           BUILD_DATE_TAG=$(date -u +'%Y%m%d-%H%M%S')
+          VERSION_TAG="yyds-ph-${BUILD_DATE_TAG}-${COMMIT_SHORT_HASH}"
           
-          # 组合最终版本号
-          VERSION_TAG="Build-${BUILD_DATE_TAG}-${COMMIT_SHORT_HASH}"
-          
-          # 使用 GITHUB_OUTPUT 将变量传递给后续步骤
           echo "version=${VERSION_TAG}" >> $GITHUB_OUTPUT
           echo "commit_date=${COMMIT_DATE}" >> $GITHUB_OUTPUT
           echo "commit_hash=${COMMIT_FULL_HASH}" >> $GITHUB_OUTPUT
           
-          echo "Generated Version: ${VERSION_TAG}"
-          echo "Commit Date: ${COMMIT_DATE}"
-          echo "Commit Hash: ${COMMIT_FULL_HASH}"
+          echo "Generated Unique Version for TG: ${VERSION_TAG}"
 
-      - name: Check if release for this commit already exists
-        id: check_release
+      - name: Check if a new build is needed
+        id: check_build
         run: |
-          # gh release view 会检查具有特定tag的release。我们用tag来检查唯一性。
-          # 我们使用版本号作为tag，如果这个tag的release已存在，则跳过后续步骤。
-          if gh release view "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "Release for tag ${{ steps.version.outputs.version }} already exists. Skipping build."
-            echo "exists=true" >> $GITHUB_OUTPUT
+          CURRENT_COMMIT="${{ steps.version.outputs.commit_hash }}"
+          LATEST_RELEASE_BODY=$(gh release view mosdns --json body -q .body 2>/dev/null)
+          
+          if [ -z "$LATEST_RELEASE_BODY" ]; then
+            echo "Release 'mosdns' not found. A new build is required."
+            echo "build_required=true" >> $GITHUB_OUTPUT
           else
-            echo "Release for tag ${{ steps.version.outputs.version }} does not exist. Proceeding with build."
-            echo "exists=false" >> $GITHUB_OUTPUT
+            LAST_COMMIT=$(echo "$LATEST_RELEASE_BODY" | grep 'Commit Hash:' | awk '{print $NF}')
+            if [ "$CURRENT_COMMIT" == "$LAST_COMMIT" ]; then
+              echo "The latest commit ${CURRENT_COMMIT} has already been built. Skipping."
+              echo "build_required=false" >> $GITHUB_OUTPUT
+            else
+              echo "New commit ${CURRENT_COMMIT} found. Last built commit was ${LAST_COMMIT}. A new build is required."
+              echo "build_required=true" >> $GITHUB_OUTPUT
+            fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Go
-        if: steps.check_release.outputs.exists == 'false'
+        if: steps.check_build.outputs.build_required == 'true'
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
@@ -71,37 +68,78 @@ jobs:
           cache: true
 
       - name: Set up Python
-        if: steps.check_release.outputs.exists == 'false'
+        if: steps.check_build.outputs.build_required == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Build with custom version
-        if: steps.check_release.outputs.exists == 'false'
+        if: steps.check_build.outputs.build_required == 'true'
         run: |
           cd mosdns
           python ./release.py
         env:
           CGO_ENABLED: '0'
-          # 关键步骤: 将生成的版本号作为环境变量传递给编译脚本
+          # 二进制文件内部版本号使用唯一的版本信息
           TAG_NAME: ${{ steps.version.outputs.version }}
 
-      - name: Publish Release
-        if: steps.check_release.outputs.exists == 'false'
+      - name: Publish/Update GitHub Release with fixed tag
+        id: create_release
+        if: steps.check_build.outputs.build_required == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          # 使用我们生成的版本号作为 release 的 tag
-          tag_name: ${{ steps.version.outputs.version }}
-          name: "MosDNS ${{ steps.version.outputs.version }}"
+          # *** 使用固定的 tag 'mosdns'，用于稳定下载链接 ***
+          tag_name: mosdns
+          # Release 的标题使用唯一的版本号，方便在UI上识别
+          name: "MosDNS (Build: ${{ steps.version.outputs.version }})"
+          # 在 Release 的正文中记录所有详细信息，用于下次比对
           body: |
-            **A new build of mosdns from the latest commit.**
+            **This is the latest automated build.**
             
-            - **源码 (mosdns) Commit 时间**: `${{ steps.version.outputs.commit_date }}`
-            - **版本号 (Version)**: `${{ steps.version.outputs.version }}`
-            - **源码 (mosdns) Commit Hash**: `${{ steps.version.outputs.commit_hash }}`
+            - **Build Version**: `${{ steps.version.outputs.version }}`
+            - **Commit Time**: `${{ steps.version.outputs.commit_date }}`
+            - **Commit Hash**: `${{ steps.version.outputs.commit_hash }}`
             
-            *This release was automatically generated by GitHub Actions.*
+            *This release is automatically updated and always points to the latest build.*
           files: './mosdns/release/mosdns*.zip'
           prerelease: false
+          make_latest: true # 确保这个 release 总是被标记为 "Latest"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload all files to Telegram in a single message
+        if: steps.check_build.outputs.build_required == 'true'
+        run: |
+          API_URL="https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup"
+          CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}"
+          
+          CURL_CMD="curl -s -X POST '$API_URL' -F chat_id='$CHAT_ID'"
+          MEDIA_JSON="["
+          i=0
+          
+          for file in ./mosdns/release/*.zip; do
+            if [ -f "$file" ]; then
+              i=$((i+1))
+              attachment_name="file${i}"
+              
+              CURL_CMD="$CURL_CMD -F $attachment_name=@'$file'"
+              
+              if [ "$i" -gt 1 ]; then
+                MEDIA_JSON="$MEDIA_JSON,"
+              fi
+              
+              if [ "$i" -eq 1 ]; then
+                # TG 的消息使用唯一的版本信息，用于存档和查找
+                CAPTION="*MosDNS 新版本已编译完成！* 🚀\n\n*版本号*: \`${{ steps.version.outputs.version }}\`\n*Commit Hash*: \`${{ steps.version.outputs.commit_hash }}\`\n\n*GitHub Release (固定链接)*: [点击查看](${{ steps.create_release.outputs.html_url }})"
+                MEDIA_JSON="$MEDIA_JSON{\"type\":\"document\",\"media\":\"attach://$attachment_name\",\"caption\":\"$CAPTION\",\"parse_mode\":\"Markdown\"}"
+              else
+                MEDIA_JSON="$MEDIA_JSON{\"type\":\"document\",\"media\":\"attach://$attachment_name\"}"
+              fi
+            fi
+          done
+          
+          MEDIA_JSON="$MEDIA_JSON]"
+          CURL_CMD="$CURL_CMD -F media='$MEDIA_JSON'"
+          
+          echo "Sending files to Telegram..."
+          eval $CURL_CMD
