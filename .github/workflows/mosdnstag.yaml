@@ -1,14 +1,14 @@
 name: Release mosdns
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # 允许手动触发
   schedule:
-    - cron: "30 20 * * *"
+    - cron: "30 20 * * *"  # 定时触发
   push:
     branches:
-      - latest
+      - latest  # 仅监控 latest 分支
     paths:
-      - ".github/workflows/mosdns.yaml"
+      - ".github/workflows/mosdns.yaml" # 当工作流文件本身改变时也触发
 
 jobs:
   build-release:
@@ -100,7 +100,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload all files to Telegram in a single message
+      - name: Upload all files to Telegram in batches
         if: steps.check_build.outputs.build_required == 'true'
         run: |
           # 黄金调试法则：检查文件是否存在以及路径是否正确
@@ -109,6 +109,7 @@ jobs:
           echo "----------------------------------------"
 
           # 使用 HEREDOC 安全地定义包含多行和特殊字符的 caption
+          # 这个 caption 只会用于第一批的第一个文件
           read -r -d '' CAPTION << EOF
           *MosDNS 新版本已编译完成！* 🚀
 
@@ -118,26 +119,39 @@ jobs:
           *GitHub Release (固定链接)*: [点击查看](${{ steps.create_release.outputs.html_url }})
           EOF
 
-          # 使用 bash 数组安全地构建 curl 参数，完全避免使用 eval
-          CURL_ARGS=(
-            -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup"
-            -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}"
-          )
+          # 使用 shopt -s nullglob 避免在没有匹配文件时出现字面上的 "*.zip"
+          shopt -s nullglob
+          files=(./mosdns/release/*.zip)
+          shopt -u nullglob
 
-          # 使用 jq 安全地构建 media JSON
-          MEDIA_JSON=$(jq -n '[]') # 初始化一个空的 JSON 数组
-          i=0
-          for file in ./mosdns/release/*.zip; do
-            if [ -f "$file" ]; then
-              i=$((i+1))
-              attachment_name="file${i}"
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No .zip files found to upload."
+            exit 0
+          fi
 
-              # 将文件参数添加到数组中
+          # 按每批10个文件进行分批发送
+          for (( i=0; i<${#files[@]}; i+=10 )); do
+            # 获取当前批次的文件 (最多10个)
+            chunk=("${files[@]:i:10}")
+            
+            echo "--- Preparing to send batch $((i/10 + 1)) with ${#chunk[@]} files ---"
+
+            # 为当前批次初始化 curl 参数和 media JSON
+            CURL_ARGS=(
+              -s --fail -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup"
+              -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}"
+            )
+            MEDIA_JSON=$(jq -n '[]')
+            
+            # 遍历当前批次的文件
+            for j in "${!chunk[@]}"; do
+              file="${chunk[j]}"
+              attachment_name="file${j}"
+              
               CURL_ARGS+=(-F "$attachment_name=@$file")
 
-              # 使用 jq 添加一个媒体对象到 JSON 数组中
-              if [ "$i" -eq 1 ]; then
-                # 第一个文件附带 caption
+              # 只有第一批的第一个文件 (i=0, j=0) 才添加 caption
+              if [ $i -eq 0 ] && [ $j -eq 0 ]; then
                 MEDIA_JSON=$(echo "$MEDIA_JSON" | jq \
                   --arg caption "$CAPTION" \
                   --arg media "attach://$attachment_name" \
@@ -147,12 +161,22 @@ jobs:
                   --arg media "attach://$attachment_name" \
                   '. + [{"type": "document", "media": $media}]')
               fi
+            done
+
+            # 将最终的 media JSON 添加到参数数组
+            CURL_ARGS+=(-F "media=$MEDIA_JSON")
+
+            # 安全地执行 curl 命令
+            echo "Sending batch to Telegram..."
+            response=$(curl "${CURL_ARGS[@]}")
+            echo "Telegram API Response: $response"
+
+            # 检查 API 是否返回了错误
+            if ! echo "$response" | jq -e '.ok == true' > /dev/null; then
+              echo "::error::Failed to send batch to Telegram."
+              exit 1
             fi
+            
+            # 在批次之间短暂休眠，避免触发API速率限制
+            sleep 2
           done
-
-          # 将最终的 media JSON 字符串添加到参数数组
-          CURL_ARGS+=(-F "media=$MEDIA_JSON")
-
-          # 安全地执行 curl 命令
-          echo "Sending files to Telegram..."
-          curl "${CURL_ARGS[@]}"
