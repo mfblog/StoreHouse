@@ -41,14 +41,9 @@ jobs:
         id: check_build
         run: |
           CURRENT_COMMIT="${{ steps.version.outputs.commit_hash }}"
-          
-          # 修正后的逻辑：使用 if...then...else... 来捕获 gh 命令的退出码
-          # 这样即使 gh release view 失败（找不到 release），脚本也不会因为 `bash -e` 而退出
           if LATEST_RELEASE_BODY=$(gh release view mosdns --json body -q .body); then
-            # 如果命令成功，说明 Release 存在，我们继续比较 commit
             echo "Found existing 'mosdns' release. Checking commit hash..."
             LAST_COMMIT=$(echo "$LATEST_RELEASE_BODY" | grep 'Commit Hash:' | awk '{print $NF}')
-            
             if [ "$CURRENT_COMMIT" == "$LAST_COMMIT" ]; then
               echo "The latest commit ${CURRENT_COMMIT} has already been built. Skipping."
               echo "build_required=false" >> $GITHUB_OUTPUT
@@ -57,7 +52,6 @@ jobs:
               echo "build_required=true" >> $GITHUB_OUTPUT
             fi
           else
-            # 如果命令失败，说明 Release 不存在，这是首次构建
             echo "Release 'mosdns' not found. A new build is required."
             echo "build_required=true" >> $GITHUB_OUTPUT
           fi
@@ -69,8 +63,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-          check-latest: true
-          cache: true
 
       - name: Set up Python
         if: steps.check_build.outputs.build_required == 'true'
@@ -111,35 +103,56 @@ jobs:
       - name: Upload all files to Telegram in a single message
         if: steps.check_build.outputs.build_required == 'true'
         run: |
-          API_URL="https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup"
-          CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}"
-          
-          CURL_CMD="curl -s -X POST '$API_URL' -F chat_id='$CHAT_ID'"
-          MEDIA_JSON="["
+          # 黄金调试法则：检查文件是否存在以及路径是否正确
+          echo "--- Listing files in release directory ---"
+          ls -lR ./mosdns/release/
+          echo "----------------------------------------"
+
+          # 使用 HEREDOC 安全地定义包含多行和特殊字符的 caption
+          read -r -d '' CAPTION << EOF
+          *MosDNS 新版本已编译完成！* 🚀
+
+          *版本号*: \`${{ steps.version.outputs.version }}\`
+          *Commit Hash*: \`${{ steps.version.outputs.commit_hash }}\`
+
+          *GitHub Release (固定链接)*: [点击查看](${{ steps.create_release.outputs.html_url }})
+          EOF
+
+          # 使用 bash 数组安全地构建 curl 参数，完全避免使用 eval
+          CURL_ARGS=(
+            -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup"
+            -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}"
+          )
+
+          # 使用 jq 安全地构建 media JSON
+          MEDIA_JSON=$(jq -n '[]') # 初始化一个空的 JSON 数组
           i=0
-          
           for file in ./mosdns/release/*.zip; do
             if [ -f "$file" ]; then
               i=$((i+1))
               attachment_name="file${i}"
-              
-              CURL_CMD="$CURL_CMD -F $attachment_name=@'$file'"
-              
-              if [ "$i" -gt 1 ]; then
-                MEDIA_JSON="$MEDIA_JSON,"
-              fi
-              
+
+              # 将文件参数添加到数组中
+              CURL_ARGS+=(-F "$attachment_name=@$file")
+
+              # 使用 jq 添加一个媒体对象到 JSON 数组中
               if [ "$i" -eq 1 ]; then
-                CAPTION="*MosDNS 新版本已编译完成！* 🚀\n\n*版本号*: \`${{ steps.version.outputs.version }}\`\n*Commit Hash*: \`${{ steps.version.outputs.commit_hash }}\`\n\n*GitHub Release (固定链接)*: [点击查看](${{ steps.create_release.outputs.html_url }})"
-                MEDIA_JSON="$MEDIA_JSON{\"type\":\"document\",\"media\":\"attach://$attachment_name\",\"caption\":\"$CAPTION\",\"parse_mode\":\"Markdown\"}"
+                # 第一个文件附带 caption
+                MEDIA_JSON=$(echo "$MEDIA_JSON" | jq \
+                  --arg caption "$CAPTION" \
+                  --arg media "attach://$attachment_name" \
+                  '. + [{"type": "document", "media": $media, "caption": $caption, "parse_mode": "Markdown"}]')
               else
-                MEDIA_JSON="$MEDIA_JSON{\"type\":\"document\",\"media\":\"attach://$attachment_name\"}"
+                MEDIA_JSON=$(echo "$MEDIA_JSON" | jq \
+                  --arg media "attach://$attachment_name" \
+                  '. + [{"type": "document", "media": $media}]')
               fi
             fi
           done
-          
-          MEDIA_JSON="$MEDIA_JSON]"
-          CURL_CMD="$CURL_CMD -F media='$MEDIA_JSON'"
-          
+
+          # 将最终的 media JSON 字符串添加到参数数组
+          CURL_ARGS+=(-F "media=$MEDIA_JSON")
+
+          # 安全地执行 curl 命令
           echo "Sending files to Telegram..."
-          eval $CURL_CMD
+          curl "${CURL_ARGS[@]}"
