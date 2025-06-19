@@ -103,22 +103,19 @@ jobs:
       - name: Upload all files to Telegram in batches
         if: steps.check_build.outputs.build_required == 'true'
         run: |
-          # 黄金调试法则：检查文件是否存在以及路径是否正确
-          echo "--- Listing files in release directory ---"
-          ls -lR ./mosdns/release/
-          echo "----------------------------------------"
+          # 终极调试模式：打印所有执行的命令
+          set -x
 
-          # 关键修正：为 Release URL 提供一个备用值，防止其为空
           RELEASE_URL="${{ steps.create_release.outputs.html_url }}"
           if [ -z "$RELEASE_URL" ]; then
             RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/mosdns"
           fi
           
-          # 使用更安全的变量定义方式，避免 HEREDOC 潜在问题
           CAPTION="*MosDNS 新版本已编译完成！* 🚀\n\n*版本号*: \`${{ steps.version.outputs.version }}\`\n*Commit Hash*: \`${{ steps.version.outputs.commit_hash }}\`\n\n*GitHub Release (固定链接)*: [点击查看]($RELEASE_URL)"
 
           shopt -s nullglob
-          files=(./mosdns/release/*.zip)
+          # 关键修正：使用绝对路径来查找文件
+          files=("$GITHUB_WORKSPACE"/mosdns/release/*.zip)
           shopt -u nullglob
 
           if [ ${#files[@]} -eq 0 ]; then
