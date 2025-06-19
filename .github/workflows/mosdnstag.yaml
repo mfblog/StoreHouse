@@ -1,14 +1,14 @@
 name: Release mosdns
 
 on:
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
   schedule:
-    - cron: "30 20 * * *"  # 定时触发
+    - cron: "30 20 * * *"
   push:
     branches:
-      - latest  # 仅监控 latest 分支
+      - latest
     paths:
-      - ".github/workflows/mosdns.yaml" # 当工作流文件本身改变时也触发
+      - ".github/workflows/mosdns.yaml"
 
 jobs:
   build-release:
@@ -108,18 +108,15 @@ jobs:
           ls -lR ./mosdns/release/
           echo "----------------------------------------"
 
-          # 使用 HEREDOC 安全地定义包含多行和特殊字符的 caption
-          # 这个 caption 只会用于第一批的第一个文件
-          read -r -d '' CAPTION << EOF
-          *MosDNS 新版本已编译完成！* 🚀
+          # 关键修正：为 Release URL 提供一个备用值，防止其为空
+          RELEASE_URL="${{ steps.create_release.outputs.html_url }}"
+          if [ -z "$RELEASE_URL" ]; then
+            RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/mosdns"
+          fi
+          
+          # 使用更安全的变量定义方式，避免 HEREDOC 潜在问题
+          CAPTION="*MosDNS 新版本已编译完成！* 🚀\n\n*版本号*: \`${{ steps.version.outputs.version }}\`\n*Commit Hash*: \`${{ steps.version.outputs.commit_hash }}\`\n\n*GitHub Release (固定链接)*: [点击查看]($RELEASE_URL)"
 
-          *版本号*: \`${{ steps.version.outputs.version }}\`
-          *Commit Hash*: \`${{ steps.version.outputs.commit_hash }}\`
-
-          *GitHub Release (固定链接)*: [点击查看](${{ steps.create_release.outputs.html_url }})
-          EOF
-
-          # 使用 shopt -s nullglob 避免在没有匹配文件时出现字面上的 "*.zip"
           shopt -s nullglob
           files=(./mosdns/release/*.zip)
           shopt -u nullglob
@@ -129,54 +126,34 @@ jobs:
             exit 0
           fi
 
-          # 按每批10个文件进行分批发送
           for (( i=0; i<${#files[@]}; i+=10 )); do
-            # 获取当前批次的文件 (最多10个)
             chunk=("${files[@]:i:10}")
-            
             echo "--- Preparing to send batch $((i/10 + 1)) with ${#chunk[@]} files ---"
 
-            # 为当前批次初始化 curl 参数和 media JSON
-            CURL_ARGS=(
-              -s --fail -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup"
-              -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}"
-            )
+            CURL_ARGS=(-s --fail -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup" -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}")
             MEDIA_JSON=$(jq -n '[]')
             
-            # 遍历当前批次的文件
             for j in "${!chunk[@]}"; do
               file="${chunk[j]}"
               attachment_name="file${j}"
-              
               CURL_ARGS+=(-F "$attachment_name=@$file")
 
-              # 只有第一批的第一个文件 (i=0, j=0) 才添加 caption
               if [ $i -eq 0 ] && [ $j -eq 0 ]; then
-                MEDIA_JSON=$(echo "$MEDIA_JSON" | jq \
-                  --arg caption "$CAPTION" \
-                  --arg media "attach://$attachment_name" \
-                  '. + [{"type": "document", "media": $media, "caption": $caption, "parse_mode": "Markdown"}]')
+                MEDIA_JSON=$(echo "$MEDIA_JSON" | jq --arg caption "$CAPTION" --arg media "attach://$attachment_name" '. + [{"type": "document", "media": $media, "caption": $caption, "parse_mode": "Markdown"}]')
               else
-                MEDIA_JSON=$(echo "$MEDIA_JSON" | jq \
-                  --arg media "attach://$attachment_name" \
-                  '. + [{"type": "document", "media": $media}]')
+                MEDIA_JSON=$(echo "$MEDIA_JSON" | jq --arg media "attach://$attachment_name" '. + [{"type": "document", "media": $media}]')
               fi
             done
 
-            # 将最终的 media JSON 添加到参数数组
             CURL_ARGS+=(-F "media=$MEDIA_JSON")
-
-            # 安全地执行 curl 命令
             echo "Sending batch to Telegram..."
             response=$(curl "${CURL_ARGS[@]}")
             echo "Telegram API Response: $response"
 
-            # 检查 API 是否返回了错误
             if ! echo "$response" | jq -e '.ok == true' > /dev/null; then
-              echo "::error::Failed to send batch to Telegram."
+              echo "::error::Failed to send batch to Telegram. Response: $response"
               exit 1
             fi
             
-            # 在批次之间短暂休眠，避免触发API速率限制
             sleep 2
           done
