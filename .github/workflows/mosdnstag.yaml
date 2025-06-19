@@ -1,156 +1,127 @@
+# 工作流名称
 name: Release mosdns
 
+# 工作流的触发条件
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # 允许在 GitHub 页面上手动触发
   schedule:
-    - cron: "30 20 * * *"
+    - cron: "30 20 * * *"  # 定时触发：每天 UTC 时间 20:30
   push:
     branches:
-      - latest
+      - latest  # 仅在 'latest' 分支有推送时触发
     paths:
-      - ".github/workflows/mosdns.yaml"
+      - ".github/workflows/mosdns.yaml" # 当此工作流文件本身发生变化时也触发
 
+# 工作流的任务
 jobs:
   build-release:
+    # 运行此任务的虚拟机环境
     runs-on: ubuntu-latest
+    # 任务包含的步骤
     steps:
-      - name: Clone mosdns repository
+      # 第1步：克隆上游的 mosdns 仓库
+      - name: 克隆 mosdns 仓库
         uses: actions/checkout@v4
         with:
-          repository: yyysuo/mosdns
-          path: mosdns
-          fetch-depth: 0
+          repository: yyysuo/mosdns  # 指定要克隆的仓库
+          path: mosdns                 # 克隆到名为 'mosdns' 的子目录中
+          fetch-depth: 0              # 获取所有 git 历史记录，以便生成版本信息
 
-      - name: Generate Unique Version and Commit Info
-        id: version
+      # 第2步：生成唯一的版本号和 Commit 信息
+      - name: 生成版本信息
+        id: version # 给这个步骤一个ID，方便后续步骤引用其输出
         run: |
           cd mosdns
+          # 获取短哈希，用于版本号
           COMMIT_SHORT_HASH=$(git rev-parse --short HEAD)
+          # 获取完整哈希，用于信息展示和比对
           COMMIT_FULL_HASH=$(git rev-parse HEAD)
+          # 获取最新 Commit 的日期
           COMMIT_DATE=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S')
+          # 生成唯一的构建日期标签（UTC时间）
           BUILD_DATE_TAG=$(date -u +'%Y%m%d-%H%M%S')
+          # 组合成最终的版本号，格式为：yyds-ph-日期-哈希
           VERSION_TAG="yyds-ph-${BUILD_DATE_TAG}-${COMMIT_SHORT_HASH}"
           
+          # 使用 GITHUB_OUTPUT 将变量传递给后续步骤
           echo "version=${VERSION_TAG}" >> $GITHUB_OUTPUT
           echo "commit_date=${COMMIT_DATE}" >> $GITHUB_OUTPUT
           echo "commit_hash=${COMMIT_FULL_HASH}" >> $GITHUB_OUTPUT
-          
-          echo "Generated Unique Version for TG: ${VERSION_TAG}"
 
-      - name: Check if a new build is needed
+      # 第3步：检查是否需要进行新的构建
+      - name: 检查是否需要构建
         id: check_build
         run: |
           CURRENT_COMMIT="${{ steps.version.outputs.commit_hash }}"
+          # 关键：直接用 if 语句捕获 gh 命令的成功/失败状态，避免在 Release 不存在时因脚本退出而报错
           if LATEST_RELEASE_BODY=$(gh release view mosdns --json body -q .body); then
-            echo "Found existing 'mosdns' release. Checking commit hash..."
-            LAST_COMMIT=$(echo "$LATEST_RELEASE_BODY" | grep 'Commit Hash:' | awk '{print $NF}')
+            # 如果 Release 存在，则从中提取上次构建的 Commit Hash 进行比对
+            LAST_COMMIT=$(echo "$LATEST_RELEASE_BODY" | grep '代码提交哈希 (Commit Hash):' | awk '{print $NF}')
             if [ "$CURRENT_COMMIT" == "$LAST_COMMIT" ]; then
-              echo "The latest commit ${CURRENT_COMMIT} has already been built. Skipping."
+              # 如果当前 Commit 和上次构建的 Commit 相同，则无需构建
+              echo "最新的 Commit ${CURRENT_COMMIT} 已经构建过了，跳过本次任务。"
               echo "build_required=false" >> $GITHUB_OUTPUT
             else
-              echo "New commit ${CURRENT_COMMIT} found. Last built commit was ${LAST_COMMIT}. A new build is required."
+              # 否则，需要构建新版本
+              echo "发现新的 Commit ${CURRENT_COMMIT}，需要进行构建。"
               echo "build_required=true" >> $GITHUB_OUTPUT
             fi
           else
-            echo "Release 'mosdns' not found. A new build is required."
+            # 如果 gh 命令失败（即 Release 不存在），说明是首次构建，需要构建
+            echo "未找到 tag 为 'mosdns' 的 Release，需要进行构建。"
             echo "build_required=true" >> $GITHUB_OUTPUT
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Go
+      # 第4步：安装 Go 环境
+      - name: 安装 Go 环境
         if: steps.check_build.outputs.build_required == 'true'
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Set up Python
+      # 第5步：安装 Python 环境 (mosdns 的编译脚本需要)
+      - name: 安装 Python 环境
         if: steps.check_build.outputs.build_required == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Build with custom version
+      # 第6步：使用自定义版本号进行编译
+      - name: 编译
         if: steps.check_build.outputs.build_required == 'true'
         run: |
           cd mosdns
           python ./release.py
         env:
           CGO_ENABLED: '0'
+          # 关键：将我们生成的唯一版本号通过 TAG_NAME 环境变量注入编译脚本
+          # 这样编译出的二进制文件内部就会包含这个版本信息
           TAG_NAME: ${{ steps.version.outputs.version }}
 
-      - name: Publish/Update GitHub Release with fixed tag
-        id: create_release
+      # 第7步：发布或更新 GitHub Release
+      - name: 发布到 Release
         if: steps.check_build.outputs.build_required == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          # 关键：使用固定的 "mosdns" 标签，以便为其他脚本提供一个稳定的下载地址
           tag_name: mosdns
-          name: "MosDNS (Build: ${{ steps.version.outputs.version }})"
+          # Release 的标题使用唯一的版本号，方便在 GitHub UI 上区分
+          name: "MosDNS (构建版本: ${{ steps.version.outputs.version }})"
+          # Release 的正文包含详细信息，尤其是 Commit Hash，用于下次运行时进行比对
           body: |
-            **This is the latest automated build.**
+            **这是最新的自动构建版本。**
             
-            - **Build Version**: `${{ steps.version.outputs.version }}`
-            - **Commit Time**: `${{ steps.version.outputs.commit_date }}`
-            - **Commit Hash**: `${{ steps.version.outputs.commit_hash }}`
+            - **构建版本号 (Build Version)**: `${{ steps.version.outputs.version }}`
+            - **代码提交时间 (Commit Time)**: `${{ steps.version.outputs.commit_date }}`
+            - **代码提交哈希 (Commit Hash)**: `${{ steps.version.outputs.commit_hash }}`
             
-            *This release is automatically updated and always points to the latest build.*
+            *此 Release 由 GitHub Actions 自动更新，并始终指向最新的构建。*
+          # 上传 release 目录下所有 .zip 文件
           files: './mosdns/release/mosdns*.zip'
           prerelease: false
+          # 始终将此 Release 标记为 "Latest"
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload all files to Telegram in batches
-        if: steps.check_build.outputs.build_required == 'true'
-        run: |
-          # 终极调试模式：打印所有执行的命令
-          set -x
-
-          RELEASE_URL="${{ steps.create_release.outputs.html_url }}"
-          if [ -z "$RELEASE_URL" ]; then
-            RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/mosdns"
-          fi
-          
-          CAPTION="*MosDNS 新版本已编译完成！* 🚀\n\n*版本号*: \`${{ steps.version.outputs.version }}\`\n*Commit Hash*: \`${{ steps.version.outputs.commit_hash }}\`\n\n*GitHub Release (固定链接)*: [点击查看]($RELEASE_URL)"
-
-          shopt -s nullglob
-          # 关键修正：使用绝对路径来查找文件
-          files=("$GITHUB_WORKSPACE"/mosdns/release/*.zip)
-          shopt -u nullglob
-
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "No .zip files found to upload."
-            exit 0
-          fi
-
-          for (( i=0; i<${#files[@]}; i+=10 )); do
-            chunk=("${files[@]:i:10}")
-            echo "--- Preparing to send batch $((i/10 + 1)) with ${#chunk[@]} files ---"
-
-            CURL_ARGS=(-s --fail -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMediaGroup" -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}")
-            MEDIA_JSON=$(jq -n '[]')
-            
-            for j in "${!chunk[@]}"; do
-              file="${chunk[j]}"
-              attachment_name="file${j}"
-              CURL_ARGS+=(-F "$attachment_name=@$file")
-
-              if [ $i -eq 0 ] && [ $j -eq 0 ]; then
-                MEDIA_JSON=$(echo "$MEDIA_JSON" | jq --arg caption "$CAPTION" --arg media "attach://$attachment_name" '. + [{"type": "document", "media": $media, "caption": $caption, "parse_mode": "Markdown"}]')
-              else
-                MEDIA_JSON=$(echo "$MEDIA_JSON" | jq --arg media "attach://$attachment_name" '. + [{"type": "document", "media": $media}]')
-              fi
-            done
-
-            CURL_ARGS+=(-F "media=$MEDIA_JSON")
-            echo "Sending batch to Telegram..."
-            response=$(curl "${CURL_ARGS[@]}")
-            echo "Telegram API Response: $response"
-
-            if ! echo "$response" | jq -e '.ok == true' > /dev/null; then
-              echo "::error::Failed to send batch to Telegram. Response: $response"
-              exit 1
-            fi
-            
-            sleep 2
-          done
