@@ -97,10 +97,7 @@ ${log_file_path} {
     compress
 }
 EOF
-    # 仅在 crontab 中不存在时添加，防止重复
-    if ! grep -q "/etc/logrotate.d/mosdns" /etc/crontab; then
-        echo "57 23 * * * root /usr/sbin/logrotate -f /etc/logrotate.d/mosdns" >> /etc/crontab
-    fi
+    crontab -l | grep -Fq "/usr/sbin/logrotate -f /etc/logrotate.d/mosdns" || (crontab -l ; echo "57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/mosdns") | crontab -
     log_success "MosDNS 日志轮转配置完成。"
 }
 
