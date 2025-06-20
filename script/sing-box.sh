@@ -232,7 +232,7 @@ task_switch_core() {
 check_dependencies() {
     log_info "正在检查系统依赖项..."
     # 定义所有需要的软件包列表
-    local all_deps=("curl" "git" "gawk" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "yq" "go")
+    local all_deps=("curl" "git" "gawk" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "yq" "go" "unzip")
     local missing_deps=()
     
     # 遍历列表，检查每个命令是否存在
