@@ -4,7 +4,7 @@ readonly green_text="\033[32m"
 readonly yellow_text="\033[33m"
 readonly red_text="\033[31m"
 readonly reset="\033[0m"
-readonly DIRPATH="/usr/local/bin/tools"
+DIRPATH="/usr/local/bin/tools"
 readonly NFT_RULESET="/etc/nftables.conf"
 
 
