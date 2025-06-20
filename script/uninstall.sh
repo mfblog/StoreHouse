@@ -60,6 +60,7 @@
                 "mosdns")
                     systemctl disable mosdns > /dev/null 2>&1
                     systemctl stop mosdns  > /dev/null 2>&1
+                    crontab -l | grep -Fv "/usr/sbin/logrotate -f /etc/logrotate.d/mosdns" | crontab -
                     rm -rf /etc/mosdns
                     rm -rf /usr/local/bin/mosdns
                     rm -rf /etc/systemd/system/mosdns.service
