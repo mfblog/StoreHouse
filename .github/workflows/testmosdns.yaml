@@ -29,14 +29,14 @@ jobs:
           COMMIT_HASH_FULL=$(git rev-parse HEAD)
           COMMIT_HASH_SHORT=$(git rev-parse --short HEAD)
           COMMIT_DATE_FULL=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S')
-          COMMIT_DATE_ONLY=$(git log -1 --format=%cd --date=format:'%Y%m%d') # <--- 新增：只包含日期的变量
+          COMMIT_DATE_ONLY=$(git log -1 --format=%cd --date=format:'%Y%m%d')
           
-          # 生成新的版本号，格式为：前缀-日期-短哈希
-          VERSION="ph-yyds-${COMMIT_DATE_ONLY}-${COMMIT_HASH_SHORT}" # <--- 关键改动：使用新的版本号格式
+          # 生成版本号，格式为：前缀-日期-短哈希
+          VERSION="ph-yyds-${COMMIT_DATE_ONLY}-${COMMIT_HASH_SHORT}"
           
           # 将信息输出给后续步骤使用
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "commit_date=${COMMIT_DATE_FULL}" >> $GITHUB_OUTPUT # 用于 Release Body 的详细时间
+          echo "commit_date=${COMMIT_DATE_FULL}" >> $GITHUB_OUTPUT
           echo "commit_hash=${COMMIT_HASH_FULL}" >> $GITHUB_OUTPUT
           
           echo "Generated version: ${VERSION}"
@@ -81,8 +81,13 @@ jobs:
         run: |
           cd mosdns
           python ./release.py
+        # 关键改动：将版本信息作为环境变量传递给 release.py 脚本
         env:
           CGO_ENABLED: '0'
+          # 这些环境变量会被 release.py 脚本读取，并用于 `go build -ldflags`
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT: ${{ steps.version.outputs.commit_hash }}
+          BUILD_DATE: ${{ steps.version.outputs.commit_date }}
 
       - name: Publish
         if: steps.check_release.outputs.exists == 'false'
