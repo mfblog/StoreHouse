@@ -88,17 +88,91 @@ jobs:
         with:
           python-version: '3.11'
 
-      # 第6步：使用自定义版本号进行编译
+      # 新增步骤：动态修改 release.py 文件以注入版本逻辑
+      # 这个步骤会在运行时修改 mosdns/release/release.py 文件
+      - name: 动态修改 release.py
+        if: steps.check_build.outputs.build_required == 'true'
+        run: |
+          cd mosdns/release
+          
+          # 使用 Python 脚本动态修改 release.py
+          # 核心思想是替换原始文件中获取版本号的代码块
+          python -c "
+import os
+import re
+import sys
+
+file_path = 'release.py'
+
+# 读取文件内容
+try:
+    with open(file_path, 'r') as f:
+        content = f.read()
+except IOError:
+    print(f'Error: Could not read {file_path}. Exiting.')
+    sys.exit(1)
+
+# 构建要插入的新版本逻辑块
+# 这个字符串会替换掉原始的 'VERSION = 'dev/unknown'' 及后面的 try/except 块
+# 注意：f-string 内部的花括号和引号需要转义或小心处理
+new_version_logic = '''
+    custom_version_from_env = os.getenv('TAG_NAME')
+    if custom_version_from_env:
+        VERSION = custom_version_from_env
+        logger.info(f'Using custom version from TAG_NAME environment variable: {{VERSION}}')
+    else:
+        # Original version logic starts here
+        VERSION = 'dev/unknown'
+        try:
+            # Modified git describe command with cwd='../'
+            VERSION = subprocess.check_output('git describe --tags --long --always', shell=True, cwd='../').decode().rstrip()
+        except subprocess.CalledProcessError as e:
+            logger.error(f'get git tag failed: {{e.args}}')
+        # Original version logic ends here
+'''
+
+# 查找并替换整个版本获取块
+# 这个正则表达式是根据你提供的原始 release.py 内容编写的。
+# 它匹配从 'VERSION = 'dev/unknown'' 开始，到 'logger.error(f'get git tag failed: {e.args}')' 结束的整个块。
+# re.DOTALL 标志让 '.' 也匹配换行符。
+# 请注意：如果原始文件结构有变动，这个正则匹配可能会失效。
+pattern = r"VERSION = 'dev\/unknown'\s*try:\s*VERSION = subprocess\.check_output\('git describe --tags --long --always', shell=True\)\.decode\(\)\.rstrip\(\)\s*except subprocess\.CalledProcessError as e:\s*logger\.error\(f'get git tag failed: {e\.args}'\)"
+
+# 替换匹配到的部分
+# re.sub 会替换所有匹配项，但我们期望只有一个
+modified_content = re.sub(pattern, new_version_logic, content, flags=re.DOTALL | re.MULTILINE)
+
+# 检查是否进行了替换
+if content == modified_content:
+    print('Error: No replacement was made. The pattern might not have matched. This usually means the original release.py has changed its versioning logic or formatting.')
+    print('Please check the `动态修改 release.py` step in your workflow and adjust the Python regex.')
+    sys.exit(1) # 如果没有替换成功，则退出，因为版本注入会失败
+
+# 写回文件
+try:
+    with open(file_path, 'w') as f:
+        f.write(modified_content)
+    print(f'Successfully patched {file_path}.')
+except IOError:
+    print(f'Error: Could not write to {file_path}. Exiting.')
+    sys.exit(1)
+          "
+          
+          # 验证修改 (强烈建议在调试时启用)
+          echo "--- Modified release.py content ---"
+          cat release.py
+          echo "-----------------------------------"
+
+      # 第6步：使用自定义版本号进行编译 (现在 release.py 已被修改)
       - name: 编译
         if: steps.check_build.outputs.build_required == 'true'
         run: |
           cd mosdns
-          python ./release.py
+          # TAG_NAME 环境变量仍然需要设置，因为修改后的 release.py 会去读取它
+          python ./release/release.py
         env:
           CGO_ENABLED: '0'
-          # 关键：将我们生成的唯一版本号通过 TAG_NAME 环境变量注入编译脚本
-          # 这样编译出的二进制文件内部就会包含这个版本信息
-          TAG_NAME: ${{ steps.version.outputs.version }}
+          TAG_NAME: ${{ steps.version.outputs.version }} # 这是传递给 release.py 的环境变量
 
       # 第7步：发布或更新 GitHub Release
       - name: 发布到 Release
