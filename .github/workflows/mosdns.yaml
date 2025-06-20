@@ -1,129 +1,102 @@
-# 工作流名称
-name: Release mosdns
+name: Release mosdnsbata
 
-# 工作流的触发条件
 on:
-  workflow_dispatch:  # 允许在 GitHub 页面上手动触发
+  workflow_dispatch:
   schedule:
-    - cron: "30 20 * * *"  # 定时触发：每天 UTC 时间 20:30
+    - cron: "30 20 * * *"
   push:
     branches:
-      - latest  # 仅在 'latest' 分支有推送时触发
+      - latest
     paths:
-      - ".github/workflows/mosdns.yaml" # 当此工作流文件本身发生变化时也触发
+      - ".github/workflows/mosdns.yaml"
 
-# 工作流的任务
 jobs:
   build-release:
-    # 运行此任务的虚拟机环境
     runs-on: ubuntu-latest
-    # 任务包含的步骤
     steps:
-      # 第1步：克隆上游的 mosdns 仓库
-      - name: 克隆 mosdns 仓库
+      - name: Clone mosdns repository
         uses: actions/checkout@v4
         with:
-          repository: yyysuo/mosdns  # 指定要克隆的仓库
-          path: mosdns                 # 克隆到名为 'mosdns' 的子目录中
-          fetch-depth: 0              # 获取所有 git 历史记录，以便生成版本信息
+          repository: yyysuo/mosdns
+          path: mosdns
+          fetch-depth: 0 # fetch-depth: 0 is needed for git describe
 
-      # 第2步：生成唯一的版本号和 Commit 信息
-      - name: 生成版本信息
-        id: version # 给这个步骤一个ID，方便后续步骤引用其输出
+      - name: Generate version and commit info
+        id: version
         run: |
           cd mosdns
-          # 获取短哈希，用于版本号
-          COMMIT_SHORT_HASH=$(git rev-parse --short HEAD)
-          # 获取完整哈希，用于信息展示和比对
-          COMMIT_FULL_HASH=$(git rev-parse HEAD)
-          # 获取最新 Commit 的日期
-          COMMIT_DATE=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S')
-          # 生成唯一的构建日期标签（UTC时间）
-          BUILD_DATE_TAG=$(date -u +'%Y%m%d-%H%M%S')
-          # 组合成最终的版本号，格式为：yyds-ph-日期-哈希
-          VERSION_TAG="yyds-ph-${BUILD_DATE_TAG}-${COMMIT_SHORT_HASH}"
-          
-          # 使用 GITHUB_OUTPUT 将变量传递给后续步骤
-          echo "version=${VERSION_TAG}" >> $GITHUB_OUTPUT
-          echo "commit_date=${COMMIT_DATE}" >> $GITHUB_OUTPUT
-          echo "commit_hash=${COMMIT_FULL_HASH}" >> $GITHUB_OUTPUT
+          COMMIT_HASH_FULL=$(git rev-parse HEAD)
+          COMMIT_HASH_SHORT=$(git rev-parse --short HEAD)
+          COMMIT_DATE_FULL=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S')
+          COMMIT_DATE_ONLY=$(git log -1 --format=%cd --date=format:'%Y%m%d')
+          VERSION="ph-yyds-${COMMIT_DATE_ONLY}-${COMMIT_HASH_SHORT}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "commit_hash=${COMMIT_HASH_FULL}" >> $GITHUB_OUTPUT
+          echo "commit_date=${COMMIT_DATE_FULL}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
 
-      # 第3步：检查是否需要进行新的构建
-      - name: 检查是否需要构建
-        id: check_build
+      - name: Check if release exists
+        id: check_release
         run: |
-          CURRENT_COMMIT="${{ steps.version.outputs.commit_hash }}"
-          # 关键：直接用 if 语句捕获 gh 命令的成功/失败状态，避免在 Release 不存在时因脚本退出而报错
-          if LATEST_RELEASE_BODY=$(gh release view mosdns --json body -q .body); then
-            # 如果 Release 存在，则从中提取上次构建的 Commit Hash 进行比对
-            LAST_COMMIT=$(echo "$LATEST_RELEASE_BODY" | grep '代码提交哈希 (Commit Hash):' | awk '{print $NF}')
-            if [ "$CURRENT_COMMIT" == "$LAST_COMMIT" ]; then
-              # 如果当前 Commit 和上次构建的 Commit 相同，则无需构建
-              echo "最新的 Commit ${CURRENT_COMMIT} 已经构建过了，跳过本次任务。"
-              echo "build_required=false" >> $GITHUB_OUTPUT
+          if gh release view "mosdns" >/dev/null 2>&1; then
+            LATEST_COMMIT=$(gh release view "mosdns" --json body -q .body | grep -o 'Commit: [a-f0-9]*' | cut -d' ' -f2)
+            CURRENT_COMMIT=$(cd mosdns && git rev-parse HEAD)
+            if [ "$LATEST_COMMIT" == "$CURRENT_COMMIT" ]; then
+              echo "Release for this commit already exists. Skipping build."
+              echo "exists=true" >> $GITHUB_OUTPUT
             else
-              # 否则，需要构建新版本
-              echo "发现新的 Commit ${CURRENT_COMMIT}，需要进行构建。"
-              echo "build_required=true" >> $GITHUB_OUTPUT
+              echo "New commit found. Proceeding with build."
+              echo "exists=false" >> $GITHUB_OUTPUT
             fi
           else
-            # 如果 gh 命令失败（即 Release 不存在），说明是首次构建，需要构建
-            echo "未找到 tag 为 'mosdns' 的 Release，需要进行构建。"
-            echo "build_required=true" >> $GITHUB_OUTPUT
+            echo "No previous release found. Proceeding with build."
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 第4步：安装 Go 环境
-      - name: 安装 Go 环境
-        if: steps.check_build.outputs.build_required == 'true'
+      - name: Set up Go
+        if: steps.check_release.outputs.exists == 'false'
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           check-latest: true
           cache: true
 
-      # 第5步：安装 Python 环境 (mosdns 的编译脚本需要)
-      - name: 安装 Python 环境
-        if: steps.check_build.outputs.build_required == 'true'
+      - name: Set up Python
+        if: steps.check_release.outputs.exists == 'false'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # 第6步：使用自定义版本号进行编译
-      - name: 编译
-        if: steps.check_build.outputs.build_required == 'true'
+      - name: Build
+        if: steps.check_release.outputs.exists == 'false'
         run: |
           cd mosdns
+          # 关键修复：用 sed "重写" release.py 中获取版本号的逻辑。
+          # 将 VERSION = subprocess.check_output(...) 这一行
+          # 替换为 VERSION = os.environ.get('CUSTOM_VERSION', 'dev/unknown')
+          # 这样脚本就会从我们定义的环境变量 CUSTOM_VERSION 中读取版本号。
+          sed -i "s|VERSION = subprocess.check_output.*|VERSION = os.environ.get('CUSTOM_VERSION', 'dev/unknown')|" release.py
+          
+          # 现在，运行被我们修改过的脚本
           python ./release.py
         env:
           CGO_ENABLED: '0'
-          # 关键：将我们生成的唯一版本号通过 TAG_NAME 环境变量注入编译脚本
-          # 这样编译出的二进制文件内部就会包含这个版本信息
-          TAG_NAME: ${{ steps.version.outputs.version }}
+          # 将我们生成的版本号通过 CUSTOM_VERSION 环境变量传递进去
+          CUSTOM_VERSION: ${{ steps.version.outputs.version }}
 
-      # 第7步：发布或更新 GitHub Release
-      - name: 发布到 Release
-        if: steps.check_build.outputs.build_required == 'true'
+      - name: Publish
+        if: steps.check_release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          # 关键：使用固定的 "mosdns" 标签，以便为其他脚本提供一个稳定的下载地址
           tag_name: mosdns
-          # Release 的标题使用唯一的版本号，方便在 GitHub UI 上区分
-          name: "MosDNS (构建版本: ${{ steps.version.outputs.version }})"
-          # Release 的正文包含详细信息，尤其是 Commit Hash，用于下次运行时进行比对
+          name: "MosDNS"
           body: |
-            **这是最新的自动构建版本。**
-            
-            - **构建版本号 (Build Version)**: `${{ steps.version.outputs.version }}`
-            - **代码提交时间 (Commit Time)**: `${{ steps.version.outputs.commit_date }}`
-            - **代码提交哈希 (Commit Hash)**: `${{ steps.version.outputs.commit_hash }}`
-            
-            *此 Release 由 GitHub Actions 自动更新，并始终指向最新的构建。*
-          # 上传 release 目录下所有 .zip 文件
+            源码时间: ${{ steps.version.outputs.commit_date }}
+            版本号: ${{ steps.version.outputs.version }}
+            Commit: ${{ steps.version.outputs.commit_hash }}
           files: './mosdns/release/mosdns*.zip'
           prerelease: false
-          # 始终将此 Release 标记为 "Latest"
-          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

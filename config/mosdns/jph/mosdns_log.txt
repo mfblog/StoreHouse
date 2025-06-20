@@ -1,0 +1,14 @@
+2025年6月20日更新内容
+1：/cus/mosdns/sub_config/switch.yaml重新部署，现在重启mosdns开关状态可以保存了。
+2：/cus/mosdns/config_custom.yaml中添加
+  - tag: sequence_6666
+    type: sequence
+    args:
+###添加部分
+      - matches:    #阻止SOA PTR HTTPS类型的dns查询
+        - switch5 'A'
+        - "qtype 6 12 65"
+        exec: reject 0
+3：二进制更新，web ui添加开关，同步J佬更新
+4：新增加规则文件switch1.txt-switch9.txt，在rule文件夹内
+5：覆盖/cus/mosdns/sub_config/domain_output.yaml  不用重启mosdns，生成的分流规则屏蔽规则会在写入本地文件（web ui保存分流规则也可以）时自动生效。
