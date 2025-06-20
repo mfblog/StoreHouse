@@ -22,7 +22,7 @@ fi
 
 # --- 全局常量定义 ---
 # 将不应改变的变量定义为只读常量，增加代码的健壮性。
-readonly DIRPATH="/usr/local/bin/tools"
+DIRPATH="/usr/local/bin/tools"
 readonly SUB_HOST="https://sub-singbox.herozmy.com"
 readonly SINGBOX_CONFIG_TPL="&file=https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box.json"
 readonly LOCAL_IP=$(hostname -I | awk '{print $1}')
