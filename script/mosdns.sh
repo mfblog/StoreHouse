@@ -34,7 +34,6 @@ main() {
         get_mosdns_rule)   task_get_mosdns_rule ;;
         mosdns_logrotate)  task_setup_logrotate_mosdns ;;
         mosdns_service)    task_setup_service_mosdns ;;
-        check_aio)         task_check_aio_and_apply_rules ;;
         *)                 task_install_mosdns ;;
     esac
 }
@@ -129,7 +128,7 @@ EOF
     log_success "MosDNS 服务已启动并设置为开机自启。"
     
     # 在服务启动后检查AIO环境
-    task_check_aio_and_apply_rules
+    bash /usr/local/bin/tools/check_aio.sh
     
     print_service_commands
 }
