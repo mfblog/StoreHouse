@@ -1,12 +1,12 @@
-name: Release mosdnsbeta
+name: Release mosdnsbata
 
 on:
-  workflow_dispatch:  # 保留手动触发
+  workflow_dispatch:
   schedule:
-    - cron: "30 20 * * *"  # 保留定时任务
+    - cron: "30 20 * * *"
   push:
     branches:
-      - latest  # 仅监控latest分支
+      - latest
     paths:
       - ".github/workflows/mosdns.yaml"
 
@@ -19,28 +19,21 @@ jobs:
         with:
           repository: yyysuo/mosdns
           path: mosdns
-          fetch-depth: 0 # 获取所有历史记录，确保git命令能正常工作
+          fetch-depth: 0 # fetch-depth: 0 is needed for git describe
 
       - name: Generate version and commit info
         id: version
         run: |
           cd mosdns
-          # 获取 mosdns 源码仓库的 commit 信息
           COMMIT_HASH_FULL=$(git rev-parse HEAD)
           COMMIT_HASH_SHORT=$(git rev-parse --short HEAD)
           COMMIT_DATE_FULL=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S')
           COMMIT_DATE_ONLY=$(git log -1 --format=%cd --date=format:'%Y%m%d')
-          
-          # 生成版本号，格式为：前缀-日期-短哈希
           VERSION="ph-yyds-${COMMIT_DATE_ONLY}-${COMMIT_HASH_SHORT}"
-          
-          # 将信息输出给后续步骤使用
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "commit_date=${COMMIT_DATE_FULL}" >> $GITHUB_OUTPUT
           echo "commit_hash=${COMMIT_HASH_FULL}" >> $GITHUB_OUTPUT
-          
+          echo "commit_date=${COMMIT_DATE_FULL}" >> $GITHUB_OUTPUT
           echo "Generated version: ${VERSION}"
-          echo "Source commit hash: ${COMMIT_HASH_FULL}"
 
       - name: Check if release exists
         id: check_release
@@ -80,14 +73,18 @@ jobs:
         if: steps.check_release.outputs.exists == 'false'
         run: |
           cd mosdns
+          # 关键修复：用 sed "重写" release.py 中获取版本号的逻辑。
+          # 将 VERSION = subprocess.check_output(...) 这一行
+          # 替换为 VERSION = os.environ.get('CUSTOM_VERSION', 'dev/unknown')
+          # 这样脚本就会从我们定义的环境变量 CUSTOM_VERSION 中读取版本号。
+          sed -i "s|VERSION = subprocess.check_output.*|VERSION = os.environ.get('CUSTOM_VERSION', 'dev/unknown')|" release.py
+          
+          # 现在，运行被我们修改过的脚本
           python ./release.py
-        # 关键改动：将版本信息作为环境变量传递给 release.py 脚本
         env:
           CGO_ENABLED: '0'
-          # 这些环境变量会被 release.py 脚本读取，并用于 `go build -ldflags`
-          VERSION: ${{ steps.version.outputs.version }}
-          COMMIT: ${{ steps.version.outputs.commit_hash }}
-          BUILD_DATE: ${{ steps.version.outputs.commit_date }}
+          # 将我们生成的版本号通过 CUSTOM_VERSION 环境变量传递进去
+          CUSTOM_VERSION: ${{ steps.version.outputs.version }}
 
       - name: Publish
         if: steps.check_release.outputs.exists == 'false'
