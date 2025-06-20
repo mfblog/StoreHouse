@@ -26,7 +26,9 @@ log_error() {
 }
 
 # --- 全局常量与变量 ---
-readonly RULES_DIR="/etc/mosdns/rule"
+RULES_DIR="" # 声明为变量，将由 detect_mosdns_paths 函数动态设置
+MOSDNS_BASE_DIR="" # MosDNS 的根安装目录，将由 detect_mosdns_paths 函数动态设置
+
 readonly SINGBOX_SCRIPT="/usr/local/bin/tools/sing-box.sh"
 
 # 动态变量
@@ -36,6 +38,28 @@ singbox_version=""
 mosdns_version=""
 
 # --- 核心功能函数 ---
+
+# 新增函数：检测 MosDNS 的安装路径
+detect_mosdns_paths() {
+    log_info "正在检测 MosDNS 配置目录..."
+    # 优先检查标准路径 /etc/mosdns
+    if [ -d "/etc/mosdns/rule" ] && [ -f "/etc/mosdns/config.yaml" ]; then
+        MOSDNS_BASE_DIR="/etc/mosdns"
+        log_info "检测到标准 MosDNS 安装路径: /etc/mosdns (使用 config.yaml)"
+    # 检查魔改版路径 /cus/mosdns 及其对应的配置文件 config_custom.yaml
+    elif [ -d "/cus/mosdns/rule" ] && [ -f "/cus/mosdns/config_custom.yaml" ]; then
+        MOSDNS_BASE_DIR="/cus/mosdns"
+        log_info "检测到魔改版 MosDNS 安装路径: /cus/mosdns (使用 config_custom.yaml)"
+    else
+        log_error "未找到 MosDNS 的配置目录。请确保以下任一组合存在："
+        log_error "  - /etc/mosdns/rule/ 和 /etc/mosdns/config.yaml"
+        log_error "  - /cus/mosdns/rule/ 和 /cus/mosdns/config_custom.yaml"
+        exit 1 # 如果未找到路径，则退出脚本
+    fi
+    # 根据检测到的 MosDNS 基础目录设置 RULES_DIR
+    RULES_DIR="$MOSDNS_BASE_DIR/rule"
+    log_info "MosDNS 规则目录为: $RULES_DIR"
+}
 
 detect_architecture() {
     case $(uname -m) in
@@ -53,25 +77,55 @@ detect_architecture() {
 }
 
 update_all_rules() {
-    log_info "开始并行更新所有规则文件..."
-    mkdir -p "$RULES_DIR"
+    log_info "开始更新所有规则文件..."
 
-    declare -A rules
-    rules=(
-        ["https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/proxy-list.txt"]="$RULES_DIR/geosite_geolocation_noncn.txt"
-        ["https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/gfw.txt"]="$RULES_DIR/gfw.txt"
-        ["https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/direct-list.txt"]="$RULES_DIR/geosite_cn.txt"
-        ["https://raw.githubusercontent.com/Hackl0us/GeoIP2-CN/release/CN-ip-cidr.txt"]="$RULES_DIR/geoip_cn.txt"
-    )
+    local target_rules_dir # 用于存储当前版本规则下载的目标目录
+    local github_raw_base="https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing" # SRS 规则的公共前缀
 
+    # 根据 MosDNS 的基础安装目录来决定规则下载逻辑和目标目录
+    if [ "$MOSDNS_BASE_DIR" == "/etc/mosdns" ]; then
+        log_info "检测到标准版 MosDNS，将更新 Loyalsoldier/Hackl0us .txt 规则到 '$RULES_DIR'..."
+        target_rules_dir="$RULES_DIR" # 标准版规则目录就是 $RULES_DIR (即 /etc/mosdns/rule)
+        mkdir -p "$target_rules_dir"
+
+        declare -A rules_to_download # 声明关联数组
+        rules_to_download=(
+            ["https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/proxy-list.txt"]="$target_rules_dir/geosite_geolocation_noncn.txt"
+            ["https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/gfw.txt"]="$target_rules_dir/gfw.txt"
+            ["https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/direct-list.txt"]="$target_rules_dir/geosite_cn.txt"
+            ["https://raw.githubusercontent.com/Hackl0us/GeoIP2-CN/release/CN-ip-cidr.txt"]="$target_rules_dir/geoip_cn.txt"
+        )
+
+    elif [ "$MOSDNS_BASE_DIR" == "/cus/mosdns" ]; then
+        log_info "检测到魔改版 MosDNS，将更新 MetaCubeX .srs 规则到 '/cus/mosdns/unpack'..."
+        target_rules_dir="/cus/mosdns/unpack" # 魔改版规则目录是 /cus/mosdns/unpack
+        mkdir -p "$target_rules_dir"
+
+        # 清理旧的 SRS 文件，以防残留
+        log_info "正在清除旧的 .srs 规则文件..."
+        rm -f "$target_rules_dir"/*.srs || true # 允许失败，如果目录为空或不存在
+
+        declare -A rules_to_download # 声明关联数组
+        rules_to_download=(
+            ["$github_raw_base/geo/geosite/cn.srs"]="$target_rules_dir/geosite-cn.srs" # <-- 修改这里
+            ["$github_raw_base/geo/geosite/geolocation-!cn.srs"]="$target_rules_dir/geolocation-!cn.srs" # <-- 修改这里
+            ["$github_raw_base/geo/geoip/cn.srs"]="$target_rules_dir/geoip-cn.srs" # <-- 修改这里
+        )
+    else
+        log_error "MosDNS 基础目录未正确设置或不被识别，无法更新规则文件。"
+        return 1 # 返回错误，不执行下载
+    fi
+
+    # 以下是并行下载的通用逻辑
     local pids=()
     local failed_counter_file
     failed_counter_file=$(mktemp)
     echo 0 > "$failed_counter_file"
-    trap 'rm -f "$failed_counter_file"' RETURN
+    # shellcheck disable=SC2064
+    trap 'rm -f "$failed_counter_file" "$failed_counter_file.lock"' RETURN
 
-    for url in "${!rules[@]}"; do
-        local file="${rules[$url]}"
+    for url in "${!rules_to_download[@]}"; do
+        local file="${rules_to_download[$url]}"
         {
             echo -e "  -> 正在下载: $(basename "$file")"
             if curl -sL --retry 3 --connect-timeout 5 "$url" -o "$file.tmp"; then
@@ -98,11 +152,11 @@ update_all_rules() {
     fi
 }
 
-# --- MosDNS 规则管理模块 ---
-
+# --- MosDNS 规则管理模块 (兼容旧逻辑，使用 type 区分白/黑名单) ---
+# 这些函数内部会使用动态的 RULES_DIR，无需额外修改其逻辑
 add_rules() {
     local type=$1
-    local target_file="$RULES_DIR/${type}list.txt"
+    local target_file="$RULES_DIR/${type}list.txt" # 使用动态 RULES_DIR
     mkdir -p "$(dirname "$target_file")" && touch "$target_file"
     clear
 
@@ -152,7 +206,7 @@ add_rules() {
 
 view_rules() {
     local type=$1
-    local target_file="$RULES_DIR/${type}list.txt"
+    local target_file="$RULES_DIR/${type}list.txt" # 使用动态 RULES_DIR
     mkdir -p "$(dirname "$target_file")" && touch "$target_file"
     clear
 
@@ -173,7 +227,7 @@ view_rules() {
 
 delete_rules() {
     local type=$1
-    local target_file="$RULES_DIR/${type}list.txt"
+    local target_file="$RULES_DIR/${type}list.txt" # 使用动态 RULES_DIR
 
     view_rules "$type"
     [ ! -s "$target_file" ] && return
@@ -233,13 +287,15 @@ update_mosdns_core() {
     arch=$(detect_architecture)
     log_info "系统架构: $arch"
     
+    # 恢复到原始的herozmy/StoreHouse下载URL
     local mosdns_url="https://github.com/herozmy/StoreHouse/releases/download/mosdns/mosdns-linux-$arch.zip"
     local temp_dir
     temp_dir=$(mktemp -d)
     trap 'rm -rf "$temp_dir"' RETURN
 
     log_info "正在备份当前 mosdns核心..."
-    cp -f /usr/local/bin/mosdns /usr/local/bin/mosdns.bak_"$(date +%F)"
+    # 兼容两种基础路径，因为 mosdns 可执行文件可能不在 /etc/mosdns 下
+    cp -f /usr/local/bin/mosdns /usr/local/bin/mosdns.bak_"$(date +%F)" || log_warn "备份失败或 MosDNS 未安装。"
     
     log_info "正在下载最新 MosDNS 核心..."
     if ! wget -qO "$temp_dir/mosdns.zip" "$mosdns_url"; then
@@ -248,8 +304,9 @@ update_mosdns_core() {
     fi
     
     log_info "正在解压..."
-    if ! unzip -o "$temp_dir/mosdns.zip" -d "$temp_dir"; then
-        log_error "解压失败！"
+    # 确保解压到临时目录，并只解压 mosdns 可 executable file
+    if ! unzip -o "$temp_dir/mosdns.zip" "mosdns" -d "$temp_dir"; then
+        log_error "解压失败！请检查ZIP文件内容是否包含 'mosdns' 可执行文件。"
         return 1
     fi
 
@@ -259,7 +316,7 @@ update_mosdns_core() {
         chmod +x /usr/local/bin/mosdns
         log_info "MosDNS 核心更新成功！"
     else
-        log_error "在解压文件中未找到 'mosdns' 可执行文件。"
+        log_error "在解压文件中未找到 'mosdns' 可执行文件。可能是下载的zip文件格式不对。"
         return 1
     fi
 }
@@ -279,6 +336,7 @@ check_services() {
     fi
 }
 
+# Sing-Box 管理函数，此函数内容保持不变，不进行任何修改
 manage_singbox() {
     while true; do
         check_services
@@ -322,7 +380,7 @@ manage_mosdns() {
         echo -e "  - 当前版本: ${yellow}${mosdns_version}${reset}\n"
         echo -e "  1. 更新核心"
         echo -e "  2. 更新规则文件"
-        echo -e "  3. 规则管理 (白/灰名单)"
+        echo -e "  3. 规则管理 (白/黑名单)"
         echo -e "  4. 清除DNS缓存"
         echo -e "  5. 查看实时日志"
         echo -e "  0. 返回主菜单\n"
@@ -331,16 +389,34 @@ manage_mosdns() {
         case $choice in
             1) update_mosdns_core && systemctl restart mosdns ;;
             2) update_all_rules && systemctl restart mosdns && log_info "mosdns 已重启。" ;;
-            3) manage_list "white" ;;
+            3)
+                while true; do
+                    clear
+                    echo -e "\n${green}=== 规则列表选择 ===${reset}"
+                    echo -e "  1. 白名单 (whitelist.txt)"
+                    echo -e "  2. 黑名单 (blacklist.txt)"
+                    echo -e "  0. 返回 MosDNS 管理\n"
+                    read -p "请选择要管理的规则列表: " list_choice
+                    case $list_choice in
+                        1) manage_list "white" ;;
+                        2) manage_list "black" ;;
+                        0) break ;;
+                        *) log_warn "无效选择" ;;
+                    esac
+                    [ "$list_choice" != "0" ] && read -p "按回车键继续..."
+                done
+                ;;
             4)
                 log_info "正在清除DNS缓存..."
-                rm -f /etc/mosdns/*.dump
+                # 使用动态的 MOSDNS_BASE_DIR 来查找和删除缓存文件
+                rm -f "$MOSDNS_BASE_DIR"/*.dump || log_warn "未找到DNS缓存文件或删除失败。"
                 systemctl restart mosdns
                 log_info "DNS缓存已清除并重启服务。"
                 ;;
             5)
                 clear
                 log_info "正在显示 MosDNS 实时日志... 按 Ctrl+C 退出。"
+                # shellcheck disable=SC2064
                 trap 'echo -e "\n${yellow}已停止日志查看。${reset}"; trap - INT; return' INT
                 journalctl -u mosdns -f -o cat --no-pager
                 trap - INT
@@ -364,6 +440,9 @@ main() {
         fi
     done
     
+    # 在开始主逻辑之前检测 MosDNS 路径，确保 MOSDNS_BASE_DIR 和 RULES_DIR 已设置
+    detect_mosdns_paths # <--- 修正调用位置
+
     check_services
     
     local installed=()
@@ -372,6 +451,8 @@ main() {
 
     if [ ${#installed[@]} -eq 0 ]; then
         log_error "未检测到 Sing-Box 或 MosDNS，脚本无法执行。"
+        log_info "请确保 Sing-Box 可执行文件位于 /usr/local/bin/tools/sing-box.sh"
+        log_info "或 MosDNS 可执行文件位于 /usr/local/bin/mosdns"
         exit 1
     fi
 
@@ -387,7 +468,7 @@ main() {
     fi
 
     while true; do
-        clear
+        clear # <-- 修正：这里添加 clear
         echo -e "${green}=== proxytool 工具箱 ===${reset}\n"
         echo -e "  1. 管理 Sing-Box (版本: $singbox_version)"
         echo -e "  2. 管理 MosDNS (版本: $mosdns_version)\n"
