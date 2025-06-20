@@ -95,70 +95,29 @@ jobs:
         run: |
           cd mosdns/release
           
-          # 使用 Python 脚本动态修改 release.py
-          # 核心思想是替换原始文件中获取版本号的代码块
-          python -c "
-import os
-import re
-import sys
-
-file_path = 'release.py'
-
-# 读取文件内容
-try:
-    with open(file_path, 'r') as f:
-        content = f.read()
-except IOError:
-    print(f'Error: Could not read {file_path}. Exiting.')
-    sys.exit(1)
-
-# 构建要插入的新版本逻辑块
-# 这个字符串会替换掉原始的 'VERSION = 'dev/unknown'' 及后面的 try/except 块
-# 注意：f-string 内部的花括号和引号需要转义或小心处理
-new_version_logic = '''
-    custom_version_from_env = os.getenv('TAG_NAME')
-    if custom_version_from_env:
-        VERSION = custom_version_from_env
-        logger.info(f'Using custom version from TAG_NAME environment variable: {{VERSION}}')
-    else:
-        # Original version logic starts here
-        VERSION = 'dev/unknown'
-        try:
-            # Modified git describe command with cwd='../'
-            VERSION = subprocess.check_output('git describe --tags --long --always', shell=True, cwd='../').decode().rstrip()
-        except subprocess.CalledProcessError as e:
-            logger.error(f'get git tag failed: {{e.args}}')
-        # Original version logic ends here
-'''
-
-# 查找并替换整个版本获取块
-# 这个正则表达式是根据你提供的原始 release.py 内容编写的。
-# 它匹配从 'VERSION = 'dev/unknown'' 开始，到 'logger.error(f'get git tag failed: {e.args}')' 结束的整个块。
-# re.DOTALL 标志让 '.' 也匹配换行符。
-# 请注意：如果原始文件结构有变动，这个正则匹配可能会失效。
-pattern = r"VERSION = 'dev\/unknown'\s*try:\s*VERSION = subprocess\.check_output\('git describe --tags --long --always', shell=True\)\.decode\(\)\.rstrip\(\)\s*except subprocess\.CalledProcessError as e:\s*logger\.error\(f'get git tag failed: {e\.args}'\)"
-
-# 替换匹配到的部分
-# re.sub 会替换所有匹配项，但我们期望只有一个
-modified_content = re.sub(pattern, new_version_logic, content, flags=re.DOTALL | re.MULTILINE)
-
-# 检查是否进行了替换
-if content == modified_content:
-    print('Error: No replacement was made. The pattern might not have matched. This usually means the original release.py has changed its versioning logic or formatting.')
-    print('Please check the `动态修改 release.py` step in your workflow and adjust the Python regex.')
-    sys.exit(1) # 如果没有替换成功，则退出，因为版本注入会失败
-
-# 写回文件
-try:
-    with open(file_path, 'w') as f:
-        f.write(modified_content)
-    print(f'Successfully patched {file_path}.')
-except IOError:
-    print(f'Error: Could not write to {file_path}. Exiting.')
-    sys.exit(1)
-          "
+          # 备份原始文件 (可选，但建议保留，方便调试)
+          cp release.py release.py.bak
           
-          # 验证修改 (强烈建议在调试时启用)
+          # sed 命令 1: 在 'VERSION = 'dev/unknown'' 这一行之前插入版本获取逻辑
+          # 注意： sed 命令的插入内容需要用 \n 来表示换行，并且在每一行末尾加上反斜杠 \
+          # Python 对缩进敏感，确保插入的缩进正确 (这里是4个空格)
+          # 对于 f-string 内部的 `{}`, 在 sed 外部不需要额外转义，因为它会作为 Python 字符串的一部分被插入。
+          # 内部双引号 "TAG_NAME" 需要转义为 \"
+          sed -i "/^    VERSION = 'dev\/unknown'/i\
+    custom_version_from_env = os.getenv(\"TAG_NAME\")\
+    if custom_version_from_env:\
+        VERSION = custom_version_from_env\
+        logger.info(f\"Using custom version from TAG_NAME environment variable: {VERSION}\")\
+    else:\
+" release.py
+          
+          # sed 命令 2: 修改 git describe 命令，添加 cwd='../'
+          # 这个替换是针对 git describe 命令所在的行，确保它能在正确的目录执行
+          # 注意：为了避免 `sed` 命令字符串中的引号冲突，这里使用双引号包围整个替换表达式
+          # 并转义内部的单引号
+          sed -i "s/subprocess.check_output('git describe --tags --long --always', shell=True).decode().rstrip()/subprocess.check_output('git describe --tags --long --always', shell=True, cwd='../').decode().rstrip()/g" release.py
+
+          # 验证修改 (强烈建议在调试时启用，确认文件已被修改)
           echo "--- Modified release.py content ---"
           cat release.py
           echo "-----------------------------------"
