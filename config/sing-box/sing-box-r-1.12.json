@@ -417,9 +417,6 @@
                 "action": "hijack-dns"
             },
             {
-                "action": "sniff"
-            },
-            {
                 "ip_cidr": [
                     "8.8.8.8",
                     "8.8.4.4",

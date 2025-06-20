@@ -64,8 +64,7 @@ task_install_mihomo() {
     setup_systemd_services "mihomo"
     setup_nftables "mihomo"
     install_dashboard_ui "mihomo"
-    # check_aio_and_apply_rules # 如果需要，取消此行注释
-    . "$DIRPATH/check_aio.sh"
+    bash /usr/local/bin/tools/check_aio.sh
     enable_and_start_all_services "mihomo"
     
     # 打印最终的总结信息
@@ -110,8 +109,7 @@ task_interactive_install() {
     setup_systemd_services "sing-box"
     setup_nftables "sing-box"
     install_dashboard_ui "sing-box"
-    # check_aio_and_apply_rules # 如果需要，取消此行注释
-    . "$DIRPATH/check_aio.sh"
+    bash /usr/local/bin/tools/check_aio.sh
     enable_and_start_all_services "sing-box"
     
     print_summary "Sing-Box" "/etc/sing-box" "http://${LOCAL_IP}:9090"
