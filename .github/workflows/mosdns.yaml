@@ -1,4 +1,4 @@
-name: Release mosdnsbata
+name: Release mosdns
 
 on:
   workflow_dispatch:
