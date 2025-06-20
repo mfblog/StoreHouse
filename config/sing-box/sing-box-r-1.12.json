@@ -413,6 +413,9 @@
         "default_mark": 1,
         "rules": [
             {
+                "action": "sniff"
+            },
+            {
                 "inbound": "in-dns",
                 "action": "hijack-dns"
             },
