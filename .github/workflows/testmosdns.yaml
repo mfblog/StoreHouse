@@ -1,0 +1,104 @@
+name: Release mosdnsbeta
+
+on:
+  workflow_dispatch:  # 保留手动触发
+  schedule:
+    - cron: "30 20 * * *"  # 保留定时任务
+  push:
+    branches:
+      - latest  # 仅监控latest分支
+    paths:
+      - ".github/workflows/mosdns.yaml"
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone mosdns repository
+        uses: actions/checkout@v4
+        with:
+          repository: yyysuo/mosdns
+          path: mosdns
+          fetch-depth: 0 # 获取所有历史记录，确保git命令能正常工作
+
+      - name: Generate version and commit info
+        id: version
+        run: |
+          cd mosdns
+          # 获取 mosdns 源码仓库的 commit 信息
+          COMMIT_HASH_FULL=$(git rev-parse HEAD)
+          COMMIT_HASH_SHORT=$(git rev-parse --short HEAD)
+          COMMIT_DATE=$(git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S')
+          COMMIT_SHORT_DATE=$(git log -1 --format=%cd --date=format:'%Y%m%d-%H%M%S')
+          
+          # 生成版本号
+          VERSION="Build-${COMMIT_SHORT_DATE}-${COMMIT_HASH_SHORT}"
+          
+          # 将信息输出给后续步骤使用
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "commit_date=${COMMIT_DATE}" >> $GITHUB_OUTPUT
+          echo "commit_hash=${COMMIT_HASH_FULL}" >> $GITHUB_OUTPUT # <--- 关键改动：输出 mosdns 的完整 commit hash
+          
+          echo "Generated version: ${VERSION}"
+          echo "Source commit hash: ${COMMIT_HASH_FULL}"
+
+      - name: Check if release exists
+        id: check_release
+        # 此步骤逻辑正确，它比较的是 gh release 中的 commit 和当前拉取的 mosdns 仓库的 commit
+        run: |
+          if gh release view "mosdns" >/dev/null 2>&1; then
+            LATEST_COMMIT=$(gh release view "mosdns" --json body -q .body | grep -o 'Commit: [a-f0-9]*' | cut -d' ' -f2)
+            CURRENT_COMMIT=$(cd mosdns && git rev-parse HEAD)
+            if [ "$LATEST_COMMIT" == "$CURRENT_COMMIT" ]; then
+              echo "Release for this commit already exists. Skipping build."
+              echo "exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "New commit found. Proceeding with build."
+              echo "exists=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "No previous release found. Proceeding with build."
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        if: steps.check_release.outputs.exists == 'false'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+          cache: true
+
+      - name: Set up Python
+        if: steps.check_release.outputs.exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          cd mosdns
+          python ./release.py
+        env:
+          CGO_ENABLED: '0'
+
+      - name: Publish
+        if: steps.check_release.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mosdns
+          name: "MosDNS"
+          body: |
+            源码时间: ${{ steps.version.outputs.commit_date }}
+            版本号: ${{ steps.version.outputs.version }}
+            Commit: ${{ steps.version.outputs.commit_hash }} # <--- 关键改动：使用我们自己生成的 commit hash
+          files: './mosdns/release/mosdns*.zip'
+          prerelease: false
+          # 注意：softprops/action-gh-release 默认会处理已存在的 tag
+          # 如果 tag_name 'mosdns' 已存在，它会更新这个 tag 指向的 release
+          # 这是一个预期的行为，符合你的需求
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
