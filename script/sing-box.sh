@@ -916,7 +916,7 @@ setup_nftables() {
     if [ "$core_name" == "mihomo" ]; then
         nft_template="$DIRPATH/nft-tproxy.conf"
     else
-        nft_template="$DIRPATH/nft-tproxy-redirect.conf"
+        nft_template="$DIRPATH/nft-tproxy.conf"
     fi
     
     # 复制并替换模板中的网卡名
