@@ -225,22 +225,46 @@ task_switch_core() {
 check_dependencies() {
     log_info "正在检查系统依赖项..."
     # 定义所有需要的软件包列表
-    local all_deps=("curl" "git" "gawk" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "yq" "go" "unzip")
-    local missing_deps=()
-    
-    # 遍历列表，检查每个命令是否存在
-    for dep in "${all_deps[@]}"; do
+    # 注意：'go' 依赖通常通过下载 tarball 安装，而不是 apt-get
+    # 'gawk' 已经是 GNU awk，在 Debian/Ubuntu 上通常就是 'awk'
+    local apt_deps=("curl" "git" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "yq" "unzip")
+    local missing_apt_deps=()
+    local missing_non_apt_deps=() # 用于非 apt-get 安装的依赖
+
+    # 遍历 apt 依赖列表，检查每个命令是否存在
+    for dep in "${apt_deps[@]}"; do
         if ! command -v "$dep" &>/dev/null; then
-            missing_deps+=("$dep")
+            missing_apt_deps+=("$dep")
         fi
     done
 
-    # 如果有缺失的依赖，尝试自动安装
-    if [ ${#missing_deps[@]} -gt 0 ]; then
-       # log_warn "检测到以下依赖项缺失: ${missing_deps[*]}。正在尝试自动安装..."
-        apt-get update && apt-get install -y "${missing_deps[@]}" >/dev/null 2>&1
+    # 特殊处理 'go'
+    if ! command -v go &>/dev/null; then
+        missing_non_apt_deps+=("go")
     fi
-    log_success "所有依赖项均已满足。"
+
+    # 如果有缺失的 APT 依赖，尝试自动安装
+    if [ ${#missing_apt_deps[@]} -gt 0 ]; then
+        log_warn "检测到以下 APT 依赖项缺失: ${missing_apt_deps[*]}。正在尝试自动安装..."
+        if ! apt-get update; then
+            log_error "apt update 失败，请检查您的软件源或网络连接。"
+            exit 1
+        fi
+        if ! apt-get install -y "${missing_apt_deps[@]}"; then # 移除 >/dev/null 2>&1 以显示错误
+            log_error "自动安装依赖 ${missing_apt_deps[*]} 失败！请手动安装或检查错误信息。"
+            exit 1
+        fi
+        log_success "APT 依赖项安装完成。"
+    else
+        log_success "所有 APT 依赖项均已满足。"
+    fi
+
+    # 提示非 APT 安装的依赖（如 Go），因为它们会在后续步骤中单独处理
+    if [ ${#missing_non_apt_deps[@]} -gt 0 ]; then
+        log_warn "以下依赖 (${missing_non_apt_deps[*]}) 未通过 APT 安装，将在后续步骤中按需处理。"
+    fi
+    
+    log_success "所有关键系统依赖检查完毕。"
 }
 
 # 专门用于按需安装依赖的函数
