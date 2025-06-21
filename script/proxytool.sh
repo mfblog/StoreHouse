@@ -441,7 +441,7 @@ main() {
     done
     
     # 在开始主逻辑之前检测 MosDNS 路径，确保 MOSDNS_BASE_DIR 和 RULES_DIR 已设置
-    detect_mosdns_paths # <--- 修正调用位置
+     # <--- 修正调用位置
 
     check_services
     
@@ -462,13 +462,14 @@ main() {
         if [ "${installed[0]}" == "Sing-Box" ]; then
             manage_singbox
         else
+        	  detect_mosdns_paths
             manage_mosdns
         fi
         exit 0
     fi
 
     while true; do
-        clear # <-- 修正：这里添加 clear
+        clear
         echo -e "${green}=== proxytool 工具箱 ===${reset}\n"
         echo -e "  1. 管理 Sing-Box (版本: $singbox_version)"
         echo -e "  2. 管理 MosDNS (版本: $mosdns_version)\n"

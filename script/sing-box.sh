@@ -3,14 +3,9 @@
 # Sing-Box & Mihomo 多功能一体化安装与管理脚本 (重构注释最终版)
 #
 
-# --- 严格模式与安全设置 ---
-# set -e: 当任何命令以非零状态码退出时，立即终止脚本。这可以防止错误状态下的继续执行。
-# set -o pipefail: 在管道命令中 (e.g., cmd1 | cmd2)，只要有任何一个命令失败，整个管道就视为失败。
-set -e
-set -o pipefail
+#set -e
+#set -o pipefail
 
-# --- 引入通用工具库 ---
-# 加载包含日志函数和颜色定义的共享脚本，实现代码复用。
 readonly COMMON_UTILS_PATH="/usr/local/bin/tools/common.sh"
 if [ -f "$COMMON_UTILS_PATH" ]; then
     source "$COMMON_UTILS_PATH"
@@ -28,13 +23,11 @@ readonly SINGBOX_CONFIG_TPL="&file=https://raw.githubusercontent.com/herozmy/Sto
 readonly LOCAL_IP=$(hostname -I | awk '{print $1}')
 
 # --- 主调度器 (脚本入口) ---
-# 这是脚本的唯一入口点。所有执行都从这里开始。
 main() {
     # 步骤 1: 检查所有必需的系统依赖。
     check_dependencies
     
     # 步骤 2: 根据传入的第一个命令行参数，决定执行哪个任务。
-    # 这种结构称为“调度器”，它将命令行参数路由到相应的函数。
     case "$1" in
         update_core)   task_update_core ;;       # 更新核心
         update_ui)     task_update_ui ;;         # 更新UI面板
@@ -62,6 +55,7 @@ task_install_mihomo() {
     # 串联所有安装步骤
     install_mihomo_config
     setup_systemd_services "mihomo"
+    task_ip_forward
     setup_nftables "mihomo"
     install_dashboard_ui "mihomo"
     bash /usr/local/bin/tools/check_aio.sh
@@ -107,6 +101,7 @@ task_interactive_install() {
     
     # 串联所有后续安装步骤
     setup_systemd_services "sing-box"
+    task_ip_forward
     setup_nftables "sing-box"
     install_dashboard_ui "sing-box"
     bash /usr/local/bin/tools/check_aio.sh
@@ -273,6 +268,22 @@ detect_architecture() {
         *) log_error "不支持的CPU架构: $(uname -m)"; exit 1 ;;
     esac
 }
+task_ip_forward(){
+        echo -e "${yellow}创建系统转发${reset}"
+    # 判断是否已存在 net.ipv4.ip_forward=1
+        if ! grep -q '^net.ipv4.ip_forward=1$' /etc/sysctl.conf; then
+            echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
+        fi
+
+    # 判断是否已存在 net.ipv6.conf.all.forwarding = 1
+    #    if ! grep -q '^net.ipv6.conf.all.forwarding = 1$' /etc/sysctl.conf; then
+    #       echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.conf
+    #   fi
+        sleep 1
+        echo -e "${green_text}系统转发创建完成${reset}"
+        sleep 1
+        }
+
 
 # 检查并解除 systemd-resolved 对 53 端口的占用
 check_resolved_port53() {
@@ -916,7 +927,7 @@ setup_nftables() {
     if [ "$core_name" == "mihomo" ]; then
         nft_template="$DIRPATH/nft-tproxy.conf"
     else
-        nft_template="$DIRPATH/nft-tproxy.conf"
+        nft_template="$DIRPATH/nft-tproxy-redirect.conf"
     fi
     
     # 复制并替换模板中的网卡名
