@@ -18,6 +18,7 @@ fi
 # --- 全局常量定义 ---
 # 将不应改变的变量定义为只读常量，增加代码的健壮性。
 DIRPATH="/usr/local/bin/tools"
+YQ_BIN_PATH="/usr/local/bin/yq"
 readonly SUB_HOST="https://sub-singbox.herozmy.com"
 readonly SINGBOX_CONFIG_TPL="&file=https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box.json"
 readonly LOCAL_IP=$(hostname -I | awk '{print $1}')
@@ -40,16 +41,92 @@ main() {
 
 
 # ==============================================================================
-# SECTION: 任务层 (Tasks) - 由主调度器触发的高级功能组合
+# SECTION: 任务层 (Tasks) -yq
 # ==============================================================================
+# 任务：安装 yq
+task_install_yq(){
+    log_info "开始安装 yq..."
+
+    # 1. 检查 wget 是否安装
+    if ! command -v wget &>/dev/null; then
+        log_info "wget 未安装，正在安装 wget..."
+        if apt-get update && apt-get install -y wget; then
+            log_success "wget 安装成功。"
+        else
+            log_error "安装 wget 失败。请手动安装 wget 后重试。"
+            return 1 # 返回非零值表示失败
+        fi
+    fi
+
+    # 2. 检测系统架构
+    ARCH=$(uname -m)
+    YQ_ARCH=""
+    case "$ARCH" in
+        x86_64) YQ_ARCH="amd64" ;;
+        aarch64) YQ_ARCH="arm64" ;;
+        armv7l) YQ_ARCH="arm" ;; # 或 armv7
+        *)
+            log_error "不支持的系统架构: ${ARCH}。请手动下载适合您架构的 yq。"
+            return 1
+            ;;
+    esac
+
+    YQ_DOWNLOAD_URL="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH}"
+
+    log_info "正在从 ${YQ_DOWNLOAD_URL} 下载 yq 到 ${YQ_BIN_PATH}..."
+    if wget "${YQ_DOWNLOAD_URL}" -O "${YQ_BIN_PATH}"; then
+        log_success "yq 下载成功。"
+    else
+        log_error "下载 yq 失败。请检查网络连接或 URL 是否正确。"
+        return 1
+    fi
+
+    log_info "正在为 yq 添加可执行权限..."
+    if chmod +x "${YQ_BIN_PATH}"; then
+        log_success "yq 已成功设置为可执行。"
+    else
+        log_error "设置 yq 可执行权限失败。"
+        return 1
+    fi
+
+    log_success "yq 已成功安装到 ${YQ_BIN_PATH}。"
+
+    # 验证安装
+    if command -v yq &>/dev/null; then
+        log_success "yq 安装验证成功。版本信息:"
+        yq --version
+    else
+        log_error "yq 安装后未能找到。可能 PATH 环境变量未包含 ${YQ_BIN_PATH}。"
+        return 1
+    fi
+    return 0 # 返回零值表示成功
+}
 
 # 任务：安装 Mihomo 的完整流程
 task_install_mihomo() {
     log_info "开始 Mihomo 安装流程..."
+    
     # 确保 yq 存在
-    install_dependencies "yq"
+    log_info "检查是否已安装 yq..."
+    if command -v yq &>/dev/null; then
+        log_success "yq 已经安装在 $(command -v yq)。"
+    else
+        # 如果 yq 未安装，则调用安装函数
+        if ! task_install_yq; then
+            log_error "yq 安装失败，无法继续安装 Mihomo。请检查上述错误信息。"
+            # 这里不需要 exit 1，因为 task_install_yq 内部已经有 exit 1 了，
+            # 如果 task_install_yq 成功返回，则继续
+            # 如果 task_install_yq 返回非零值（失败），则当前 if 语句体内的 log_error 会执行
+            # 实际上，因为 task_install_yq 内部有 exit 1，这里的 log_error 可能不会被执行，脚本会直接退出。
+            # 如果想在 task_install_mihomo 内部优雅地处理，可以去掉 task_install_yq 内部的 exit 1
+            # 而是让它返回状态码，然后在 task_install_mihomo 根据状态码决定是否退出。
+            # 我已将 task_install_yq 内部的 exit 1 替换为 return 1，这样 task_install_mihomo 可以捕获其状态。
+            exit 1 # yq安装失败，退出整个脚本
+        fi
+    fi
     
     # 下载并安装 Mihomo 核心文件
+    # 确保 detect_architecture 函数可用
     download_and_install_archive "mihomo" "https://github.com/herozmy/StoreHouse/releases/download/mihomo/mihomo-meta-linux-$(detect_architecture).tar.gz" "/usr/local/bin/mihomo"
     
     # 串联所有安装步骤
@@ -58,11 +135,12 @@ task_install_mihomo() {
     task_ip_forward
     setup_nftables "mihomo"
     install_dashboard_ui "mihomo"
-    bash /usr/local/bin/tools/check_aio.sh
+    bash /usr/local/bin/tools/check_aio.sh # 确保这个脚本存在且可执行
     enable_and_start_all_services "mihomo"
     
     # 打印最终的总结信息
     print_summary "Mihomo" "/etc/mihomo" "http://${LOCAL_IP}:9090"
+    log_success "Mihomo 定制安装完成！"
 }
 
 # 任务：交互式安装 Sing-Box 的完整流程
@@ -227,7 +305,7 @@ check_dependencies() {
     # 定义所有需要的软件包列表
     # 注意：'go' 依赖通常通过下载 tarball 安装，而不是 apt-get
     # 'gawk' 已经是 GNU awk，在 Debian/Ubuntu 上通常就是 'awk'
-    local apt_deps=("curl" "git" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "yq" "unzip")
+    local apt_deps=("curl" "git" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "unzip")
     local missing_apt_deps=()
     local missing_non_apt_deps=() # 用于非 apt-get 安装的依赖
 

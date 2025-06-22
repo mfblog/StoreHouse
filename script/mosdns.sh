@@ -6,8 +6,8 @@
 #
 
 # --- 严格模式与安全设置 ---
-set -e
-set -o pipefail
+#set -e
+#set -o pipefail
 
 # --- 引入通用工具库 ---
 # 加载包含日志函数和颜色定义的共享脚本，实现代码复用。
@@ -96,10 +96,20 @@ ${log_file_path} {
     compress
 }
 EOF
-    crontab -l | grep -Fq "/usr/sbin/logrotate -f /etc/logrotate.d/mosdns" || (crontab -l ; echo "57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/mosdns") | crontab -
-    log_success "MosDNS 日志轮转配置完成。"
+    task_crontab
 }
-
+task_crontab() {
+    log_info "正在设置 MosDNS 定时任务..."
+    CRON_JOB="57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/mosdns"
+    JOB_CHECK_STRING="/usr/sbin/logrotate -f /etc/logrotate.d/mosdns"
+    CURRENT_CRONTAB=$(crontab -l 2>/dev/null)
+    if ! echo "${CURRENT_CRONTAB}" | grep -Fq "${JOB_CHECK_STRING}"; then
+        (echo "${CURRENT_CRONTAB}"; echo "${CRON_JOB}") | crontab -
+    else
+        log_info "定时任务已存在，无需重复设置。"
+    fi
+    log_success "MosDNS 定时任务配置完成。"
+}
 # 任务：安装并启动 MosDNS 系统服务 (优化版)
 task_setup_service_mosdns() {
     log_info "正在设置并启动 MosDNS 服务..."
