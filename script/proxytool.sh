@@ -28,7 +28,7 @@ log_error() {
 # --- 全局常量与变量 ---
 RULES_DIR="" # 声明为变量，将由 detect_mosdns_paths 函数动态设置
 MOSDNS_BASE_DIR="" # MosDNS 的根安装目录，将由 detect_mosdns_paths 函数动态设置
-
+DIRPATH="/usr/local/bin/tools"
 readonly SINGBOX_SCRIPT="/usr/local/bin/tools/sing-box.sh"
 
 # 动态变量
@@ -352,6 +352,7 @@ manage_singbox() {
         echo -e "  3. 更新UI面板"
         echo -e "  4. 安装回家配置"
         echo -e "  5. 重启所有服务"
+        echo -e "  6. 切换nft规则模式 (redirect/tproxy)"
         echo -e "  0. 返回主菜单\n"
 
         read -p "请选择操作: " choice
@@ -365,6 +366,9 @@ manage_singbox() {
                 systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败，请手动检查状态。"
                 log_info "服务已重启。"
                 ;;
+            6) bash "$SINGBOX_SCRIPT" switch_nft && bash /usr/local/bin/tools/check_aio.sh 
+               systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败，请手动检查状态。"
+            ;;
             0) break ;;
             *) log_warn "无效选择" ;;
         esac

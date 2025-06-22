@@ -26,7 +26,7 @@ readonly LOCAL_IP=$(hostname -I | awk '{print $1}')
 # --- 主调度器 (脚本入口) ---
 main() {
     # 步骤 1: 检查所有必需的系统依赖。
-    check_dependencies
+    
     
     # 步骤 2: 根据传入的第一个命令行参数，决定执行哪个任务。
     case "$1" in
@@ -35,11 +35,96 @@ main() {
         update_home)   task_install_hy2_home ;;   # 更新回家配置 (注意：此处调用主任务函数)
         switch_core)   task_switch_core ;;       # 切换核心
         mihomo)        task_install_mihomo ;;    # 安装Mihomo
+        switch_nft)    switch_nftables && _activate_nftables_rules ;;
         *)             task_interactive_install ;; # 如果没有参数，默认执行交互式安装
     esac
 }
 
+switch_nftables() {
+    echo "请选择要应用的 Nftable 模式："
+    echo "1) Ron_Redirect (使用 ron_tproxy_redirect.conf)"
+    echo "2) Ron_Tproxy (使用 ron_tproxy.conf)"
+    echo "3) Default_Redirect (使用 nft_tproxy_redirect.conf)"
+    echo "4) Default_Tproxy (使用 nft_tproxy.conf)"
+    echo ""
 
+    local nft_choice
+    while true; do
+        read -p "输入选项 [1-4]: " nft_choice
+        if [[ "$nft_choice" =~ ^[1-4]$ ]]; then
+            break
+        else
+            log_error "无效选项：'$nft_choice'。请输入 1 到 4 之间的数字。"
+        fi
+    done
+
+    local NFT_CONF_DEST="/etc/nftables.conf"
+    local RON_REDIRECT_CONF="/usr/local/bin/tools/ron_tproxy_redirect.conf"
+    local RON_TPROXY_CONF="/usr/local/bin/tools/ron_tproxy.conf"
+    local DEFAULT_REDIRECT_CONF="/usr/local/bin/tools/nft-tproxy-redirect.conf"
+    local DEFAULT_TPROXY_CONF="/usr/local/bin/tools/nft-tproxy.conf"
+
+    # 核心逻辑的辅助函数：现在只负责复制文件，不激活
+    _apply_nftables_config() {
+        local source_file="$1"
+        local mode_name="$2"
+
+        log_info "选择 $mode_name 模式。正在复制配置文件..."
+
+        if [ ! -f "$source_file" ]; then
+            log_error "源配置文件 '$source_file' 不存在。请确认路径是否正确。"
+            return 1
+        fi
+
+        if ! cp "$source_file" "$NFT_CONF_DEST"; then
+            log_error "复制 '$source_file' 到 '$NFT_CONF_DEST' 失败。请检查权限。"
+            return 1
+        fi
+        log_success "$mode_name 配置已成功复制到 '$NFT_CONF_DEST'。"
+        # !!! 移除这里的 _activate_nftables_rules 调用 !!!
+        return 0 # 返回复制操作的状态
+    }
+
+    case "$nft_choice" in
+        1)
+            _apply_nftables_config "$RON_REDIRECT_CONF" "Ron_Redirect"
+            ;;
+        2)
+            _apply_nftables_config "$RON_TPROXY_CONF" "Ron_Tproxy"
+            ;;
+        3)
+            _apply_nftables_config "$DEFAULT_REDIRECT_CONF" "Default_Redirect"
+            ;;
+        4)
+            _apply_nftables_config "$DEFAULT_TPROXY_CONF" "Default_Tproxy"
+            ;;
+        *)
+            log_error "内部错误：无效选项 '$nft_choice'。"
+            ;;
+    esac
+    return $? # 返回 _apply_nftables_config 的状态
+}
+_activate_nftables_rules() {
+    local mode_name="$1"
+    local NFT_CONF_DEST="/etc/nftables.conf" # 确保路径一致
+
+    log_info "正在重启 nftables 服务并刷新规则以应用 $mode_name 模式..."
+
+    if ! systemctl restart nftables; then
+        log_error "重启 nftables 服务失败。请检查 '$NFT_CONF_DEST' 文件内容及 nftables 服务状态。"
+        return 1
+    fi
+    log_success "nftables 服务已成功重启。"
+
+    log_info "正在通过 nft -f 命令强制加载规则..."
+    if ! nft -f "$NFT_CONF_DEST"; then
+        log_error "nft -f '$NFT_CONF_DEST' 命令执行失败。可能存在配置语法错误或服务问题。"
+        return 1
+    fi
+    log_success "nft -f '$NFT_CONF_DEST' 命令执行成功。"
+    log_success "$mode_name 模式已成功应用。"
+    return 0
+}
 # ==============================================================================
 # SECTION: 任务层 (Tasks) -yq
 # ==============================================================================
@@ -104,8 +189,8 @@ task_install_yq(){
 
 # 任务：安装 Mihomo 的完整流程
 task_install_mihomo() {
-    log_info "开始 Mihomo 安装流程..."
-    
+    log_info "开始 Mihomo 安装..."
+    check_dependencies
     # 确保 yq 存在
     log_info "检查是否已安装 yq..."
     if command -v yq &>/dev/null; then
@@ -145,7 +230,9 @@ task_install_mihomo() {
 
 # 任务：交互式安装 Sing-Box 的完整流程
 task_interactive_install() {
-    log_info "开始 Sing-Box 交互式安装流程..."
+    log_info "开始 Sing-Box 交互式安装..."
+    sleep 1
+    check_dependencies
     rm -rf /root/sing-box* # 清理之前的安装残留
 
     # === 修改开始 ===
@@ -1015,27 +1102,49 @@ setup_systemd_services() {
     log_success "Systemd 服务文件已创建。"
 }
 
-# 配置 nftables 防火墙规则
 setup_nftables() {
-    local core_name="$1"
-    log_info "正在配置 nftables 防火墙规则..."
-    
+    log_info "正在进行 NFTables 初始配置..."
+
     # 自动检测主网卡名称
     local interface_name
     interface_name=$(ip -o link show | awk -F': ' '{print $2}' | grep -E '^(en|eth)' | head -n 1 | cut -d'@' -f1)
-    
-    # 根据核心类型选择不同的防火墙模板
-    local nft_template=""
-    if [ "$core_name" == "mihomo" ]; then
-        nft_template="$DIRPATH/nft-tproxy.conf"
-    else
-        nft_template="$DIRPATH/nft-tproxy-redirect.conf"
+
+    if [ -z "$interface_name" ]; then
+        log_error "无法自动检测到主网络接口。请手动检查网络配置或确保网络连接正常。"
+        return 1
     fi
+    log_info "检测到主网络接口为: '$interface_name'"
+    sleep 1
+    log_info "请根据提示选择要应用的 NFTables 模式..."
     
-    # 复制并替换模板中的网卡名
-    cp "$nft_template" "/etc/nftables.conf"
-    sed -i "s/eth0/${interface_name}/g" "/etc/nftables.conf"
-    log_success "nftables 规则已为网卡 '$interface_name' 配置完成。"
+    # 调用 switch_nftables 函数，它现在只负责复制文件，不激活
+    switch_nftables
+    local switch_status=$?
+    if [ $switch_status -ne 0 ]; then
+        log_error "NFTables 模式选择或文件复制失败，退出初始配置。"
+        return $switch_status
+    fi
+    log_success "NFTables 配置模板已根据您的选择复制到 '/etc/nftables.conf'。"
+    log_info "防火墙规则尚未激活，正在准备替换网卡名称..."
+
+    local NFT_CONF_DEST="/etc/nftables.conf"
+
+    # 检查 nftables.conf 中是否存在 eth0
+    if grep -q "eth0" "$NFT_CONF_DEST"; then
+        log_info "正在替换为检测到的接口 '$interface_name'..."
+        if ! sed -i "s/eth0/${interface_name}/g" "$NFT_CONF_DEST"; then
+            log_error "替换 '$NFT_CONF_DEST' 中的 'eth0' 为 '$interface_name' 失败。请检查文件权限或内容。"
+            return 1 # 替换失败是严重错误，应退出
+        else
+            log_success "网卡名称已成功更新为 '$interface_name'。"
+        fi
+    fi
+
+
+    # 在所有配置（包括网卡替换）完成后，进行一次性激活
+    log_info "所有 NFTables 配置已准备就绪。现在将激活防火墙规则..."
+   # _activate_nftables_rules "最终的 NFTables 配置 (网卡: $interface_name)"
+    return $? # 返回激活函数的状态
 }
 
 # 安装仪表盘 UI
