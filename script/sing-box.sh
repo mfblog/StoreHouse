@@ -808,7 +808,8 @@ install_mihomo_config() {
     log_info "正在下载并适配 Mihomo 配置文件模板..."
     
     # 定义常量，便于维护
-    local template_url="https://raw.githubusercontent.com/luestr/ProxyResource/main/Tool/Clash/Config/Clash_Sample_Configuration_By_iKeLee.yaml"
+    #local template_url="https://raw.githubusercontent.com/luestr/ProxyResource/main/Tool/Clash/Config/Clash_Sample_Configuration_By_iKeLee.yaml"
+    local template_url="https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/mihomo/config.yaml"
     local final_config_path="/etc/mihomo/config.yaml"
     
     # 创建一个临时文件来执行所有修改操作
@@ -836,20 +837,22 @@ install_mihomo_config() {
 
     # --- 步骤 4: 使用 yq 和 sed 集中修改配置 ---
     # 使用 yq 进行结构化修改，一次性完成
-    yq eval-all \
-        '.tproxy-port = 7896 |
-         .redir-port = 7877 |
-         ."interface-name" = "'"$interface_name"'" |
-         ."external-ui" = "/etc/mihomo/ui" |
-         del(.tun) |
-         del(.proxy-providers."机场名称2") |
-         .proxy-providers."机场名称1".url = "'"$sub_url"'"
-        ' -i "$temp_config_file"
+  #  yq eval-all \
+   #     '.tproxy-port = 7896 |
+   #      .redir-port = 7877 |
+    #     ."interface-name" = "'"$interface_name"'" |
+    #     ."external-ui" = "/etc/mihomo/ui" |
+     #    del(.tun) |
+     #    del(.proxy-providers."机场名称2") |
+     #    .proxy-providers."机场名称1".url = "'"$sub_url"'"
+     #   ' -i "$temp_config_file"
 
     # 使用 sed 处理非标准 YAML 或纯文本替换
     sed -i \
-        -e 's/!!merge <<: \*/<<: \*/g' \
-        -e 's/FilterAll: &FilterAll.*$/FilterAll: \&FilterAll/' \
+       # -e 's/!!merge <<: \*/<<: \*/g' \
+       # -e 's/FilterAll: &FilterAll.*$/FilterAll: \&FilterAll/' \
+       # -e "s/28.0.0.1\/8/28.0.0.0\/8/g" \
+        -e "s|机场订阅|${sub_url}|g" "$sub_url"
         "$temp_config_file"
     
     # --- 步骤 5: 验证并应用修改 ---
