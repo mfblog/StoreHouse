@@ -848,13 +848,13 @@ install_mihomo_config() {
      #   ' -i "$temp_config_file"
 
     # 使用 sed 处理非标准 YAML 或纯文本替换
-    sed -i \
+    #sed -i \
        # -e 's/!!merge <<: \*/<<: \*/g' \
        # -e 's/FilterAll: &FilterAll.*$/FilterAll: \&FilterAll/' \
        # -e "s/28.0.0.1\/8/28.0.0.0\/8/g" \
-        -e "s|机场订阅|${sub_url}|g" "$sub_url"
-        "$temp_config_file"
-    
+
+       # "$temp_config_file"
+    sed -i "s|机场订阅|${sub_url}|g" "$temp_config_file"
     # --- 步骤 5: 验证并应用修改 ---
     if ! yq eval 'true' "$temp_config_file" &>/dev/null; then
         log_error "配置文件修改后格式错误，操作已中止。"

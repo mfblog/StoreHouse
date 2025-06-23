@@ -6,22 +6,7 @@
     reset='\033[0m'
 
         echo -e "卸载Sing-Box | Mihomo | Mosdns | Unbound | Redis"
-
-        # 检查 sing-box 和 mihomo 是否同时安装 (用于后续判断是否清理公共规则)
-        is_singbox_initial_installed=false
-        is_mihomo_initial_installed=false
-
-        if find /usr/local/bin/ -type f -name "sing-box" | grep -q .; then
-            is_singbox_initial_installed=true
-        fi
-
-        if find /usr/local/bin/ -type f -name "mihomo" | grep -q .; then
-            is_mihomo_initial_installed=true
-        fi
-
-        # 查找所有已安装的核心程序
         found_files=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" -o -name "mosdns" -o -name "unbound" -o -name "redis-server" \))
-        
         if [ -z "$found_files" ]; then
             echo -e "${yellow}[检测结果] 未找到任何已安装的核心程序${reset}"
             return 0
@@ -68,33 +53,7 @@
                 ;;
         esac
 
-        # ----------------------------------------------------
-        # 判断是否需要清理 tproxy-router.service 和 nft 规则
-        # 只有在 sing-box 和 mihomo 都不再存在时才清理
-        # ----------------------------------------------------
-        clean_proxy_related=false
-
-        # 检查卸载操作后 sing-box 是否仍将保留
-        will_singbox_remain=false
-        if $is_singbox_initial_installed && ! [[ " ${programs_to_uninstall[@]} " =~ " sing-box " ]]; then
-            will_singbox_remain=true
-        fi
-
-        # 检查卸载操作后 mihomo 是否仍将保留
-        will_mihomo_remain=false
-        if $is_mihomo_initial_installed && ! [[ " ${programs_to_uninstall[@]} " =~ " mihomo " ]]; then
-            will_mihomo_remain=true
-        fi
-
-        # 如果 sing-box 和 mihomo 在卸载后都不再存在，则标记为需要清理代理相关服务和规则
-        if ! $will_singbox_remain && ! $will_mihomo_remain; then
-            clean_proxy_related=true
-            echo -e "${yellow}检测到所有代理核心都将被卸载或已不存在，将清理 Tproxy 路由和 NFTables 规则.${reset}"
-        else
-            echo -e "${yellow}检测到至少一个代理核心仍将保留，不清理 Tproxy 路由和 NFTables 规则.${reset}"
-        fi
-
-        # 执行卸载操作 (不包含 tproxy/nft 的清理)
+        # 执行卸载操作
         for program in "${programs_to_uninstall[@]}"; do
             echo -e "${yellow}正在卸载 $program...${reset}"
             case "$program" in
@@ -107,12 +66,17 @@
                     rm -rf /etc/systemd/system/mosdns.service
                     ;;
                 "sing-box"|"mihomo")
-                    # 此处只负责卸载 sing-box 或 mihomo 自身，不处理 tproxy/nft
                     systemctl disable $program  > /dev/null 2>&1
                     systemctl stop $program > /dev/null 2>&1
+                    systemctl disable tproxy-router  > /dev/null 2>&1
+                    systemctl stop tproxy-router
+                    echo " " > "/etc/nftables.conf"
+                    nft flush ruleset  > /dev/null 2>&1
+                    nft -f /etc/nftables.conf  > /dev/null 2>&1
                     rm -rf /etc/$program
                     rm -rf /usr/local/bin/$program
                     rm -rf /etc/systemd/system/$program.service
+                    rm -rf /etc/systemd/system/tproxy-router.service
                     ;;
                 "unbound")
                     systemctl disable unbound > /dev/null 2>&1
@@ -131,17 +95,6 @@
             echo -e "${green_text}$program 已卸载完成${reset}"
         done
 
-        # 最后统一处理 tproxy-router 和 nftables 的清理 (如果需要的话)
-        if $clean_proxy_related; then
-            echo -e "${yellow}正在清理 Tproxy 路由和 NFTables 规则...${reset}"
-            systemctl disable tproxy-router > /dev/null 2>&1
-            systemctl stop tproxy-router > /dev/null 2>&1
-            echo " " > "/etc/nftables.conf" # 清空 nftables 规则文件
-            nft flush ruleset > /dev/null 2>&1 # 立即刷新内存中的规则
-            nft -f /etc/nftables.conf > /dev/null 2>&1 # 从清空的规则文件重新加载
-            rm -rf /etc/systemd/system/tproxy-router.service
-            echo -e "${green_text}Tproxy 路由和 NFTables 规则清理完成${reset}"
-        fi
-
         systemctl daemon-reload
-        echo -e "${green_text}所有选定程序卸载完成${reset}"
+        echo -e "${green_text}卸载完成${reset}"
+    
