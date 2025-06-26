@@ -35,26 +35,35 @@ main() {
         update_home)   task_install_hy2_home ;;   # 更新回家配置 (注意：此处调用主任务函数)
         switch_core)   task_switch_core ;;       # 切换核心
         mihomo)        task_install_mihomo ;;    # 安装Mihomo
-        switch_nft)    switch_nftables && _activate_nftables_rules ;;
+        switch_nft)    setup_nftables && _activate_nftables_rules ;;
         *)             task_interactive_install ;; # 如果没有参数，默认执行交互式安装
     esac
 }
 
 switch_nftables() {
     echo "请选择要应用的 Nftable 模式："
-    echo "1) Ron_Redirect (使用 ron_tproxy_redirect.conf)"
+    echo "1) Ron_Redirect+Tproxy (使用 ron_tproxy_redirect.conf)"
     echo "2) Ron_Tproxy (使用 ron_tproxy.conf)"
-    echo "3) Default_Redirect (使用 nft_tproxy_redirect.conf)"
-    echo "4) Default_Tproxy (使用 nft_tproxy.conf)"
+    echo "3) Default_Redirect+Tproxy (使用 nft_tproxy_redirect.conf)"
+  #  echo "4) Default_Tproxy (使用 nft_tproxy.conf)"
     echo ""
 
     local nft_choice
     while true; do
-        read -p "输入选项 [1-4]: " nft_choice
-        if [[ "$nft_choice" =~ ^[1-4]$ ]]; then
-            break
+        # 提示用户，并说明默认选项
+        read -p "输入选项 [1-3] (回车默认1): " nft_choice
+        
+        # 检查是否为空（回车）
+        if [[ -z "$nft_choice" ]]; then
+            nft_choice="1" # 设置默认值为1
+            log_info "未输入选项，默认选择 1) Ron_Redirect."
+        fi
+
+        # 验证输入是否有效 (1-3)
+        if [[ "$nft_choice" =~ ^[1-3]$ ]]; then
+            break # 有效输入，退出循环
         else
-            log_error "无效选项：'$nft_choice'。请输入 1 到 4 之间的数字。"
+            log_error "无效选项：'$nft_choice'。请输入 1 到 3 之间的数字。"
         fi
     done
 
@@ -62,9 +71,9 @@ switch_nftables() {
     local RON_REDIRECT_CONF="/usr/local/bin/tools/ron_tproxy_redirect.conf"
     local RON_TPROXY_CONF="/usr/local/bin/tools/ron_tproxy.conf"
     local DEFAULT_REDIRECT_CONF="/usr/local/bin/tools/nft-tproxy-redirect.conf"
-    local DEFAULT_TPROXY_CONF="/usr/local/bin/tools/nft-tproxy.conf"
+    local DEFAULT_TPROXY_CONF="/usr/local/bin/tools/nft-tproxy.conf" # 尽管注释掉了，但变量保留
 
-    # 核心逻辑的辅助函数：现在只负责复制文件，不激活
+
     _apply_nftables_config() {
         local source_file="$1"
         local mode_name="$2"
@@ -80,7 +89,8 @@ switch_nftables() {
             log_error "复制 '$source_file' 到 '$NFT_CONF_DEST' 失败。请检查权限。"
             return 1
         fi
-        log_success "$mode_name 配置已成功复制到 '$NFT_CONF_DEST'。"
+        sleep 1
+        log_success "$mode_name 配置已成功配置到 '$NFT_CONF_DEST'。"
         # !!! 移除这里的 _activate_nftables_rules 调用 !!!
         return 0 # 返回复制操作的状态
     }
@@ -95,10 +105,12 @@ switch_nftables() {
         3)
             _apply_nftables_config "$DEFAULT_REDIRECT_CONF" "Default_Redirect"
             ;;
-        4)
-            _apply_nftables_config "$DEFAULT_TPROXY_CONF" "Default_Tproxy"
-            ;;
+
+        # 4)
+        #    _apply_nftables_config "$DEFAULT_TPROXY_CONF" "Default_Tproxy"
+        #    ;;
         *)
+            # 理论上这里的代码不会被执行到，因为前面已经验证过输入
             log_error "内部错误：无效选项 '$nft_choice'。"
             ;;
     esac
@@ -199,13 +211,6 @@ task_install_mihomo() {
         # 如果 yq 未安装，则调用安装函数
         if ! task_install_yq; then
             log_error "yq 安装失败，无法继续安装 Mihomo。请检查上述错误信息。"
-            # 这里不需要 exit 1，因为 task_install_yq 内部已经有 exit 1 了，
-            # 如果 task_install_yq 成功返回，则继续
-            # 如果 task_install_yq 返回非零值（失败），则当前 if 语句体内的 log_error 会执行
-            # 实际上，因为 task_install_yq 内部有 exit 1，这里的 log_error 可能不会被执行，脚本会直接退出。
-            # 如果想在 task_install_mihomo 内部优雅地处理，可以去掉 task_install_yq 内部的 exit 1
-            # 而是让它返回状态码，然后在 task_install_mihomo 根据状态码决定是否退出。
-            # 我已将 task_install_yq 内部的 exit 1 替换为 return 1，这样 task_install_mihomo 可以捕获其状态。
             exit 1 # yq安装失败，退出整个脚本
         fi
     fi
@@ -278,8 +283,8 @@ task_interactive_install() {
 
 # 任务：更新核心
 task_update_core() {
-    systemctl stop nftables &>/dev/null || true
-    systemctl stop tproxy-router &>/dev/null || true
+    #systemctl stop nftables &>/dev/null || true
+    #systemctl stop tproxy-router &>/dev/null || true
     log_info "开始更新核心程序..."
     if [ ! -f "/etc/sing-box/version" ]; then
         log_error "未检测到 Sing-Box 安装。无法执行更新。"
@@ -294,7 +299,7 @@ task_update_core() {
     current_version=$(/usr/local/bin/sing-box version | awk '/sing-box version/ {print $3}')
     cp -r /usr/local/bin/sing-box "/usr/local/bin/sing-box-${current_core_type}-${current_version}.bak"
     
-    systemctl stop tproxy-router &>/dev/null || true # 停止路由服务，忽略可能发生的错误
+    #systemctl stop tproxy-router &>/dev/null || true # 停止路由服务，忽略可能发生的错误
     
     # 重新运行当前核心类型的安装流程，以达到更新的目的
     install_singbox_core "$current_core_type"
@@ -309,8 +314,8 @@ task_update_core() {
 # 任务：更新 UI 面板
 task_update_ui() {
     log_info "正在更新仪表盘 UI..."
-    systemctl stop tproxy-router &>/dev/null || true
-    systemctl stop nftables &>/dev/null || true
+    #systemctl stop tproxy-router &>/dev/null || true
+    #systemctl stop nftables &>/dev/null || true
     local core_binary
     # 自动查找当前安装的是 sing-box 还是 mihomo
     core_binary=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" \))
@@ -320,11 +325,11 @@ task_update_ui() {
         exit 1
     fi
     
-    systemctl stop tproxy-router &>/dev/null || true
+    #systemctl stop tproxy-router &>/dev/null || true
     # 根据找到的核心名来更新对应的UI目录
     install_dashboard_ui "$(basename "$core_binary")"
-    systemctl start tproxy-router &>/dev/null || true
-    systemctl start nftables &>/dev/null || true
+    systemctl restart tproxy-router &>/dev/null || true
+    systemctl restart nftables &>/dev/null || true
     log_success "UI 更新完成。"
 }
 
@@ -347,13 +352,10 @@ task_switch_core() {
     cp -f /usr/local/bin/sing-box "/usr/local/bin/sing-box-${current_core_type}-${current_version}.bak"
     cp -f /etc/sing-box/config.json "/etc/sing-box/config.${current_core_type}.bak"
     
-    systemctl stop tproxy-router &>/dev/null || true
-    systemctl stop nftables &>/dev/null || true
+    #systemctl stop tproxy-router &>/dev/null || true
+    #systemctl stop nftables &>/dev/null || true
     
-    # --- 关键修复点 ---
-    # 让用户选择新的核心类型
-    # 不再使用旧的 new_core_type=$(...) 方式
-    # 而是将变量名传递给函数，让函数直接设置它
+
     local new_core_type=""
     choose_core_type new_core_type
     
@@ -1104,13 +1106,35 @@ setup_systemd_services() {
     systemctl daemon-reload # 重新加载 systemd 配置使其生效
     log_success "Systemd 服务文件已创建。"
 }
-
+    check_interfaces() {
+        interfaces=$(ip -o link show | awk -F': ' '{print $2}')
+        # 输出物理网卡名称
+        for interface in $interfaces; do
+            # 检查是否为物理网卡（不包含虚拟、回环等），并排除@符号及其后面的内容
+            if [[ $interface =~ ^(en|eth).* ]]; then
+                interface_name=$(echo "$interface" | awk -F'@' '{print $1}')  # 去掉@符号及其后面的内容
+                echo -e "您的网卡是：${yellow}$interface_name${reset}"
+                valid_interfaces+=("$interface_name")  # 存储有效的网卡名称
+            fi
+        done
+        # 提示用户选择
+        
+        #read -p "脚本自行检测的是否是您要的网卡？(y/n): " confirm_interface
+        #if [ "$confirm_interface" = "y" ]; then
+            #selected_interface="$interface_name"
+            #echo -e "您选择的网卡是: ${green_text}$selected_interface${reset}"
+        #elif [ "$confirm_interface" = "n" ]; then
+            #read -p "请自行输入您的网卡名称: " selected_interface
+            #echo -e "您输入的网卡名称是: ${green_text}$selected_interface${reset}"
+        #else
+            #echo "无效的选择"
+        #fi
+    }
 setup_nftables() {
     log_info "正在进行 NFTables 初始配置..."
 
     # 自动检测主网卡名称
-    local interface_name
-    interface_name=$(ip -o link show | awk -F': ' '{print $2}' | grep -E '^(en|eth)' | head -n 1 | cut -d'@' -f1)
+    check_interfaces
 
     if [ -z "$interface_name" ]; then
         log_error "无法自动检测到主网络接口。请手动检查网络配置或确保网络连接正常。"
@@ -1124,12 +1148,12 @@ setup_nftables() {
     switch_nftables
     local switch_status=$?
     if [ $switch_status -ne 0 ]; then
-        log_error "NFTables 模式选择或文件复制失败，退出初始配置。"
+        log_error "NFTables 模式选择或文件配置失败，退出初始配置。"
         return $switch_status
     fi
-    log_success "NFTables 配置模板已根据您的选择复制到 '/etc/nftables.conf'。"
+    log_success "NFTables 配置模板已根据您的选择配置到 '/etc/nftables.conf'。"
     log_info "防火墙规则尚未激活，正在准备替换网卡名称..."
-
+    sleep 1
     local NFT_CONF_DEST="/etc/nftables.conf"
 
     # 检查 nftables.conf 中是否存在 eth0
@@ -1143,7 +1167,7 @@ setup_nftables() {
         fi
     fi
 
-
+    sleep 1
     # 在所有配置（包括网卡替换）完成后，进行一次性激活
     log_info "所有 NFTables 配置已准备就绪。现在将激活防火墙规则..."
    # _activate_nftables_rules "最终的 NFTables 配置 (网卡: $interface_name)"
