@@ -34,9 +34,13 @@ main() {
         update_ui)     task_update_ui ;;         # 更新UI面板
         update_home)   task_install_hy2_home ;;   # 更新回家配置 (注意：此处调用主任务函数)
         switch_core)   task_switch_core ;;       # 切换核心
-        mihomo)        task_install_mihomo ;;    # 安装Mihomo
+        mihomo)        
+            check_proxy_conflict "mihomo"
+            task_install_mihomo ;;    # 安装Mihomo
         switch_nft)    setup_nftables && _activate_nftables_rules ;;
-        *)             task_interactive_install ;; # 如果没有参数，默认执行交互式安装
+        *)             
+            check_proxy_conflict "sing-box"
+            task_interactive_install ;; # 如果没有参数，默认执行交互式安装
     esac
 }
 
@@ -231,6 +235,12 @@ task_install_mihomo() {
     # 打印最终的总结信息
     print_summary "Mihomo" "/etc/mihomo" "http://${LOCAL_IP}:9090"
     log_success "Mihomo 定制安装完成！"
+    
+    # 提示用户关于代理切换的信息
+    if command -v sing-box &>/dev/null; then
+        log_info "检测到系统中同时安装了 Sing-Box。"
+        log_info "您可以使用 'proxytool' 命令在两个代理服务之间切换。"
+    fi
 }
 
 # 任务：交互式安装 Sing-Box 的完整流程
@@ -279,6 +289,12 @@ task_interactive_install() {
     
     print_summary "Sing-Box" "/etc/sing-box" "http://${LOCAL_IP}:9090"
     print_service_commands "sing-box"
+
+    # 提示用户关于代理切换的信息
+    if command -v mihomo &>/dev/null; then
+        log_info "检测到系统中同时安装了 Mihomo。"
+        log_info "您可以使用 'proxytool' 命令在两个代理服务之间切换。"
+    fi
 }
 
 # 任务：更新核心
@@ -873,7 +889,7 @@ install_mihomo_config() {
 # SECTION: Hysteria2 'Go Home' 功能模块
 # ==============================================================================
 
-# 主任务函数：协调整个“回家”配置流程
+# 主任务函数：协调整个"回家"配置流程
 task_install_hy2_home() {
     # 询问用户是否要安装
     read -rp "是否安装或更新 Hysteria2 '回家' 配置? (y/n): " choice
@@ -1234,6 +1250,42 @@ print_service_commands() {
     echo -e "  ${GREEN}proxytool${RESET} 显示工具菜单"
 }
 
+# --- 检查代理服务冲突 ---
+check_proxy_conflict() {
+    local installing_service="$1"  # 正在安装的服务名称
+    local conflict_found=false
+    local running_service=""
+    
+    # 检查是否已安装其他代理服务
+    if [ "$installing_service" = "sing-box" ] && command -v mihomo &>/dev/null; then
+        if systemctl is-active --quiet mihomo; then
+            conflict_found=true
+            running_service="mihomo"
+        fi
+    elif [ "$installing_service" = "mihomo" ] && command -v sing-box &>/dev/null; then
+        if systemctl is-active --quiet sing-box; then
+            conflict_found=true
+            running_service="sing-box"
+        fi
+    fi
+
+    if [ "$conflict_found" = true ]; then
+        log_warn "检测到 ${running_service^} 正在运行。"
+        log_info "为避免端口冲突，需要停止 ${running_service^} 服务。"
+        read -p "是否继续安装并停止 ${running_service^}？[y/N] " choice
+        if [[ "$choice" =~ ^[Yy]$ ]]; then
+            log_info "正在停止 ${running_service^} 服务..."
+            systemctl stop "$running_service" tproxy-router nftables
+            systemctl disable "$running_service"
+            log_success "${running_service^} 服务已停止。"
+            return 0
+        else
+            log_error "安装已取消。请先使用 proxytool 工具停止 ${running_service^} 后再尝试安装。"
+            exit 1
+        fi
+    fi
+    return 0
+}
 
 # --- 脚本执行入口 ---
 # 将所有从命令行接收到的参数 ($@) 传递给 main 函数
