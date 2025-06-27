@@ -138,7 +138,7 @@ EOF
     log_success "MosDNS 服务已启动并设置为开机自启。"
     
     # 在服务启动后检查AIO环境
-    bash /usr/local/bin/tools/check_aio.sh
+   # bash /usr/local/bin/tools/check_aio.sh
     
     print_service_commands
 }

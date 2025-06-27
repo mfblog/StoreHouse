@@ -326,3 +326,4 @@ echo "57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/unbound" >> /etc/cront
     systemctl start redis.service
     systemctl start unbound.service
     quick_check
+    

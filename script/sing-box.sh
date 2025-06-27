@@ -42,28 +42,28 @@ main() {
 
 switch_nftables() {
     echo "请选择要应用的 Nftable 模式："
-    echo "1) Ron_Redirect+Tproxy (使用 ron_tproxy_redirect.conf)"
-    echo "2) Ron_Tproxy (使用 ron_tproxy.conf)"
-    echo "3) Default_Redirect+Tproxy (使用 nft_tproxy_redirect.conf)"
+    echo "1) Redirect+Tproxy"
+    echo "2) Tproxy"
+  #  echo "3) Default_Redirect+Tproxy (使用 nft_tproxy_redirect.conf)"
   #  echo "4) Default_Tproxy (使用 nft_tproxy.conf)"
     echo ""
 
     local nft_choice
     while true; do
         # 提示用户，并说明默认选项
-        read -p "输入选项 [1-3] (回车默认1): " nft_choice
+        read -p "输入选项 [1-2] (回车默认1): " nft_choice
         
         # 检查是否为空（回车）
         if [[ -z "$nft_choice" ]]; then
             nft_choice="1" # 设置默认值为1
-            log_info "未输入选项，默认选择 1) Ron_Redirect."
+            log_info "未输入选项，默认选择 1) Redirect+Tproxy."
         fi
 
         # 验证输入是否有效 (1-3)
-        if [[ "$nft_choice" =~ ^[1-3]$ ]]; then
+        if [[ "$nft_choice" =~ ^[1-2]$ ]]; then
             break # 有效输入，退出循环
         else
-            log_error "无效选项：'$nft_choice'。请输入 1 到 3 之间的数字。"
+            log_error "无效选项：'$nft_choice'。请输入 1 到 2 之间的数字。"
         fi
     done
 
@@ -97,14 +97,14 @@ switch_nftables() {
 
     case "$nft_choice" in
         1)
-            _apply_nftables_config "$RON_REDIRECT_CONF" "Ron_Redirect"
+            _apply_nftables_config "$RON_REDIRECT_CONF" "Redirect+Tproxy"
             ;;
         2)
-            _apply_nftables_config "$RON_TPROXY_CONF" "Ron_Tproxy"
+            _apply_nftables_config "$RON_TPROXY_CONF" "Tproxy"
             ;;
-        3)
-            _apply_nftables_config "$DEFAULT_REDIRECT_CONF" "Default_Redirect"
-            ;;
+       # 3)
+        #    _apply_nftables_config "$DEFAULT_REDIRECT_CONF" "Default_Redirect"
+       #     ;;
 
         # 4)
         #    _apply_nftables_config "$DEFAULT_TPROXY_CONF" "Default_Tproxy"
@@ -225,7 +225,7 @@ task_install_mihomo() {
     task_ip_forward
     setup_nftables "mihomo"
     install_dashboard_ui "mihomo"
-    bash /usr/local/bin/tools/check_aio.sh # 确保这个脚本存在且可执行
+  #  bash /usr/local/bin/tools/check_aio.sh # 确保这个脚本存在且可执行
     enable_and_start_all_services "mihomo"
     
     # 打印最终的总结信息
@@ -274,7 +274,7 @@ task_interactive_install() {
     task_ip_forward
     setup_nftables "sing-box"
     install_dashboard_ui "sing-box"
-    bash /usr/local/bin/tools/check_aio.sh
+  #  bash /usr/local/bin/tools/check_aio.sh
     enable_and_start_all_services "sing-box"
     
     print_summary "Sing-Box" "/etc/sing-box" "http://${LOCAL_IP}:9090"

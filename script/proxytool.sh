@@ -467,7 +467,7 @@ main() {
             manage_singbox
         else
         	  detect_mosdns_paths
-            manage_mosdns
+              manage_mosdns
         fi
         exit 0
     fi

@@ -89,7 +89,7 @@
         # 如果 sing-box 和 mihomo 在卸载后都不再存在，则标记为需要清理代理相关服务和规则
         if ! $will_singbox_remain && ! $will_mihomo_remain; then
             clean_proxy_related=true
-            echo -e "${yellow}检测到所有代理核心都将被卸载或已不存在，将清理 Tproxy 路由和 NFTables 规则.${reset}"
+            #echo -e "${yellow}检测到所有代理核心都将被卸载或已不存在，将清理 Tproxy 路由和 NFTables 规则.${reset}"
         else
             echo -e "${yellow}检测到至少一个代理核心仍将保留，不清理 Tproxy 路由和 NFTables 规则.${reset}"
         fi
@@ -133,14 +133,14 @@
 
         # 最后统一处理 tproxy-router 和 nftables 的清理 (如果需要的话)
         if $clean_proxy_related; then
-            echo -e "${yellow}正在清理 Tproxy 路由和 NFTables 规则...${reset}"
+            #echo -e "${yellow}正在清理 Tproxy 路由和 NFTables 规则...${reset}"
             systemctl disable tproxy-router > /dev/null 2>&1
             systemctl stop tproxy-router > /dev/null 2>&1
             echo " " > "/etc/nftables.conf" # 清空 nftables 规则文件
             nft flush ruleset > /dev/null 2>&1 # 立即刷新内存中的规则
             nft -f /etc/nftables.conf > /dev/null 2>&1 # 从清空的规则文件重新加载
             rm -rf /etc/systemd/system/tproxy-router.service
-            echo -e "${green_text}Tproxy 路由和 NFTables 规则清理完成${reset}"
+            #echo -e "${green_text}Tproxy 路由和 NFTables 规则清理完成${reset}"
         fi
 
         systemctl daemon-reload
