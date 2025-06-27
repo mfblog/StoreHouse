@@ -366,7 +366,7 @@ manage_singbox() {
                 systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败，请手动检查状态。"
                 log_info "服务已重启。"
                 ;;
-            6) bash "$SINGBOX_SCRIPT" switch_nft && bash /usr/local/bin/tools/check_aio.sh 
+            6) bash "$SINGBOX_SCRIPT" switch_nft 
                systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败，请手动检查状态。"
             ;;
             0) break ;;
@@ -482,7 +482,7 @@ main() {
         read -p "请输入您的选择: " choice
         case "$choice" in
             1) manage_singbox ;;
-            2) manage_mosdns ;;
+            2) detect_mosdns_paths && manage_mosdns ;;
             q|Q)
                 echo -e "感谢使用！"
                 exit 0 ;;
