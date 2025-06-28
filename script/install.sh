@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 ########################################################
 # 更新脚本
 # 作者: herozmy
@@ -6,170 +6,144 @@
 # 日期: 2025-04-21
 ########################################################
 
-################################################# 颜色定义
+# 颜色定义
 green_text="\033[32m"
 yellow_text="\033[33m"
 red_text="\033[31m"
 reset="\033[0m" 
 DIRPATH="/usr/local/bin/tools"
-red() {
-    echo -e "\e[31m$1\e[0m"
-}
+BACKUP_DIR="/tmp/storehouse_backup"
 
-green() {
-    echo -e "\e[32m$1\e[0m"
-}
+# 简化颜色输出函数
+red() { echo -e "\e[31m$1\e[0m"; }
+green() { echo -e "\e[32m$1\e[0m"; }
+yellow() { echo -e "\e[33m$1\e[0m"; }
 
-yellow() {
-    echo -e "\e[33m$1\e[0m"
-}
-################################################# 变量定义
-local_ip=$(hostname -I | awk '{print $1}')
+# 变量定义
 url="https://raw.githubusercontent.com/herozmy/StoreHouse/latest"
-#url="https://d.herozmy.com/"
-#cn_url='https://fastly.jsdelivr.net/gh/herozmy/StoreHouse@latest'
 
-    check_core_status() {
-       # echo -e "\n${yellow}检查服务状态...${reset}"
-        #echo -e "----------------------------------------"
-        # 查找已安装的程序
-        found_files=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" -o -name "mosdns"  -o -name "unbound"  -o -name "redis-server" \))
-        
-        if [ -z "$found_files" ]; then
-            return
-        fi        
-        # 遍历检查每个已安装的程序
-        for file in $found_files; do
-            program=$(basename "$file")
-            echo -e "\n${program}:"
-            case "$program" in
-                "sing-box"|"mihomo")
-                    if systemctl is-active --quiet ${program}; then
-                        echo -e "  路由服务: ${green_text}运行中${reset}"
-                    else
-                        echo -e "  路由服务: ${red_text}未运行${reset}"
-                    fi
-                    ;;
-                "mosdns")
-                    if systemctl is-active --quiet mosdns; then
-                        echo -e "  DNS服务: ${green_text}运行中${reset}"
-                    else
-                        echo -e "  DNS服务: ${red_text}未运行${reset}"
-                    fi
-                    ;;
-                "unbound")
-                    if systemctl is-active --quiet unbound; then
-                        echo -e "  DNS服务: ${green_text}运行中${reset}"
-                    else
-                        echo -e "  DNS服务: ${red_text}未运行${reset}"
-                    fi
-                    ;;
-                "redis-server")
-                    if systemctl is-active --quiet redis; then
-                        echo -e "  Redis服务: ${green_text}运行中${reset}"
-                    else
-                        echo -e "  Redis服务: ${red_text}未运行${reset}"
-                    fi
-            esac
-        done
-        
-        echo -e "\n----------------------------------------"
-    }
-
-download(){
-### 参考shellcrash 所写函数
-	#参数【$1】代表下载目录，【$2】代表在线地址
-	#参数【$3】代表输出显示，【$4】不启用重定向
-	if curl --version >/dev/null 2>&1; then
-		[ "$3" = "echooff" ] && progress='-s' || progress='-#'
-		[ -z "$4" ] && redirect='-L' || redirect=''
-		result=$(curl -w %{http_code} --connect-timeout 5 $progress $redirect -ko $1 $2)
-		[ -n "$(echo $result | grep -e ^2)" ] && result="200"
-	else
-		if wget --version >/dev/null 2>&1; then
-			[ "$3" = "echooff" ] && progress='-q' || progress='-q --show-progress'
-			[ "$4" = "rediroff" ] && redirect='--max-redirect=0' || redirect=''
-			certificate='--no-check-certificate'
-			timeout='--timeout=3'
-		fi
-		[ "$3" = "echoon" ] && progress=''
-		[ "$3" = "echooff" ] && progress='-q'
-		wget $progress $redirect $certificate $timeout -O $1 $2
-		[ $? -eq 0 ] && result="200"
-	fi
-}
-
-error_download(){
-    echo -e "${red_text}下载失败，请检查网络连接或稍后再试。${reset}"
-}
-get_script(){
-    # 下载脚本
-    download /tmp/StoreHouse.tar.gz $url/bin/StoreHouse.tar.gz
-	if [ "$result" != "200" ]; then
-		echo -e "${red_text}文件下载失败！${reset}"
-		error_download
-		exit 1
-	else
-    # 解压脚本
-	mkdir -p $DIRPATH
-# 解压安装包
-if ! tar -zxvf "/tmp/StoreHouse.tar.gz" -C "$DIRPATH" >/dev/null 2>&1; then
-    echo -e "${red_text}错误：文件解压失败！可能原因：${reset}"
-    echo "1. 压缩包损坏"
-    echo "2. 目标目录无写入权限：$DIRPATH"
-    echo "3. 磁盘空间不足（当前剩余：$(df -h $DIRPATH | awk 'NR==2 {print $4}')）"
-    exit 1
-fi 
+download() {
+    # 参数【$1】目标文件，【$2】在线地址
+    result=""
+    if command -v curl >/dev/null 2>&1; then
+        curl -s -L -o "$1" "$2" && result="200" || result="404"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q --no-check-certificate -O "$1" "$2" && result="200" || result="404"
+    else
+        red "未找到下载工具，请安装curl或wget"
+        return 1
     fi
 }
 
-quick(){
-        echo -e "${green_text}安装tools命令...${reset}"
-        echo “ ” > /usr/bin/menu
-        touch /usr/bin/menu 2>/dev/null && {
-            cat >/usr/bin/menu <<EOF
-            #!/bin/bash
-            . $DIRPATH/menu.sh
+backup_scripts() {
+    if [ -d "$DIRPATH" ]; then
+        mkdir -p "$BACKUP_DIR"
+        cp -r "$DIRPATH"/* "$BACKUP_DIR"/ 2>/dev/null
+        if [ -f "/usr/bin/menu" ]; then
+            cp "/usr/bin/menu" "$BACKUP_DIR"/ 2>/dev/null
+        fi
+        if [ -f "/usr/bin/proxytool" ]; then
+            cp "/usr/bin/proxytool" "$BACKUP_DIR"/ 2>/dev/null
+        fi
+        return 0
+    fi
+    return 1
+}
+
+restore_scripts() {
+    if [ -d "$BACKUP_DIR" ]; then
+        mkdir -p "$DIRPATH"
+        cp -r "$BACKUP_DIR"/* "$DIRPATH"/ 2>/dev/null
+        if [ -f "$BACKUP_DIR/menu" ]; then
+            cp "$BACKUP_DIR/menu" "/usr/bin/" 2>/dev/null
+        fi
+        if [ -f "$BACKUP_DIR/proxytool" ]; then
+            cp "$BACKUP_DIR/proxytool" "/usr/bin/" 2>/dev/null
+        fi
+        yellow "已恢复之前的脚本文件"
+        return 0
+    fi
+    return 1
+}
+
+get_script() {
+    # 先备份现有脚本
+    backup_scripts
+    
+    # 下载脚本
+    green "正在下载更新包..."
+    download /tmp/StoreHouse.tar.gz $url/bin/StoreHouse.tar.gz
+    if [ "$result" != "200" ]; then
+        red "文件下载失败！正在恢复之前的脚本..."
+        restore_scripts
+        return 1
+    fi
+    
+    # 创建目录并解压脚本
+    mkdir -p $DIRPATH
+    if ! tar -zxf "/tmp/StoreHouse.tar.gz" -C "$DIRPATH" >/dev/null 2>&1; then
+        red "解压失败！正在恢复之前的脚本..."
+        restore_scripts
+        return 1
+    fi
+    
+    return 0
+}
+
+install_tools() {
+    green "安装工具命令..."
+    cat > /usr/bin/menu <<EOF
+#!/bin/bash
+. $DIRPATH/menu.sh
 EOF
-            cp -r $DIRPATH/proxytool.sh /usr/bin/proxytool
-            chmod +x /usr/bin/proxytool /usr/bin/menu
-        }
+    cp -f $DIRPATH/proxytool.sh /usr/bin/proxytool
+    chmod +x /usr/bin/proxytool /usr/bin/menu
 }
 
-install(){
-    echo -e "${green_text}更新脚本...${reset}"
-    get_script
-    echo -e "${green_text}更新完成！${reset}"
-    quick
-	echo -----------------------------------------------
-	echo -e "\033[33m输入\033[30;47m menu \033[0;33m命令进入菜单页面！！！\033[0m"
-    echo -e "${green_text}后期直接执行${reset} ${yellow_text}menu${reset} ${green_text}更新相关脚本，无需重新安装！！！${reset}"
-	echo ----------------------------------------------- 
-
+install() {
+    green "开始更新脚本..."
+    if get_script; then
+        green "更新完成！"
+        install_tools
+        echo -----------------------------------------------
+        yellow "输入 menu 命令进入菜单页面！！！"
+        green "后期直接执行 menu 更新相关脚本，无需重新安装！！！"
+        echo ----------------------------------------------- 
+    else
+        red "更新失败！"
+        exit 1
+    fi
 }
-rm -rf $0 >/dev/null 2>&1
 
 # 检查是否是 root 用户
 if [ "$(id -u)" != "0" ]; then
-    echo -e "\033[31m错误：请使用 root 用户执行此脚本！\033[0m"
-    echo -e "请执行以下命令切换用户：\n  sudo su -"
+    red "错误：请使用 root 用户执行此脚本！"
+    yellow "请执行以下命令切换用户：\n  sudo su -"
     exit 1
 fi
+
+# 检查是否存在旧目录
 if [ -d "$DIRPATH" ]; then
-    echo -e "${green_text}检测到旧的安装目录$DIRPATH${reset}"
-    echo -e "${yellow_text}是否删除旧的安装目录？y确认 n忽略${reset}"
+    green "检测到旧的安装目录 $DIRPATH"
+    yellow "是否删除旧的安装目录？y确认 n忽略"
     read -p "请输入(y/n): " choice
-    if [ "$choice" = "y" ]; then
-        rm -rf $DIRPATH
-        echo -e "${green_text}旧的安装目录已删除！${reset}"
-        install
-    elif [ "$choice" = "n" ]; then
-        install
-    else
-        echo -e "${red_text}输入错误！${reset}"
-        exit 1
-    fi
+    case "${choice,,}" in
+        y) 
+            rm -rf $DIRPATH
+            green "旧的安装目录已删除！"
+            install
+            ;;
+        n)
+            install
+            ;;
+        *)
+            red "输入错误！"
+            exit 1
+            ;;
+    esac
 else
     install
 fi
 
+# 清理临时文件
+rm -f /tmp/StoreHouse.tar.gz

@@ -658,6 +658,37 @@ manage_mihomo() {
     done
 }
 
+# --- 服务切换和启动函数 ---
+start_singbox() {
+    log_info "正在启动 Sing-Box..."
+    systemctl enable sing-box
+    systemctl start sing-box tproxy-router nftables
+    if systemctl is-active --quiet sing-box; then
+        log_info "Sing-Box 已成功启动"
+    else
+        log_error "Sing-Box 启动失败！请检查服务状态"
+    fi
+}
+
+start_mihomo() {
+    log_info "正在启动 Mihomo..."
+    systemctl enable mihomo
+    systemctl start mihomo tproxy-router nftables
+    if systemctl is-active --quiet mihomo; then
+        log_info "Mihomo 已成功启动"
+    else
+        log_error "Mihomo 启动失败！请检查服务状态"
+    fi
+}
+
+switch_to_mihomo() {
+    switch_proxy_core "sing-box" "mihomo"
+}
+
+switch_to_singbox() {
+    switch_proxy_core "mihomo" "sing-box"
+}
+
 # --- 主函数 ---
 main() {
     check_root
@@ -771,14 +802,56 @@ main() {
         
         read -rp "请选择要执行的操作 [$prompt_range/q]: " choice
         case "$choice" in
-            1) manage_singbox ;;
-            2) detect_mosdns_paths && manage_mosdns ;;
             q|Q)
                 echo -e "感谢使用！"
-                exit 0 ;;
-            *) log_warn "无效输入，请重新选择。" && sleep 1 ;;
+                exit 0 
+                ;;
+            *)
+                # 将数字选择转换为实际的服务管理
+                if [[ "$choice" =~ ^[0-9]+$ ]]; then
+                    # 获取菜单项对应的服务名称
+                    local index=$((choice-1))
+                    if [ $index -ge 0 ] && [ $index -lt ${#services[@]} ]; then
+                        local service_name=${services[$index]%%:*}
+                        case "$service_name" in
+                            "singbox") 
+                                manage_singbox 
+                                ;;
+                            "mihomo")
+                                manage_mihomo
+                                ;;
+                            "mosdns") 
+                                detect_mosdns_paths && manage_mosdns
+                                ;;
+                        esac
+                    elif [ "$has_singbox" = "true" ] && [ "$has_mihomo" = "true" ]; then
+                        # 处理额外的切换选项
+                        if [ "$choice" = "$((num_services+1))" ]; then
+                            case "$running_service" in
+                                "sing-box")
+                                    switch_to_mihomo
+                                    ;;
+                                "mihomo")
+                                    switch_to_singbox
+                                    ;;
+                                "")
+                                    start_singbox
+                                    ;;
+                            esac
+                        elif [ "$choice" = "$((num_services+2))" ] && [ -z "$running_service" ]; then
+                            start_mihomo
+                        else
+                            log_warn "无效输入，请重新选择。" && sleep 1
+                        fi
+                    else
+                        log_warn "无效输入，请重新选择。" && sleep 1
+                    fi
+                else
+                    log_warn "无效输入，请重新选择。" && sleep 1
+                fi
+                ;;
         esac
-    done
+done
 }
 
 # --- 执行主函数 ---
