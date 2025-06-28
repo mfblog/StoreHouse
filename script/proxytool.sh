@@ -500,16 +500,9 @@ manage_singbox() {
                 systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败"
                 log_info "服务已重启。"
                 ;;
-<<<<<<< HEAD
-            6) 
-                bash "$SINGBOX_SCRIPT" switch_nft
-                systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败"
-                ;;
-=======
             6) bash "$SINGBOX_SCRIPT" switch_nft 
                systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败，请手动检查状态。"
             ;;
->>>>>>> 5407bcc1c0dd7bf6a71afae15000e6ca01d3eb61
             0) break ;;
             *) log_warn "无效选择" ;;
         esac
