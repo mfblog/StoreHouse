@@ -778,46 +778,12 @@ main() {
         
         read -rp "请选择要执行的操作 [$prompt_range/q]: " choice
         case "$choice" in
-<<<<<<< HEAD
-            [1-9])
-                if [ "$choice" -le "$num_services" ]; then
-                    local selected_service=${services[$((choice-1))]}
-                    local service_name=${selected_service%%:*}
-                    case "$service_name" in
-                        "singbox") manage_singbox ;;
-                        "mosdns") detect_mosdns_paths && manage_mosdns ;;
-                        "mihomo") manage_mihomo ;;
-                    esac
-                elif [ "$has_singbox" = "true" ] && [ "$has_mihomo" = "true" ]; then
-                    if [ "$choice" -eq $((num_services + 1)) ]; then
-                        case "$running_service" in
-                            "sing-box") switch_proxy_core "sing-box" "mihomo" ;;
-                            "mihomo") switch_proxy_core "mihomo" "sing-box" ;;
-                            "") switch_proxy_core "" "sing-box" ;;
-                        esac
-                    elif [ -z "$running_service" ] && [ "$choice" -eq $((num_services + 2)) ]; then
-                        switch_proxy_core "" "mihomo"
-                    fi
-                else
-                    log_warn "无效的选择，请重试"
-                fi
-                ;;
-            q|Q) 
-                echo -e "${green_text}感谢使用，再见！${reset}"
-                exit 0 
-                ;;
-            *) 
-                log_warn "无效的选择，请重试"
-                sleep 1
-                ;;
-=======
             1) manage_singbox ;;
             2) detect_mosdns_paths && manage_mosdns ;;
             q|Q)
                 echo -e "感谢使用！"
                 exit 0 ;;
             *) log_warn "无效输入，请重新选择。" && sleep 1 ;;
->>>>>>> 5407bcc1c0dd7bf6a71afae15000e6ca01d3eb61
         esac
     done
 }
