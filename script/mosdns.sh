@@ -207,7 +207,7 @@ configure_mosdns_rules() {
     log_info "请选择要使用的 MosDNS 分流规则:"
     echo "  1. O佬分流规则 (经典稳定)"
     echo "  2. PH佬分流规则 (越用越快)"
-    echo "  999. J佬/PH 魔改Ui (测试)"
+    echo "  999. J佬/PH 魔改Ui (推荐)"
     echo "  0. 退出"
     read -rp "请输入您的选择 [1,2,999,0]: " choice
     
@@ -352,78 +352,6 @@ check_resolved_port53() {
     log_success "53 端口冲突已解决。"
 }
 
-task_check_aio_and_apply_rules() {
-    log_info "正在检测 AIO 环境 (MosDNS与代理核心共存)..."
-    
-    if ! [ -f "$NFT_RULESET_PATH" ]; then
-        log_warn "nftables 配置文件不存在 ($NFT_RULESET_PATH)，跳过AIO规则检查。"
-        return
-    fi
-    
-    if [ -x "/usr/local/bin/mosdns" ] && { [ -x "/usr/local/bin/sing-box" ] || [ -x "/usr/local/bin/mihomo" ]; }; then
-        log_warn "检测到DNS与代理核心共存，需要调整防火墙规则。"
-        
-        # 优化点：使用专门的标记作为锚点，更可靠
-        local nft_bak_path="$NFT_RULESET_PATH.bak_$(date +%F-%T)"
-        cp "$NFT_RULESET_PATH" "$nft_bak_path" 
-        log_info "已备份当前防火墙配置到: $nft_bak_path"
-
-        # 1. 先安全地删除旧的规则块，防止重复
-        sed -i '/# MOSDNS_AIO_RULES_BEGIN/,/# MOSDNS_AIO_RULES_END/d' "$NFT_RULESET_PATH"
-
-        # 2. 定义新的规则块
-        read -r -d '' aio_rules <<'EOF'
-      # MOSDNS_AIO_RULES_BEGIN
-      # Rules for MosDNS to bypass proxy in AIO mode
-      223.5.5.5, 223.6.6.6,                                 # AliDNS
-      2400:3200::1, 2400:3200:baba::1,                       # AliDNS IPv6
-      119.29.29.29, 182.254.116.116,                         # DNSPod
-      2402:4e00::,                                           # DNSPod IPv6
-      # MOSDNS_AIO_RULES_END
-EOF
-        
-        # 3. 将规则块插入到正确的锚点之后 (这里假设在 `define lan_ip` 块中)
-        # 如果找不到锚点，则报错
-        if ! grep -q "define lan_ip = {" "$NFT_RULESET_PATH"; then
-             log_error "在 $NFT_RULESET_PATH 中未找到 'define lan_ip' 锚点，无法自动添加规则。"
-             log_error "请手动将 AliDNS 和 DNSPod 的 IP 添加到直连列表，或恢复备份: $nft_bak_path"
-             exit 1
-        fi
-        sed -i "/define lan_ip = {/a ${aio_rules}" "$NFT_RULESET_PATH"
-        
-        log_info "正在验证并应用新的防火墙规则..."
-        if nft -c -f "$NFT_RULESET_PATH"; then
-            nft flush ruleset
-            nft -f "$NFT_RULESET_PATH"
-            log_success "AIO 防火墙规则已成功应用。"
-            if systemctl is-active --quiet "tproxy-router"; then
-                log_info "正在重启 tproxy-router 服务以应用新规则..."
-                systemctl restart "tproxy-router"
-            fi
-            rm -f "$nft_bak_path"
-        else
-            log_error "新的防火墙配置无效！已自动从备份回滚。"
-            mv "$nft_bak_path" "$NFT_RULESET_PATH"
-            exit 1
-        fi
-    else
-        log_info "未检测到 AIO 环境，无需修改防火墙规则。"
-    fi
-}
-
-# --- 帮助与收尾函数 ---
-
-print_help() {
-    echo "用法: $0 [命令]"
-    echo "可用命令:"
-    echo "  install (默认)     - 执行完整的 MosDNS 安装流程"
-    echo "  cn_mosdns          - 安装 'cn佬' 的嵌套规则"
-    echo "  get_mosdns_rule    - 更新远程规则集"
-    echo "  mosdns_logrotate   - 仅设置日志轮转"
-    echo "  mosdns_service     - 仅安装系统服务"
-    echo "  check_aio          - 检查并应用AIO防火墙规则"
-    echo "  help, -h, --help   - 显示此帮助信息"
-}
 
 print_service_commands() {
     log_info "常用管理命令:"
