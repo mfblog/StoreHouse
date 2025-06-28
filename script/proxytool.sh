@@ -500,10 +500,16 @@ manage_singbox() {
                 systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败"
                 log_info "服务已重启。"
                 ;;
+<<<<<<< HEAD
             6) 
                 bash "$SINGBOX_SCRIPT" switch_nft
                 systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败"
                 ;;
+=======
+            6) bash "$SINGBOX_SCRIPT" switch_nft 
+               systemctl restart sing-box tproxy-router nftables || log_warn "部分服务重启失败，请手动检查状态。"
+            ;;
+>>>>>>> 5407bcc1c0dd7bf6a71afae15000e6ca01d3eb61
             0) break ;;
             *) log_warn "无效选择" ;;
         esac
@@ -772,6 +778,7 @@ main() {
         
         read -rp "请选择要执行的操作 [$prompt_range/q]: " choice
         case "$choice" in
+<<<<<<< HEAD
             [1-9])
                 if [ "$choice" -le "$num_services" ]; then
                     local selected_service=${services[$((choice-1))]}
@@ -803,6 +810,14 @@ main() {
                 log_warn "无效的选择，请重试"
                 sleep 1
                 ;;
+=======
+            1) manage_singbox ;;
+            2) detect_mosdns_paths && manage_mosdns ;;
+            q|Q)
+                echo -e "感谢使用！"
+                exit 0 ;;
+            *) log_warn "无效输入，请重新选择。" && sleep 1 ;;
+>>>>>>> 5407bcc1c0dd7bf6a71afae15000e6ca01d3eb61
         esac
     done
 }
