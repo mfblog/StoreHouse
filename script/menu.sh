@@ -7,10 +7,8 @@ red_text="\033[31m"
 grey_text="\033[90m"
 reset="\033[0m"
 DIRPATH="/usr/local/bin/tools"
-
 # 获取本机IP
 local_ip=$(hostname -I | awk '{print $1}')
-
 # 确保 proxytool 命令可用
 ensure_proxytool() {
     if ! command -v proxytool &> /dev/null; then
@@ -21,7 +19,6 @@ ensure_proxytool() {
     fi
     proxytool
 }
-
 # 获取服务状态
 get_service_status() {
     local program_name=$1
