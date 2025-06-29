@@ -58,7 +58,7 @@ profile:
 # 控制面板
 external-controller: 0.0.0.0:9090
 external-ui: "/etc/mihomo/ui"
-external-ui-name: zashboard
+#external-ui-name: zashboard
 external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
 
 # 嗅探
