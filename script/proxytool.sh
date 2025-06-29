@@ -22,12 +22,34 @@ MIHOMO_CONFIG="/etc/mihomo/config.yaml"
 green_text="\033[32m"
 yellow_text="\033[33m"
 red_text="\033[31m"
+blue_text="\033[34m"
 reset="\033[0m"
+bold="\033[1m"
+
+# --- 格式化输出函数 ---
+print_header() {
+    local title="$1"
+    echo -e "\n${bold}${green_text}=== $title ===${reset}\n"
+}
+
+print_status() {
+    local label="$1"
+    local value="$2"
+    local status="$3"
+    printf "  %-12s: ${yellow_text}%-25s${reset}%s\n" "$label" "$value" "$status"
+}
+
+print_menu_item() {
+    local number="$1"
+    local text="$2"
+    printf "  ${green_text}%s${reset}. %-30s\n" "$number" "$text"
+}
 
 # --- 日志函数 ---
 log_info() { echo -e "${green_text}==> $1${reset}"; }
 log_warn() { echo -e "${yellow_text}!!> $1${reset}"; }
 log_error() { echo -e "${red_text}✖ $1${reset}" >&2; }
+log_success() { echo -e "${green_text}✓ $1${reset}"; }
 
 # --- 错误处理 ---
 handle_error() {
@@ -388,7 +410,8 @@ check_service_status() {
 check_proxy_status() {
     local has_singbox=false
     local has_mihomo=false
-    local running_service=""
+    local singbox_running=false
+    local mihomo_running=false
     
     # 检查是否安装了服务
     if command -v sing-box &>/dev/null && [ -f "$SINGBOX_SCRIPT" ]; then
@@ -398,15 +421,16 @@ check_proxy_status() {
         has_mihomo=true
     fi
     
-    # 检查哪个服务在运行
+    # 检查每个服务是否在运行
     if systemctl is-active --quiet "sing-box"; then
-        running_service="sing-box"
-    elif systemctl is-active --quiet "mihomo"; then
-        running_service="mihomo"
+        singbox_running=true
+    fi
+    if systemctl is-active --quiet "mihomo"; then
+        mihomo_running=true
     fi
     
     # 返回结果
-    echo "${has_singbox}:${has_mihomo}:${running_service}"
+    echo "${has_singbox}:${has_mihomo}:${singbox_running}:${mihomo_running}"
 }
 
 # --- 切换代理核心函数 ---
@@ -661,24 +685,132 @@ manage_mihomo() {
 # --- 服务切换和启动函数 ---
 start_singbox() {
     log_info "正在启动 Sing-Box..."
-    systemctl enable sing-box
-    systemctl start sing-box tproxy-router nftables
+    sleep 1
+    
+    log_info "设置服务开机自启..."
+    systemctl enable sing-box tproxy-router nftables &>/dev/null
+    sleep 1
+    
+    log_info "启动 Sing-Box 服务..."
+    systemctl start sing-box &>/dev/null
+    sleep 1
+    
+    log_info "启动透明代理服务..."
+    systemctl start tproxy-router &>/dev/null
+    sleep 1
+    
+    log_info "启动防火墙服务..."
+    systemctl start nftables &>/dev/null
+    sleep 1
+
     if systemctl is-active --quiet sing-box; then
-        log_info "Sing-Box 已成功启动"
+        log_success "Sing-Box 及相关服务已成功启动并设置为开机自启"
     else
         log_error "Sing-Box 启动失败！请检查服务状态"
+        log_info "正在回滚更改..."
+        systemctl disable sing-box tproxy-router nftables
+        sleep 1
+        log_info "已禁用所有相关服务"
     fi
+    sleep 1
 }
 
 start_mihomo() {
     log_info "正在启动 Mihomo..."
-    systemctl enable mihomo
-    systemctl start mihomo tproxy-router nftables
+    sleep 1
+    
+    log_info "设置服务开机自启..."
+    systemctl enable mihomo tproxy-router nftables &>/dev/null
+    sleep 1
+    
+    log_info "启动 Mihomo 服务..."
+    systemctl start mihomo &>/dev/null
+    sleep 1
+    
+    log_info "启动透明代理服务..."
+    systemctl start tproxy-router &>/dev/null
+    sleep 1
+    
+    log_info "启动防火墙服务..."
+    systemctl start nftables &>/dev/null
+    sleep 1
+
     if systemctl is-active --quiet mihomo; then
-        log_info "Mihomo 已成功启动"
+        log_success "Mihomo 及相关服务已成功启动并设置为开机自启"
     else
         log_error "Mihomo 启动失败！请检查服务状态"
+        log_info "正在回滚更改..."
+        systemctl disable mihomo tproxy-router nftables
+        sleep 1
+        log_info "已禁用所有相关服务"
     fi
+    sleep 1
+}
+
+stop_singbox() {
+    log_info "正在停止 Sing-Box..."
+    sleep 1
+    
+    systemctl stop sing-box &>/dev/null
+    log_info "Sing-Box 服务已停止"
+    sleep 1
+
+    # 如果没有其他代理服务在运行，也停止并禁用相关服务
+    if ! systemctl is-active --quiet mihomo &>/dev/null; then
+        log_info "停止透明代理服务..."
+        systemctl stop tproxy-router &>/dev/null
+        sleep 1
+        
+        log_info "停止防火墙服务..."
+        systemctl stop nftables &>/dev/null
+        sleep 1
+        
+        log_info "禁用所有服务自启动..."
+        systemctl disable sing-box tproxy-router nftables &>/dev/null
+        sleep 1
+        
+        log_success "已停止并禁用 Sing-Box 及相关服务"
+    else
+        log_info "禁用 Sing-Box 自启动..."
+        systemctl disable sing-box &>/dev/null
+        sleep 1
+        
+        log_success "已停止并禁用 Sing-Box 服务"
+    fi
+    sleep 1
+}
+
+stop_mihomo() {
+    log_info "正在停止 Mihomo..."
+    sleep 1
+    
+    systemctl stop mihomo &>/dev/null
+    log_info "Mihomo 服务已停止"
+    sleep 1
+
+    # 如果没有其他代理服务在运行，也停止并禁用相关服务
+    if ! systemctl is-active --quiet sing-box &>/dev/null; then
+        log_info "停止透明代理服务..."
+        systemctl stop tproxy-router &>/dev/null
+        sleep 1
+        
+        log_info "停止防火墙服务..."
+        systemctl stop nftables &>/dev/null
+        sleep 1
+        
+        log_info "禁用所有服务自启动..."
+        systemctl disable mihomo tproxy-router nftables &>/dev/null
+        sleep 1
+        
+        log_success "已停止并禁用 Mihomo 及相关服务"
+    else
+        log_info "禁用 Mihomo 自启动..."
+        systemctl disable mihomo &>/dev/null
+        sleep 1
+        
+        log_success "已停止并禁用 Mihomo 服务"
+    fi
+    sleep 1
 }
 
 switch_to_mihomo() {
@@ -722,12 +854,12 @@ main() {
     while true; do
         clear
         # 获取代理服务状态
-        IFS=':' read -r has_singbox has_mihomo running_service <<< "$(check_proxy_status)"
+        IFS=':' read -r has_singbox has_mihomo singbox_running mihomo_running <<< "$(check_proxy_status)"
         
-        echo -e "${green_text}=== 网络工具管理面板 ===${reset}\n"
+        print_header "网络工具管理面板"
         
         # 显示已安装的服务及其版本和运行状态
-        echo -e "${green_text}已安装的服务:${reset}"
+        echo -e "${bold}已安装的服务:${reset}"
         for service in "${services[@]}"; do
             local name=${service%%:*}
             local version=${service#*:}
@@ -736,67 +868,88 @@ main() {
             # 根据服务类型和运行状态设置显示文本
             case "$name" in
                 "singbox")
-                    if [ "$running_service" = "sing-box" ]; then
-                        status_text="${green_text}[运行中]${reset}"
-                    elif [ "$has_mihomo" = "true" ] && [ "$running_service" = "mihomo" ]; then
-                        status_text="${yellow_text}[已停止]${reset}"
-                    fi
-                    echo -e "  - Sing-Box: ${yellow_text}${version}${reset} $status_text"
+                    status_text=$([ "$singbox_running" = "true" ] && 
+                        printf "${green_text}[运行中]${reset}" || 
+                        printf "${yellow_text}[已停止]${reset}")
+                    print_status "Sing-Box" "$version" "$status_text"
                     ;;
                 "mosdns")
-                    if systemctl is-active --quiet "mosdns"; then
-                        status_text="${green_text}[运行中]${reset}"
-                    fi
-                    echo -e "  - MosDNS: ${yellow_text}${version}${reset} $status_text"
+                    status_text=$(systemctl is-active --quiet "mosdns" && 
+                        printf "${green_text}[运行中]${reset}" || 
+                        printf "${yellow_text}[已停止]${reset}")
+                    print_status "MosDNS" "$version" "$status_text"
                     ;;
                 "mihomo")
-                    if [ "$running_service" = "mihomo" ]; then
-                        status_text="${green_text}[运行中]${reset}"
-                    elif [ "$has_singbox" = "true" ] && [ "$running_service" = "sing-box" ]; then
-                        status_text="${yellow_text}[已停止]${reset}"
-                    fi
-                    echo -e "  - Mihomo: ${yellow_text}${version}${reset} $status_text"
+                    status_text=$([ "$mihomo_running" = "true" ] && 
+                        printf "${green_text}[运行中]${reset}" || 
+                        printf "${yellow_text}[已停止]${reset}")
+                    print_status "Mihomo" "$version" "$status_text"
                     ;;
             esac
         done
         
-        echo -e "\n${green_text}可用操作:${reset}"
+        echo -e "\n${bold}${green_text}可用操作:${reset}"
         local i=1
         for service in "${services[@]}"; do
             local name=${service%%:*}
             case "$name" in
-                "singbox") echo -e "  $i. Sing-Box 管理" ;;
-                "mosdns") echo -e "  $i. MosDNS 管理" ;;
-                "mihomo") echo -e "  $i. Mihomo 管理" ;;
+                "singbox") print_menu_item "$i" "Sing-Box 管理" ;;
+                "mosdns") print_menu_item "$i" "MosDNS 管理" ;;
+                "mihomo") print_menu_item "$i" "Mihomo 管理" ;;
             esac
             ((i++))
         done
 
         # 如果同时安装了 Sing-Box 和 Mihomo，显示切换选项
         if [ "$has_singbox" = "true" ] && [ "$has_mihomo" = "true" ]; then
-            case "$running_service" in
-                "sing-box")
-                    echo -e "  $i. 切换到 Mihomo 代理"
-                    ;;
-                "mihomo")
-                    echo -e "  $i. 切换到 Sing-Box 代理"
-                    ;;
-                "")
-                    echo -e "  $i. 启动 Sing-Box 代理"
-                    echo -e "  $((i+1)). 启动 Mihomo 代理"
-                    ;;
-            esac
+            # 计算当前运行状态
+            local both_running=false
+            local none_running=false
+            
+            if [ "$singbox_running" = "true" ] && [ "$mihomo_running" = "true" ]; then
+                both_running=true
+            elif [ "$singbox_running" = "false" ] && [ "$mihomo_running" = "false" ]; then
+                none_running=true
+            fi
+            
+            if [ "$both_running" = "true" ]; then
+                # 两个服务都在运行
+                print_menu_item "$i" "停止 Sing-Box 代理"
+                print_menu_item "$((i+1))" "停止 Mihomo 代理"
+            elif [ "$none_running" = "true" ]; then
+                # 两个服务都没运行
+                print_menu_item "$i" "启动 Sing-Box 代理"
+                print_menu_item "$((i+1))" "启动 Mihomo 代理"
+            else
+                # 只有一个服务在运行
+                if [ "$singbox_running" = "true" ]; then
+                    print_menu_item "$i" "切换到 Mihomo 代理"
+                    
+                    print_menu_item "$((i+1))" "停止 Sing-Box 代理"
+                else
+                    print_menu_item "$i" "切换到 Sing-Box 代理"
+                    
+                    print_menu_item "$((i+1))" "停止 Mihomo 代理"
+                fi
+            fi
         fi
         
-        echo -e "  q. 退出程序\n"
+        print_menu_item "q" "退出程序"
+        echo
         
         # 根据是否有切换选项调整提示文本
         local prompt_range="1-$((num_services))"
         if [ "$has_singbox" = "true" ] && [ "$has_mihomo" = "true" ]; then
-            if [ -z "$running_service" ]; then
+            # 根据不同的运行状态设置不同的提示范围
+            if [ "$singbox_running" = "true" ] && [ "$mihomo_running" = "true" ]; then
+                # 两个都在运行
+                prompt_range="1-$((num_services+2))"
+            elif [ "$singbox_running" = "false" ] && [ "$mihomo_running" = "false" ]; then
+                # 两个都没运行
                 prompt_range="1-$((num_services+2))"
             else
-                prompt_range="1-$((num_services+1))"
+                # 只有一个运行
+                prompt_range="1-$((num_services+2))"
             fi
         fi
         
@@ -825,23 +978,45 @@ main() {
                                 ;;
                         esac
                     elif [ "$has_singbox" = "true" ] && [ "$has_mihomo" = "true" ]; then
-                        # 处理额外的切换选项
-                        if [ "$choice" = "$((num_services+1))" ]; then
-                            case "$running_service" in
-                                "sing-box")
-                                    switch_to_mihomo
-                                    ;;
-                                "mihomo")
-                                    switch_to_singbox
-                                    ;;
-                                "")
-                                    start_singbox
-                                    ;;
-                            esac
-                        elif [ "$choice" = "$((num_services+2))" ] && [ -z "$running_service" ]; then
-                            start_mihomo
+                        # 处理额外的切换或启动/停止选项
+                        local both_running=false
+                        local none_running=false
+            
+                        if [ "$singbox_running" = "true" ] && [ "$mihomo_running" = "true" ]; then
+                            both_running=true
+                        elif [ "$singbox_running" = "false" ] && [ "$mihomo_running" = "false" ]; then
+                            none_running=true
+                        fi
+                        
+                        if [ "$both_running" = "true" ]; then
+                            # 两个都运行时的选项
+                            if [ "$choice" = "$((num_services+1))" ]; then
+                                stop_singbox
+                            elif [ "$choice" = "$((num_services+2))" ]; then
+                                stop_mihomo
+                            fi
+                        elif [ "$none_running" = "true" ]; then
+                            # 没有服务运行时的选项
+                            if [ "$choice" = "$((num_services+1))" ]; then
+                                start_singbox
+                            elif [ "$choice" = "$((num_services+2))" ]; then
+                                start_mihomo
+                            fi
                         else
-                            log_warn "无效输入，请重新选择。" && sleep 1
+                            # 只有一个服务运行时的选项
+                            if [ "$singbox_running" = "true" ]; then
+                                if [ "$choice" = "$((num_services+1))" ]; then
+                                    switch_to_mihomo
+                                elif [ "$choice" = "$((num_services+2))" ]; then
+                                    stop_singbox
+                                fi
+                            else
+                                if [ "$choice" = "$((num_services+1))" ]; then
+                                    switch_to_singbox
+                                elif [ "$choice" = "$((num_services+2))" ]; then
+                                    stop_mihomo
+                                fi
+                            fi
                         fi
                     else
                         log_warn "无效输入，请重新选择。" && sleep 1

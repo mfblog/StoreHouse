@@ -226,8 +226,16 @@ task_install_mihomo() {
     # 串联所有安装步骤
     install_mihomo_config
     setup_systemd_services "mihomo"
-    task_ip_forward
-    setup_nftables "mihomo"
+    
+    # 只有在需要时才设置防火墙和tp-router
+    if [ "$NEED_FIREWALL_SETUP" = "true" ]; then
+        log_info "正在配置IP转发和防火墙规则..."
+        task_ip_forward
+        setup_nftables "mihomo"
+    else
+        log_info "跳过防火墙和透明代理设置，复用现有服务..."
+    fi
+    
     install_dashboard_ui "mihomo"
   #  bash /usr/local/bin/tools/check_aio.sh # 确保这个脚本存在且可执行
     enable_and_start_all_services "mihomo"
@@ -281,8 +289,16 @@ task_interactive_install() {
     
     # 串联所有后续安装步骤
     setup_systemd_services "sing-box"
-    task_ip_forward
-    setup_nftables "sing-box"
+    
+    # 只有在需要时才设置防火墙和tp-router
+    if [ "$NEED_FIREWALL_SETUP" = "true" ]; then
+        log_info "正在配置IP转发和防火墙规则..."
+        task_ip_forward
+        setup_nftables "sing-box"
+    else
+        log_info "跳过防火墙和透明代理设置，复用现有服务..."
+    fi
+    
     install_dashboard_ui "sing-box"
   #  bash /usr/local/bin/tools/check_aio.sh
     enable_and_start_all_services "sing-box"
@@ -1118,9 +1134,8 @@ setup_systemd_services() {
     local service_name="$1" # "sing-box" 或 "mihomo"
     log_info "正在为 '$service_name' 设置 systemd 服务..."
     cp "$DIRPATH/${service_name}.service" "/etc/systemd/system/"
-    cp "$DIRPATH/tproxy-router.service" "/etc/systemd/system/"
     systemctl daemon-reload # 重新加载 systemd 配置使其生效
-    log_success "Systemd 服务文件已创建。"
+    log_success "$service_name 服务文件已创建。"
 }
     check_interfaces() {
         interfaces=$(ip -o link show | awk -F': ' '{print $2}')
@@ -1147,7 +1162,13 @@ setup_systemd_services() {
         #fi
     }
 setup_nftables() {
-    log_info "正在进行 NFTables 初始配置..."
+    log_info "正在进行 NFTables 和透明代理初始配置..."
+
+    # 安装透明代理服务文件
+    log_info "正在设置透明代理服务..."
+    cp "$DIRPATH/tproxy-router.service" "/etc/systemd/system/"
+    systemctl daemon-reload
+    log_success "透明代理服务文件已创建。"
 
     # 自动检测主网卡名称
     check_interfaces
@@ -1220,6 +1241,27 @@ enable_and_start_all_services() {
     systemctl enable --now nftables &>/dev/null
     
     log_success "所有服务均已启动并设置为开机自启。"
+    
+    # 检查是否存在冲突服务，并询问是否停止
+    if [ -n "$PROXY_CONFLICT_SERVICE" ]; then
+        local old_service="$PROXY_CONFLICT_SERVICE"
+        log_warn "检测到 ${old_service^} 服务仍在运行。"
+        log_info "新安装的 ${core_name^} 服务已经启动。"
+        log_info "两个代理服务同时运行可能导致网络冲突。"
+        
+        read -p "是否停止旧的 ${old_service^} 服务？(输入y停止，默认否) [y/N]: " choice
+        if [[ "$choice" =~ ^[Yy]$ ]]; then
+            log_info "正在停止 ${old_service^} 服务..."
+            systemctl stop "$old_service"
+            systemctl disable "$old_service"
+            log_success "${old_service^} 服务已停止。"
+        else
+            log_warn "您选择保留两个代理服务同时运行，这可能导致网络问题。"
+            log_info "如需手动切换服务，请使用 'proxytool' 命令。"
+        fi
+        # 清理环境变量
+        unset PROXY_CONFLICT_SERVICE
+    fi
 }
 
 # 打印最终的安装总结信息
@@ -1256,6 +1298,9 @@ check_proxy_conflict() {
     local conflict_found=false
     local running_service=""
     
+    # 默认设置为需要安装防火墙和tp-router
+    export NEED_FIREWALL_SETUP=true
+    
     # 检查是否已安装其他代理服务
     if [ "$installing_service" = "sing-box" ] && command -v mihomo &>/dev/null; then
         if systemctl is-active --quiet mihomo; then
@@ -1271,16 +1316,21 @@ check_proxy_conflict() {
 
     if [ "$conflict_found" = true ]; then
         log_warn "检测到 ${running_service^} 正在运行。"
-        log_info "为避免端口冲突，需要停止 ${running_service^} 服务。"
-        read -p "是否继续安装并停止 ${running_service^}？[y/N] " choice
-        if [[ "$choice" =~ ^[Yy]$ ]]; then
-            log_info "正在停止 ${running_service^} 服务..."
-            systemctl stop "$running_service" tproxy-router nftables
-            systemctl disable "$running_service"
-            log_success "${running_service^} 服务已停止。"
-            return 0
-        else
-            log_error "安装已取消。请先使用 proxytool 工具停止 ${running_service^} 后再尝试安装。"
+        log_info "当前存在正在运行的 ${running_service^} 服务。"
+        log_info "为保持网络连接，安装过程中不会停止现有服务。"
+        
+        # 将冲突服务名写入环境变量，供后续处理
+        export PROXY_CONFLICT_SERVICE="$running_service"
+        
+        # 检查是否已存在防火墙和tp-router服务
+        if systemctl is-enabled --quiet tproxy-router &>/dev/null && systemctl is-enabled --quiet nftables &>/dev/null; then
+            log_info "检测到已存在防火墙和透明代理服务，将直接复用现有服务。"
+            export NEED_FIREWALL_SETUP=false
+        fi
+        
+        read -p "是否继续安装？(默认是，输入n取消) [Y/n]: " choice
+        if [[ "$choice" =~ ^[Nn]$ ]]; then
+            log_error "安装已取消。"
             exit 1
         fi
     fi
