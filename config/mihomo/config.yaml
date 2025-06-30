@@ -1,6 +1,7 @@
 ############################################## - ⚓️ 锚点区开始 - ##############################################
 # 锚点 - 远程订阅组
-PProviders: &PProviders {type: http, interval: 86400, proxy: DIRECT, health-check: {enable: true, url: 'https://www.gstatic.com/generate_204', interval: 600}, filter: '^(?!.*(群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|支持|教程|关注|更新|作者|加入|USE|USED|TOTAL|EXPIRE|EMAIL|Panel|Channel|Author))'}
+PProviders: &PProviders {type: http, interval: 86400, proxy: 默认代理, health-check: {enable: true, url: 'https://www.gstatic.com/generate_204', interval: 600}, filter: '^(?!.*(群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|支持|教程|关注|更新|作者|加入|USE|USED|TOTAL|EXPIRE|EMAIL|Panel|Channel|Author))'}
+DProviders: &DProviders {type: http, interval: 86400, proxy: DIRECT, health-check: {enable: true, url: 'https://www.gstatic.com/generate_204', interval: 600}, filter: '^(?!.*(群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|支持|教程|关注|更新|作者|加入|USE|USED|TOTAL|EXPIRE|EMAIL|Panel|Channel|Author))'}
 # 锚点 - 筛选组 
 FilterHK: &FilterHK '^(?=.*(?i)(港|🇭🇰|HK|Hong|HKG))(?!.*(排除1|排除2|5x)).*$'
 FilterSG: &FilterSG '^(?=.*(?i)(坡|🇸🇬|SG|Sing|SIN|XSP))(?!.*(排除1|排除2|5x)).*$'
@@ -34,6 +35,8 @@ ClassicalYaml: &ClassicalYaml {type: http, interval: 86400, behavior: classical,
 ############################################## - ⚓️ 锚点区结束 - ############################################## 
 
 # 全局配置
+routing-mark: 1
+#interface-name: br0
 socks-port: 20000
 tproxy-port: 7896
 redir-port: 7877
@@ -59,7 +62,7 @@ profile:
 external-controller: 0.0.0.0:9090
 external-ui: "/etc/mihomo/ui"
 #external-ui-name: zashboard
-external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
+#external-ui-url: "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
 
 # 嗅探
 sniffer:
@@ -80,9 +83,6 @@ sniffer:
   skip-domain:
     - Mijia Cloud
 
-# 入站
-tun:
-  enable: false
 
 # DNS模块
 dns:
@@ -94,16 +94,21 @@ dns:
   ipv6-timeout: 300
   enhanced-mode: fake-ip
   fake-ip-range: 28.0.0.0/8
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
   default-nameserver:
-    - 223.5.5.5
-    - 223.6.6.6
+    - tls://223.5.5.5
+  proxy-server-nameserver:
+    - 8.8.8.8
+  direct-nameserver:
+    - tls://223.5.5.5
+  direct-nameserver-follow-policy: false
   nameserver:
-    - https://223.5.5.5/dns-query
-    - https://223.6.6.6/dns-query
+    - tls://8.8.8.8
 
 proxy-providers:
-  sub: {<<: *PProviders, url: '机场订阅', override: {additional-prefix: '[SUB] '}}
-
+  sub: {<<: *DProviders, url: '机场订阅', override: {additional-prefix: '[sub] '}}
+  
 # 策略组 
 proxy-groups:
   - {name: 默认代理,   <<: *SelectHK, icon: https://github.com/Koolson/Qure/raw/master/IconSet/Color/Static.png}
@@ -217,10 +222,14 @@ rule-providers:
 # 路由
 rules:
   # 常用必备
-  - DST-PORT,123,DIRECT
-  - DOMAIN-SUFFIX,imee.me,DIRECT
-  # 防御
-  - RULE-SET,category-public-tracker,REJECT-DROP
+ # - IP-CIDR,10.0.0.0/24,HOME,no-resolve
+  - IP-CIDR,8.8.8.8/32,默认代理,no-resolve
+  - IP-CIDR,8.8.4.4/32,默认代理,no-resolve
+  - IP-CIDR,1.1.1.1/32,默认代理,no-resolve
+  - IP-CIDR,1.0.0.1/32,默认代理,no-resolve
+  - IP-CIDR,223.5.5.5/32,DIRECT,no-resolve
+  - RULE-SET,private_ip,DIRECT,no-resolve
+  - AND,((DST-PORT,443),(NETWORK,UDP)),REJECT
   # 域名路由
   - RULE-SET,fix-direct,DIRECT
   - RULE-SET,XPTV,DIRECT
@@ -254,12 +263,11 @@ rules:
   - RULE-SET,cn_domain,国内网站
   - RULE-SET,geolocation-!cn,国外网站
   # IP路由
-  - RULE-SET,private_ip,国内网站,no-resolve
   - RULE-SET,facebook_ip,脸书服务,no-resolve
   - RULE-SET,cloudflare_ip,Cloudflare,no-resolve
   - RULE-SET,google_ip,谷歌服务,no-resolve
   - RULE-SET,netflix_ip,NetFlix,no-resolve
   - RULE-SET,twitter_ip,Twitter,no-resolve
   - RULE-SET,telegram_ip,Telegram,no-resolve
-  - RULE-SET,cn_ip,国内网站,no-resolve
+  - RULE-SET,cn_ip,国内网站
   - MATCH,漏网之鱼
