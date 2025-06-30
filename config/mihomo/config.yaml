@@ -36,7 +36,7 @@ ClassicalYaml: &ClassicalYaml {type: http, interval: 86400, behavior: classical,
 
 # 全局配置
 routing-mark: 1
-#interface-name: br0
+interface-name: eth0
 socks-port: 20000
 tproxy-port: 7896
 redir-port: 7877
