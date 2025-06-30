@@ -73,6 +73,7 @@ jobs:
         if: steps.check_release.outputs.exists == 'false'
         run: |
           cd mosdns
+          go mod tidy
           # 关键修复：用 sed "重写" release.py 中获取版本号的逻辑。
           # 将 VERSION = subprocess.check_output(...) 这一行
           # 替换为 VERSION = os.environ.get('CUSTOM_VERSION', 'dev/unknown')
