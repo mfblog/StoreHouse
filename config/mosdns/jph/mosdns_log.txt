@@ -1,3 +1,45 @@
+2025年7月7日更新内容
+1：替换2进制，集成J佬最新优化UI，大幅提升后端API性能，提升前端响应速度，支持精确搜索。
+2：上次更新忘记说要打开审计日志开关了      enable_audit: true
+#对外服务器
+  - tag: udp_all
+    type: udp_server
+    args:
+      entry: sequence_6666
+      listen: ":53"
+      enable_audit: true
+
+  - tag: tcp_all
+    type: tcp_server
+    args:
+      entry: sequence_6666
+      listen: ":53"
+      idle_timeout: 720
+      enable_audit: true
+3：/cus/mosdns/sub_config/forward_1.yaml中
+  - tag: sequence_fakeip
+    type: sequence
+    args:
+      - exec: drop_resp      #丢弃用于标记的blackhole ip
+      - exec: $forward_fakeip
+整个替换为
+#单次请求fakeip
+  - tag: sequence_fakeip_single
+    type: sequence
+    args:
+      - exec: drop_resp      #丢弃用于标记的blackhole ip
+      - exec: $forward_fakeip
+
+#20ms内不回应fakeip，自动再次请求
+  - tag: sequence_fakeip
+    type: fallback
+    args:
+      primary: sequence_fakeip_single
+      secondary: sequence_fakeip_single
+      threshold: 20
+      always_standby: false
+
+
 2025年7月3日更新内容
 1：替换2进制。
 2：/cus/mosdns/sub_config/forward_local.yaml中，upstream_query_timeout设置为500
