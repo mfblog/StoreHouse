@@ -868,6 +868,11 @@ install_mihomo_config() {
         exit 1
     fi
     log_info "自动检测到网卡: $interface_name"
+    log_info "正在根据您的系统环境和输入适配配置文件..."
+    # 替换所有的 eth0 为检测到的网卡名称
+    sed -i "s|eth0|${interface_name}|g" "$temp_config_file"
+    # 特别确保 interface-name 字段被正确替换
+   # sed -i "s|interface-name: .*|interface-name: ${interface_name}|" "$temp_config_file"
 
     # --- 步骤 4: 使用 yq 和 sed 集中修改配置 ---
     # 使用 yq 进行结构化修改，一次性完成
