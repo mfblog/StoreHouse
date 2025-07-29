@@ -255,6 +255,8 @@ configure_mosdns_rules() {
         sed -i "s/202.102.128.68/${localdns}/g" "${dest_dir}/sub_config/forward_local.yaml"
         sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/forward_nocn.yaml"
         sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/forward_nocn_ecs.yaml"
+        sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/rule_set.yaml"
+        sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/adguard.yaml"
         sed -i 's|/tmp/mosdns|/cus/mosdns/mosdns|g' /cus/mosdns/config_custom.yaml
         sed -i 's/listen: 127.0.0.1:6666/listen: ":53"/' "${dest_dir}/config_custom.yaml"
 
