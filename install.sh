@@ -26,8 +26,7 @@ yellow() {
 ################################################# 变量定义
 local_ip=$(hostname -I | awk '{print $1}')
 url="https://raw.githubusercontent.com/herozmy/StoreHouse/latest"
-#url="https://d.herozmy.com/"
-#cn_url='https://fastly.jsdelivr.net/gh/herozmy/StoreHouse@latest'
+
 
     check_core_status() {
        # echo -e "\n${yellow}检查服务状态...${reset}"
