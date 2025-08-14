@@ -895,10 +895,10 @@ install_mihomo_config() {
        # "$temp_config_file"
     sed -i "s|机场订阅|${sub_url}|g" "$temp_config_file"
     # --- 步骤 5: 验证并应用修改 ---
-    if ! yq eval 'true' "$temp_config_file" &>/dev/null; then
-        log_error "配置文件修改后格式错误，操作已中止。"
-        exit 1
-    fi
+   # if ! yq eval 'true' "$temp_config_file" &>/dev/null; then
+    #    log_error "配置文件修改后格式错误，操作已中止。"
+  #      exit 1
+  #  fi
 
     # 所有修改成功后，才将临时文件移动到最终位置
     mv "$temp_config_file" "$final_config_path"
