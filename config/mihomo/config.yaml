@@ -99,7 +99,7 @@ dns:
   default-nameserver:
     - tls://223.5.5.5
   proxy-server-nameserver:
-    - 8.8.8.8
+    - 223.5.5.5
   direct-nameserver:
     - tls://223.5.5.5
   direct-nameserver-follow-policy: false
