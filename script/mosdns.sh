@@ -206,8 +206,8 @@ configure_mosdns_rules() {
     echo
     log_info "请选择要使用的 MosDNS 分流规则:"
     echo "  1. O佬分流规则 (经典稳定)"
-    echo "  2. PH佬分流规则 (越用越快)"
-    echo "  999. J佬/PH 魔改Ui (推荐)"
+    #echo "  2. PH佬分流规则 (越用越快)"
+    echo "  999. J佬/PH 魔改Ui (推荐 越用越快)"
     echo "  0. 退出"
     read -rp "请输入您的选择 [1,2,999,0]: " choice
     

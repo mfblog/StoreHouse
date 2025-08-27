@@ -53,6 +53,49 @@ format_status_for_menu() {
     esac
 }
 
+# 检查系统优化状态
+get_system_optimization_status() {
+    local bbr_enabled=false
+    local config_exists=false
+    local modules_loaded=false
+    
+    # 检查 BBR 是否已启用
+    if command -v sysctl &> /dev/null; then
+        local current_bbr=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "")
+        if [[ "$current_bbr" == "bbr" ]]; then
+            bbr_enabled=true
+        fi
+    fi
+    
+    # 检查配置文件是否存在
+    if [[ -f "/etc/sysctl.d/99-sysctl.conf" ]] && grep -q "MosDNS 系统优化配置" "/etc/sysctl.d/99-sysctl.conf" 2>/dev/null; then
+        config_exists=true
+    fi
+    
+    # 检查内核模块是否已加载
+    if lsmod | grep -q "tcp_bbr\|sch_fq" 2>/dev/null; then
+        modules_loaded=true
+    fi
+    
+    # 返回优化状态
+    if [[ "$bbr_enabled" == true ]] && [[ "$config_exists" == true ]] && [[ "$modules_loaded" == true ]]; then
+        return 1  # 已完全优化
+    elif [[ "$bbr_enabled" == true ]] || [[ "$config_exists" == true ]] || [[ "$modules_loaded" == true ]]; then
+        return 0  # 部分优化
+    else
+        return 9  # 未优化
+    fi
+}
+
+# 格式化系统优化状态显示
+format_optimization_status() {
+    case $1 in
+        1) echo -e "${green_text}[已优化]${reset}" ;;
+        0) echo -e "${yellow_text}[部分优化]${reset}" ;;
+        9) echo -e "${grey_text}[未优化]${reset}" ;;
+    esac
+}
+
 # 处理“服务已运行”的交互逻辑
 handle_running_service() {
     local display_name=$1
@@ -116,6 +159,10 @@ singbox_display=$(format_status_for_menu $singbox_status)
 get_service_status "mihomo"; mihomo_status=$?
 mihomo_display=$(format_status_for_menu $mihomo_status)
 
+# 获取系统优化状态
+get_system_optimization_status; optimization_status=$?
+optimization_display=$(format_optimization_status $optimization_status)
+
 
 # 2. 显示菜单
 clear
@@ -129,6 +176,9 @@ echo -e "${green_text}Proxy代理${reset}"
 echo "-------------------------------------------------"
 echo -e "3. ${yellow_text}sing-box${reset}        ${singbox_display}"
 echo -e "4. ${yellow_text}mihomo${reset}          ${mihomo_display}"
+echo "**************************************************"
+echo -e "m. ${yellow_text}Mosdns——系统优化${reset}    ${optimization_display}"
+echo -e "${red_text}注意：仅限mosdns单独安装${reset}"
 echo "**************************************************"
 echo -e "0. ${red_text}卸载核心组件${reset}"
 echo -e "999. ${yellow_text}更新脚本${reset}"
@@ -210,6 +260,9 @@ case $choice in
                 . "$DIRPATH/sing-box.sh" mihomo 
                 ;;
         esac
+        ;;
+    m )  # mosdns sysctl系统优化
+        . "$DIRPATH/mosdns_sysctl.sh"
         ;;
     0)  # 卸载核心
         . "$DIRPATH/uninstall.sh"

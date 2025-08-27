@@ -3,9 +3,20 @@
     yellow='\033[1;33m'
     green_text='\033[1;32m'
     red_text='\033[1;31m'
+    blue_text='\033[1;34m'
     reset='\033[0m'
 
-        echo -e "卸载Sing-Box | Mihomo | Mosdns | Unbound | Redis"
+# 系统优化卸载函数
+uninstall_system_optimization() {
+    local script_path="/usr/local/bin/tools/mosdns_sysctl.sh"
+    if [[ -f "$script_path" ]]; then
+        bash "$script_path" uninstall
+    else
+        echo -e "${red_text}错误: 找不到系统优化卸载脚本 $script_path${reset}"
+    fi
+}
+
+        echo -e "卸载Sing-Box | Mihomo | Mosdns | Unbound | Redis | 系统优化"
 
         # 检查 sing-box 和 mihomo 是否同时安装 (用于后续判断是否清理公共规则)
         is_singbox_initial_installed=false
@@ -22,8 +33,14 @@
         # 查找所有已安装的核心程序
         found_files=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" -o -name "mosdns" -o -name "unbound" -o -name "redis-server" \))
         
-        if [ -z "$found_files" ]; then
-            echo -e "${yellow}[检测结果] 未找到任何已安装的核心程序${reset}"
+        # 检查系统优化是否已安装
+        sysctl_optimization_installed=false
+        if [[ -f "/etc/sysctl.d/99-sysctl.conf" ]] && grep -q "MosDNS 系统优化配置" "/etc/sysctl.d/99-sysctl.conf" 2>/dev/null; then
+            sysctl_optimization_installed=true
+        fi
+        
+        if [ -z "$found_files" ] && [ "$sysctl_optimization_installed" = false ]; then
+            echo -e "${yellow}[检测结果] 未找到任何已安装的核心程序或系统优化${reset}"
             return 0
         fi
 
@@ -37,6 +54,14 @@
             echo -e "  ${green_text}$i${reset}) $program"
             ((i++))
         done
+        
+        # 添加系统优化选项
+        if [ "$sysctl_optimization_installed" = true ]; then
+            installed_programs+=("system-optimization")
+            echo -e "  ${green_text}$i${reset}) 系统优化配置 (BBR + sysctl)"
+            ((i++))
+        fi
+        
         echo -e "  ${green_text}0${reset}) 卸载所有"
         echo -e "  ${green_text}q${reset}) 退出"
 
@@ -127,6 +152,11 @@
                     rm -rf /etc/redis
                     rm -rf /usr/local/bin/redis-*
                     rm -rf /etc/systemd/system/redis-server.service
+                    ;;
+                "system-optimization")
+                    echo -e "${yellow}正在卸载系统优化配置...${reset}"
+                    uninstall_system_optimization
+                    ;;
             esac
             echo -e "${green_text}$program 已卸载完成${reset}"
         done
