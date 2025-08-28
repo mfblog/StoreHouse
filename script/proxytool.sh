@@ -557,6 +557,7 @@ manage_mosdns() {
         echo -e "  3. 规则管理"
         echo -e "  4. 清除DNS缓存"
         echo -e "  5. 查看实时日志"
+        echo -e "  6. 系统优化"
         echo -e "  0. 返回主菜单\n"
 
         read -p "请选择操作: " choice
@@ -597,6 +598,9 @@ manage_mosdns() {
                 trap 'echo -e "\n${yellow_text}已停止日志查看。${reset}"; trap - INT; return' INT
                 journalctl -u mosdns -f -o cat --no-pager
                 trap - INT
+                ;;
+            6)
+                . "$DIRPATH/mosdns_sysctl.sh"
                 ;;
             0) break ;;
             *) log_warn "无效选择" ;;

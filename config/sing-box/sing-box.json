@@ -5,10 +5,11 @@
         "timestamp": true
     },
     "dns": {
-        "servers": [{
+        "servers": [
+            {
                 "tag": "nodedns",
-                "address": "tls://223.5.5.5:853",
-                "detour": "direct"
+                "type": "tls",
+                "server": "223.5.5.5"
             },
             {
                 "tag": "fakeipDNS",
@@ -448,7 +449,10 @@
         ],
         "final": "♾️Global",
         "auto_detect_interface": true,
-        "default_mark": 1
+        "default_mark": 1,
+        "default_domain_resolver": {
+            "server": "nodedns"
+        }   
     },
     "experimental": {
         "clash_api": {

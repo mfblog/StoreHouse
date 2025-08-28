@@ -53,6 +53,62 @@ format_status_for_menu() {
     esac
 }
 
+# 获取网络配置状态
+get_network_status() {
+    local first_interface=$(ip link show | grep -E "^[0-9]+:" | grep -v "lo:" | head -1 | awk -F': ' '{print $2}' | awk '{print $1}')
+    
+    if [[ -z "$first_interface" ]]; then
+        return 9  # 无接口
+    fi
+    
+    # 检查是否为DHCP配置
+    local is_dhcp=false
+    
+    # 检查netplan配置
+    if ls /etc/netplan/*.yaml &>/dev/null; then
+        if grep -q "dhcp4.*true" /etc/netplan/*.yaml 2>/dev/null; then
+            is_dhcp=true
+        fi
+    fi
+    
+    # 检查NetworkManager配置
+    if command -v nmcli &>/dev/null; then
+        local nm_method=$(nmcli connection show "$first_interface" 2>/dev/null | grep "ipv4.method" | awk '{print $2}')
+        if [[ "$nm_method" == "auto" ]]; then
+            is_dhcp=true
+        fi
+    fi
+    
+    # 检查interfaces文件
+    if [[ -f "/etc/network/interfaces" ]] && grep -q "iface.*inet dhcp" /etc/network/interfaces 2>/dev/null; then
+        is_dhcp=true
+    fi
+    
+    # 检查是否有有效IP地址
+    local has_ip=false
+    if ip -4 addr show "$first_interface" 2>/dev/null | grep -q "inet "; then
+        has_ip=true
+    fi
+    
+    # 返回状态: 1=DHCP, 0=静态, 9=未配置
+    if [[ "$has_ip" == false ]]; then
+        return 9  # 未配置
+    elif [[ "$is_dhcp" == true ]]; then
+        return 1  # DHCP
+    else
+        return 0  # 静态
+    fi
+}
+
+# 格式化网络状态显示
+format_network_status() {
+    case $1 in
+        1) echo -e "${green_text}[DHCP]${reset}" ;;
+        0) echo -e "${yellow_text}[静态]${reset}" ;;
+        9) echo -e "${grey_text}[未配置]${reset}" ;;
+    esac
+}
+
 # 检查系统优化状态
 get_system_optimization_status() {
     local bbr_enabled=false
@@ -163,6 +219,10 @@ mihomo_display=$(format_status_for_menu $mihomo_status)
 get_system_optimization_status; optimization_status=$?
 optimization_display=$(format_optimization_status $optimization_status)
 
+# 获取网络配置状态
+get_network_status; network_status=$?
+network_display=$(format_network_status $network_status)
+
 
 # 2. 显示菜单
 clear
@@ -176,10 +236,12 @@ echo -e "${green_text}Proxy代理${reset}"
 echo "-------------------------------------------------"
 echo -e "3. ${yellow_text}sing-box${reset}        ${singbox_display}"
 echo -e "4. ${yellow_text}mihomo${reset}          ${mihomo_display}"
-echo "**************************************************"
+echo "-------------------------------------------------"
+echo -e "${green_text}多功能脚本${reset}"
+echo -e "i. ${yellow_text}Debian/Ubuntu设置静态IP/DHCP${reset}  ${network_display}"
 echo -e "m. ${yellow_text}Mosdns——系统优化${reset}    ${optimization_display}"
-echo -e "${red_text}注意：仅限mosdns单独安装${reset}"
-echo "**************************************************"
+#echo -e "p. ${yellow_text}Proxytool——代理管理${reset}" 
+echo "-------------------------------------------------"
 echo -e "0. ${red_text}卸载核心组件${reset}"
 echo -e "999. ${yellow_text}更新脚本${reset}"
 echo "================================================="
@@ -260,6 +322,9 @@ case $choice in
                 . "$DIRPATH/sing-box.sh" mihomo 
                 ;;
         esac
+        ;;
+    i)  # 设置静态IP
+        . "$DIRPATH/ipset.sh"
         ;;
     m )  # mosdns sysctl系统优化
         . "$DIRPATH/mosdns_sysctl.sh"
