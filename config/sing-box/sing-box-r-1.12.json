@@ -21,7 +21,11 @@
     },
     "dns": {
         "servers": [
- 
+            {
+                "tag": "localDns",
+                "type": "tls",
+                "server": "223.5.5.5"
+            },
             {
                 "tag": "nodedns",
                 "type": "tls",
