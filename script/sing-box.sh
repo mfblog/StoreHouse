@@ -426,7 +426,7 @@ check_dependencies() {
     # 定义所有需要的软件包列表
     # 注意：'go' 依赖通常通过下载 tarball 安装，而不是 apt-get
     # 'gawk' 已经是 GNU awk，在 Debian/Ubuntu 上通常就是 'awk'
-    local apt_deps=("curl" "git" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "unzip")
+    local apt_deps=("curl" "git" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "unzip" "gawk")
     local missing_apt_deps=()
     local missing_non_apt_deps=() # 用于非 apt-get 安装的依赖
 
