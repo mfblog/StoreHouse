@@ -1,3 +1,17 @@
+
+20250829
+
+保存客户端别名至服务端功能添加
+关闭mosdns
+1：替换2进制
+2：修改/cus/mosdns/config_custom.yaml  在forward_2.yaml后面添加webinfo配置
+  - "/cus/mosdns/sub_config/forward_2.yaml"                 #打包主分流逻辑供调用
+  - "/cus/mosdns/sub_config/webinfo.yaml"                 #前端信息与配置存储
+3：添加文件并修改权限  /cus/mosdns/sub_config/webinfo.yaml  
+4：添加文件和文件夹并修改权限  /cus/mosdns/webinfo/clientname.json 
+5：启动mosdns
+
+
 2025年7月7日更新内容
 此次更新太多，不再列更改点。
 
