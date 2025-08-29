@@ -243,50 +243,52 @@ install_optimization() {
         exit 1
     fi
     if ! cat > "${CONF_FILE}" <<'EOF'; then
-# MosDNS 系统优化配置
-# BBR 拥塞控制算法配置
-net.core.default_qdisc=fq
-net.ipv4.tcp_congestion_control=bbr
 
-# 安全配置
-kernel.sysrq=0
-
-# TCP 性能优化
-net.ipv4.tcp_ecn=2
-net.ipv4.tcp_ecn_fallback=1
-net.ipv4.tcp_dsack=1
-net.ipv4.tcp_low_latency=1
-net.ipv4.tcp_mtu_probing=1
-net.ipv4.tcp_min_snd_mss=1024
-net.ipv4.tcp_syncookies=0
-
-# 路由过滤配置（用于透明代理）
-net.ipv4.conf.default.rp_filter=0
-net.ipv4.conf.all.rp_filter=0
-
-# 禁用重定向
-net.ipv4.conf.default.accept_redirects=0
-net.ipv4.conf.all.accept_redirects=0
-net.ipv6.conf.default.accept_redirects=0
-net.ipv6.conf.all.accept_redirects=0
-
-# 网络缓冲区优化
-net.core.netdev_max_backlog=4096
-net.core.netdev_budget_usecs=8000
-net.core.netdev_budget=600
-
-# TCP 内存配置
-net.ipv4.tcp_rmem=4096 131072 1048576
-net.ipv4.tcp_wmem=4096 65536 1048576
-net.core.optmem_max=262144
-net.core.rmem_default=131072
-net.core.wmem_default=131072
-net.core.wmem_max=1048576
-net.core.rmem_max=1048576
-
-# UDP 内存配置
-net.ipv4.udp_rmem_min=65536
-net.ipv4.udp_wmem_min=65536
+kernel.hardlockup_panic = 0  
+kernel.nmi_watchdog = 0  
+kernel.sched_autogroup_enabled = 0  
+kernel.split_lock_mitigate = 1  
+kernel.sysrq = 0  
+kernel.task_delayacct = 0  
+kernel.timer_migration = 0  
+kernel.watchdog = 1  
+net.core.default_qdisc = fq
+net.core.netdev_budget = 600  
+net.core.netdev_budget_usecs = 8000  
+net.core.netdev_max_backlog = 4096  
+net.core.optmem_max = 262144  
+net.core.rmem_default = 131072  
+net.core.rmem_max = 1048576  
+net.core.wmem_default = 131072  
+net.core.wmem_max = 1048576  
+net.ipv4.conf.all.accept_redirects = 0  
+net.ipv4.conf.all.rp_filter = 0  
+net.ipv4.conf.default.accept_redirects = 0  
+net.ipv4.conf.default.rp_filter = 0  
+net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_dsack = 1 
+net.ipv4.tcp_ecn = 2  
+net.ipv4.tcp_ecn_fallback = 1  
+net.ipv4.tcp_low_latency = 1  
+net.ipv4.tcp_min_snd_mss = 1024  
+net.ipv4.tcp_mtu_probing = 1  
+net.ipv4.tcp_rmem = 4096 131072 1048576   
+net.ipv4.tcp_syncookies = 0  
+net.ipv4.tcp_wmem = 4096 65536 1048576  
+net.ipv4.udp_mem = 65536 131072 262144  
+net.ipv4.udp_rmem_min = 131072  
+net.ipv4.udp_wmem_min = 131072  
+net.ipv6.conf.all.accept_ra = 0  
+net.ipv6.conf.all.accept_redirects = 0  
+net.ipv6.conf.default.accept_ra = 0  
+net.ipv6.conf.default.accept_redirects = 0  
+vm.compaction_proactiveness = 0  
+vm.dirty_background_ratio = 2  
+vm.dirty_expire_centisecs = 500  
+vm.dirty_ratio = 10  
+vm.dirty_writeback_centisecs = 100  
+vm.page-cluster = 0  
+vm.swappiness = 0  
 EOF
     log_error "无法写入配置文件 ${CONF_FILE}"
     exit 1
