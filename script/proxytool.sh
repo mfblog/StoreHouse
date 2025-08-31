@@ -661,6 +661,7 @@ manage_mihomo() {
         echo -e "\n${green_text}可用操作:${reset}"
         echo -e "  1. 重启 Mihomo 服务"
         echo -e "  2. 查看运行日志"
+        echo -e "  3. 切换nft防火墙规则"
         echo -e "  0. 返回上级菜单\n"
 
         read -p "请选择操作 [0-2]: " choice
@@ -676,6 +677,11 @@ manage_mihomo() {
                 trap 'echo -e "\n${yellow_text}已退出日志查看${reset}"; trap - INT; return' INT
                 journalctl -u mihomo -f -o cat --no-pager
                 trap - INT
+                ;;
+            3)
+                bash "$SINGBOX_SCRIPT" switch_nft
+                systemctl restart mihomo tproxy-router nftables || log_warn "部分服务重启失败"
+                log_info "Mihomo 服务已重启完成"
                 ;;
             0) break ;;
             *) log_warn "无效的选择，请重试" ;;
