@@ -279,7 +279,7 @@ task_interactive_install() {
     local config_type 
     case "$core_type" in
         official-compile)          config_type="official" ;;
-        official-core)             config_type="official" ;;
+        official-core)             config_type="official-core" ;;
         puer)                      config_type="puer" ;;
         xiling)                    config_type="xiling" ;;
         s-y)                       config_type="s-y" ;;
@@ -325,6 +325,13 @@ task_update_core() {
     
     local current_core_type
     current_core_type=$(cat /etc/sing-box/version)
+    
+    # 兼容旧版本：如果是 'official'，则升级为 'official-core'
+    if [ "$current_core_type" = "official" ]; then
+        log_info "检测到旧版本格式，正在升级版本标识为 'official-core'..."
+        current_core_type="official-core"
+        echo "$current_core_type" > /etc/sing-box/version
+    fi
     
     log_info "正在备份当前核心..."
     local current_version
@@ -401,8 +408,9 @@ task_switch_core() {
     # 根据核心类型确定配置文件类型
     local new_config_type
     case "$new_core_type" in
-        official-compile|official-core) new_config_type="official" ;;
-        *)                              new_config_type="$new_core_type" ;;
+        official-compile) new_config_type="official" ;;
+        official-core)    new_config_type="official-core" ;;
+        *)                new_config_type="$new_core_type" ;;
     esac
     
     # 安装新的核心和对应的配置
@@ -637,8 +645,9 @@ install_singbox_core() {
             compile_singbox_from_source
             return # 编译函数自己处理安装，所以这里直接返回
             ;;
-        official-core)
+        official|official-core)
             # 从 GitHub API 获取最新稳定版的版本号和下载地址
+            # official 是为了兼容旧版本的版本文件
             local version
             version=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
             url="https://github.com/SagerNet/sing-box/releases/download/${version}/sing-box-${version#v}-linux-${arch}.tar.gz"
@@ -789,7 +798,7 @@ install_singbox_config() {
     local template_url=""
     # 根据配置类型，设置不同的模板下载地址
     case "$config_type" in
-        official)
+        official|official-core)
             if [ -n "$sub_url" ]; then
                 log_info "正在从订阅链接生成配置文件..."
                 curl -o /etc/sing-box/config.json "${SUB_HOST}/config/${sub_url}${SINGBOX_CONFIG_TPL}"
