@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MosDNS 管理 - MyBox</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --bg-color-main: #f8fafc;
+            --bg-color-card: #ffffff;
+            --bg-color-active: #10b981;
+            --bg-color-inactive: #f1f5f9;
+            --text-color: #334155;
+            --text-color-dark: #1e293b;
+            --text-color-light: #64748b;
+            --text-color-muted: #94a3b8;
+            --border-color-light: #e2e8f0;
+            --border-radius-sm: 6px;
+            --border-radius-md: 8px;
+            --border-radius-lg: 12px;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color-main);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--space-lg);
+        }
+
+        .nav-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid var(--border-color-light);
+        }
+
+        .breadcrumb-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .breadcrumb-link:hover {
+            color: var(--secondary-color);
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-color-muted);
+            font-weight: 300;
+        }
+
+        .breadcrumb-current {
+            color: var(--text-color-dark);
+            font-weight: 600;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            text-align: center;
+            padding: var(--space-xl);
+            border-radius: var(--border-radius-lg);
+            margin-bottom: var(--space-xl);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: var(--space-sm);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .dns-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .stat-card {
+            background: var(--bg-color-card);
+            padding: var(--space-md);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color-light);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: var(--space-xs);
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        }
+
+        .stat-label {
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .service-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .metric-card {
+            background: var(--bg-color-card);
+            padding: var(--space-md);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color-light);
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: var(--space-xs);
+        }
+
+        .metric-label {
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+        }
+
+        .service-card {
+            background: var(--bg-color-card);
+            padding: var(--space-lg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--space-xs);
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid var(--border-color-light);
+        }
+
+        .service-name {
+            font-size: 1.6em;
+            font-weight: 700;
+            color: var(--text-color-dark);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .service-icon {
+            font-size: 1.2em;
+        }
+
+        .service-description {
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+            margin-bottom: var(--space-md);
+        }
+
+        .service-status-badge {
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--border-radius-md);
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-width: 80px;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .status-running {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        .status-stopped {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .status-error {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .service-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-sm);
+        }
+
+        .service-uptime {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-xs) var(--space-sm);
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: var(--border-radius-sm);
+            border: 1px solid var(--border-color-light);
+        }
+
+        .uptime-label {
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .uptime-value {
+            color: var(--primary-color);
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        }
+
+        .service-actions {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            margin-top: auto;
+        }
+
+        .btn {
+            padding: var(--space-sm) var(--space-md);
+            border: none;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+        }
+
+        .btn-sm {
+            padding: var(--space-xs) var(--space-md);
+            font-size: 0.8em;
+            border-radius: var(--border-radius-sm);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: var(--space-xl);
+            color: var(--text-color-muted);
+            font-style: italic;
+        }
+
+        .error {
+            text-align: center;
+            padding: var(--space-xl);
+            color: #dc2626;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: var(--border-radius-md);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: var(--space-xl);
+            padding: var(--space-lg);
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+        }
+
+        /* Vue transitions */
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s ease;
+        }
+
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+
+        .list-enter-active, .list-leave-active {
+            transition: all 0.3s ease;
+        }
+
+        .list-enter-from, .list-leave-to {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--space-md);
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .service-actions {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .btn-sm {
+                padding: var(--space-xs) var(--space-md);
+                font-size: 0.8em;
+            }
+
+            .dns-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .service-metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="nav-breadcrumb">
+                <a href="/" class="breadcrumb-link">🏠 首页</a>
+                <span class="breadcrumb-separator">›</span>
+                <span class="breadcrumb-current">🌐 MosDNS管理</span>
+            </div>
+            
+            <div class="header">
+                <h1>🌐 MosDNS 管理</h1>
+                <p>智能 DNS 解析服务管理控制台</p>
+            </div>
+
+            <!-- DNS 统计信息 -->
+            <div v-if="service.status === 0" class="dns-stats">
+                <transition-group name="list" tag="div" class="dns-stats">
+                    <div v-for="stat in dnsStats" :key="stat.label" class="stat-card">
+                        <div class="stat-value">{{ stat.value }}</div>
+                        <div class="stat-label">{{ stat.label }}</div>
+                    </div>
+                </transition-group>
+            </div>
+
+            <!-- 服务指标 -->
+            <div v-if="service.status === 0" class="service-metrics">
+                <div class="metric-card">
+                    <div class="metric-value">{{ formatBytes(service.memory_bytes) }}</div>
+                    <div class="metric-label">内存使用</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ service.cpu_percent.toFixed(1) }}%</div>
+                    <div class="metric-label">CPU 使用率</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ service.pid }}</div>
+                    <div class="metric-label">进程 ID</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ uptime }}</div>
+                    <div class="metric-label">运行时长</div>
+                </div>
+            </div>
+
+            <!-- 服务状态卡片 -->
+            <transition name="fade" mode="out-in">
+                <div v-if="loading" class="loading" key="loading">
+                    加载 MosDNS 服务状态...
+                </div>
+                <div v-else-if="error" class="error" key="error">
+                    {{ error }}
+                </div>
+                <div v-else class="service-card" key="service">
+                    <div class="service-header">
+                        <div class="service-name">
+                            <span class="service-icon">🌐</span>
+                            MosDNS
+                        </div>
+                        <div class="service-status-badge" :class="statusClass">
+                            {{ statusText }}
+                        </div>
+                    </div>
+                    <div class="service-description">
+                        智能 DNS 解析服务 - 支持分流、屏蔽和加速的高性能 DNS 转发器
+                    </div>
+                    
+                    <div class="service-info">
+                        <div class="service-uptime">
+                            <span class="uptime-label">运行时长</span>
+                            <span class="uptime-value">
+                                {{ uptime || (service.status === 1 ? '已停止' : '未安装') }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="service-actions">
+                        <button 
+                            v-if="service.status === 0" 
+                            class="btn btn-danger btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('stop')"
+                        >
+                            停止
+                        </button>
+                        <button 
+                            v-if="service.status === 1" 
+                            class="btn btn-success btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('start')"
+                        >
+                            启动
+                        </button>
+                        <button 
+                            v-if="service.status === 2" 
+                            class="btn btn-success btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('start')"
+                        >
+                            启动
+                        </button>
+                        <button 
+                            v-if="service.status !== 2" 
+                            class="btn btn-warning btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('restart')"
+                        >
+                            重启
+                        </button>
+                        <button 
+                            class="btn btn-primary btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('logs')"
+                        >
+                            查看日志
+                        </button>
+                    </div>
+                </div>
+            </transition>
+
+            <div class="footer">
+                <p>MyBox v1.0.0 - MosDNS 管理页面</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, onUnmounted } = Vue;
+
+        const App = {
+            setup() {
+                const service = reactive({});
+                const loading = ref(true);
+                const error = ref(null);
+                const actionInProgress = ref(false);
+                let refreshTimer = null;
+
+                const API_BASE = '/api';
+
+                // 模拟DNS统计数据（实际项目中应从API获取）
+                const dnsStats = ref([
+                    { label: '总查询数', value: '1,234' },
+                    { label: '今日查询', value: '456' },
+                    { label: '缓存命中', value: '89%' },
+                    { label: '平均响应', value: '12ms' },
+                    { label: '上游服务器', value: '3' },
+                    { label: '屏蔽域名', value: '42' }
+                ]);
+
+                const statusClass = computed(() => {
+                    switch (service.status) {
+                        case 0: return 'status-running';
+                        case 1: return 'status-stopped';
+                        case 2: return 'status-error';
+                        default: return 'status-error';
+                    }
+                });
+
+                const statusText = computed(() => {
+                    switch (service.status) {
+                        case 0: return '运行中';
+                        case 1: return '已停止';
+                        case 2: return '未安装';
+                        default: return '未知';
+                    }
+                });
+
+                const uptime = computed(() => {
+                    if (service.status !== 0 || !service.start_time) return null;
+                    
+                    const startTime = new Date(service.start_time);
+                    const now = new Date();
+                    const diffMs = now - startTime;
+                    
+                    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    
+                    if (days > 0) {
+                        return `${days}天 ${hours}小时`;
+                    } else if (hours > 0) {
+                        return `${hours}小时 ${minutes}分钟`;
+                    } else if (minutes > 0) {
+                        return `${minutes}分钟`;
+                    } else {
+                        return '少于1分钟';
+                    }
+                });
+
+                const formatBytes = (bytes) => {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                };
+
+                const fetchServiceStatus = async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/services`);
+                        const data = await response.json();
+                        
+                        if (response.ok && data.services && data.services['mosdns']) {
+                            Object.assign(service, data.services['mosdns']);
+                            loading.value = false;
+                            error.value = null;
+                        } else {
+                            throw new Error('获取 MosDNS 服务状态失败');
+                        }
+                    } catch (err) {
+                        console.error('获取服务状态失败:', err);
+                        loading.value = false;
+                        error.value = '加载服务状态失败: ' + err.message;
+                    }
+                };
+
+                const handleAction = async (action) => {
+                    if (actionInProgress.value) return;
+                    
+                    try {
+                        if (action === 'logs') {
+                            await viewLogs();
+                            return;
+                        }
+
+                        // 确认操作
+                        if (action === 'stop' || action === 'restart') {
+                            const confirmText = action === 'stop' 
+                                ? '确定要停止 MosDNS 服务吗？'
+                                : '确定要重启 MosDNS 服务吗？';
+                            
+                            if (!confirm(confirmText)) {
+                                return;
+                            }
+                        }
+
+                        actionInProgress.value = true;
+
+                        const response = await fetch(`${API_BASE}/services/mosdns/${action}`, {
+                            method: 'POST'
+                        });
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            setTimeout(fetchServiceStatus, 1000);
+                        } else {
+                            alert(`操作失败: ${data.error}`);
+                        }
+                    } catch (err) {
+                        alert(`操作失败: ${err.message}`);
+                    } finally {
+                        actionInProgress.value = false;
+                    }
+                };
+
+                const viewLogs = async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/logs/mosdns?lines=50`);
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            const logs = data.logs.join('\\n');
+                            const newWindow = window.open('', '_blank');
+                            newWindow.document.write(`
+                                <html>
+                                <head>
+                                    <title>MosDNS 日志</title>
+                                    <style>
+                                        body { 
+                                            font-family: monospace; 
+                                            white-space: pre-wrap; 
+                                            background: #1a1a1a; 
+                                            color: #e0e0e0; 
+                                            padding: 20px; 
+                                            font-size: 0.9em;
+                                            line-height: 1.4;
+                                        }
+                                        pre {
+                                            margin: 0;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                ${logs || '暂无日志'}
+                                </body>
+                                </html>
+                            `);
+                            newWindow.document.close();
+                        } else {
+                            alert(`获取日志失败: ${data.error}`);
+                        }
+                    } catch (err) {
+                        alert(`获取日志失败: ${err.message}`);
+                    }
+                };
+
+                onMounted(() => {
+                    fetchServiceStatus();
+                    refreshTimer = setInterval(fetchServiceStatus, 30000);
+                });
+
+                onUnmounted(() => {
+                    if (refreshTimer) {
+                        clearInterval(refreshTimer);
+                    }
+                });
+
+                return {
+                    service,
+                    loading,
+                    error,
+                    actionInProgress,
+                    dnsStats,
+                    statusClass,
+                    statusText,
+                    uptime,
+                    formatBytes,
+                    handleAction
+                };
+            }
+        };
+
+        createApp(App).mount('#app');
+    </script>
+</body>
+</html>

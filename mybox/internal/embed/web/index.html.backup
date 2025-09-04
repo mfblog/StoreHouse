@@ -1,0 +1,2833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyBox - 服务管理控制中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; }
+        .app { display: flex; min-height: 100vh; }
+        .sidebar { width: 250px; background: white; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
+        .main { flex: 1; padding: 20px; }
+        .nav-item { padding: 12px 20px; cursor: pointer; transition: all 0.2s; }
+        .nav-item:hover { background: #f0f0f0; }
+        .nav-item.active { background: #4f46e5; color: white; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 4px; }
+        .btn-primary { background: #4f46e5; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .status-running { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 12px; font-size: 12px; }
+        .status-stopped { background: #fecaca; color: #991b1b; padding: 4px 8px; border-radius: 12px; font-size: 12px; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .error { background: #fecaca; color: #991b1b; padding: 12px; border-radius: 4px; margin: 12px 0; }
+        .config-tabs { display: flex; gap: 8px; margin: 20px 0; }
+        .config-tab { padding: 8px 16px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 4px; }
+        .config-tab.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+        .config-item { border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin: 8px 0; }
+        
+        .badge { 
+            display: inline-block; 
+            padding: 2px 8px; 
+            font-size: 12px; 
+            font-weight: 500; 
+            border-radius: 12px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+        }
+        .badge-info { background: #dbeafe; color: #1e40af; }
+        .badge-success { background: #dcfce7; color: #166534; }
+        .badge-warning { background: #fef3c7; color: #d97706; }
+        .badge-danger { background: #fecaca; color: #991b1b; }
+        .badge-primary { background: #e0e7ff; color: #4338ca; }
+        .badge-secondary { background: #f3f4f6; color: #374151; }
+        
+        .draggable-route-item {
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        
+        .draggable-route-item:hover {
+            border-color: #e5e7eb;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .draggable-route-item[draggable="true"]:active {
+            cursor: grabbing !important;
+        }
+        
+        .draggable-route-item.drag-over {
+            border-color: #3b82f6;
+            background-color: #f0f9ff;
+        }
+        
+        .system-rule {
+            background: #fef2f2 !important;
+            border: 2px solid #fecaca !important;
+            opacity: 0.8;
+        }
+        
+        .system-rule:hover {
+            border-color: #fca5a5 !important;
+            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.1) !important;
+        }
+        .config-detail { background: #f8fafc; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 12px; }
+        .config-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .edit-form { background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 12px; margin: 8px 0; }
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; margin-bottom: 4px; font-weight: 500; color: #374151; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; }
+        .form-textarea { min-height: 60px; resize: vertical; }
+        .btn-small { padding: 4px 8px; font-size: 12px; }
+        .btn-info { background: #0ea5e9; color: white; border: 1px solid #0ea5e9; }
+        .btn-info:hover { background: #0284c7; border-color: #0284c7; }
+        .json-editor { font-family: monospace; background: #1f2937; color: #f9fafb; border-radius: 4px; padding: 12px; }
+        .config-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .expand-btn { background: none; border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+        .node-selector { border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; margin: 8px 0; background: #fafafa; }
+        .available-nodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; }
+        .node-item { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; background: white; text-align: center; font-size: 12px; transition: all 0.2s; }
+        .node-item:hover { border-color: #3b82f6; background: #eff6ff; }
+        .node-item.selected { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .selected-nodes { border: 1px dashed #3b82f6; border-radius: 4px; padding: 8px; min-height: 40px; background: #f0f9ff; margin: 8px 0; }
+        .selected-node { display: inline-block; background: #3b82f6; color: white; padding: 4px 8px; border-radius: 12px; margin: 2px; font-size: 11px; cursor: pointer; }
+        .selected-node:hover { background: #dc2626; }
+        .node-controls { display: flex; gap: 8px; margin: 8px 0; }
+        .node-type-filter { display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap; }
+        .filter-btn { padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; background: white; cursor: pointer; font-size: 11px; }
+        .filter-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+        
+        /* 模态框样式 */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal { background: white; border-radius: 8px; padding: 0; max-width: 600px; width: 90%; max-height: 80vh; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .modal-header { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f9fafb; }
+        .modal-title { font-size: 1.25rem; font-weight: 600; margin: 0; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+        .modal-close:hover { background: #f3f4f6; color: #374151; }
+        .modal-body { padding: 20px; overflow-y: auto; max-height: calc(80vh - 140px); }
+        .modal-footer { padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; background: #f9fafb; }
+        .modal-enter-active, .modal-leave-active { transition: all 0.3s ease; }
+        .modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }
+        .modal-overlay-enter-active, .modal-overlay-leave-active { transition: opacity 0.3s ease; }
+        .modal-overlay-enter-from, .modal-overlay-leave-to { opacity: 0; }
+    </style>
+</head>
+<body>
+    <div id="app" class="app">
+        <div class="sidebar">
+            <div style="padding: 20px; border-bottom: 1px solid #eee;">
+                <h2>📦 MyBox</h2>
+            </div>
+            <div class="nav-item" :class="{ active: currentPage === 'home' }" @click="currentPage = 'home'">
+                📊 仪表盘
+            </div>
+            <div class="nav-item" :class="{ active: currentPage === 'sing-box' }" @click="showServicePage('sing-box')">
+                🚀 Sing-Box
+            </div>
+            <div class="nav-item" :class="{ active: currentPage === 'mosdns' }" @click="showServicePage('mosdns')">
+                🌐 MosDNS
+            </div>
+        </div>
+        
+        <div class="main">
+            <!-- 首页 -->
+            <div v-if="currentPage === 'home'">
+                <h1>🎯 仪表盘</h1>
+                
+                <!-- 系统状态卡片 - 置顶显示 -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>📊 系统状态</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 16px;">
+                        <div style="text-align: center; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="font-size: 20px; margin-bottom: 4px;">💻</div>
+                            <div style="font-size: 28px; font-weight: bold; margin-bottom: 4px;">{{ systemInfo.cpu || '--' }}%</div>
+                            <div style="font-size: 12px; opacity: 0.9;">CPU 使用率</div>
+                        </div>
+                        <div style="text-align: center; padding: 16px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="font-size: 20px; margin-bottom: 4px;">🧠</div>
+                            <div style="font-size: 28px; font-weight: bold; margin-bottom: 4px;">{{ systemInfo.memory || '--' }}%</div>
+                            <div style="font-size: 12px; opacity: 0.9;">内存使用率</div>
+                        </div>
+                        <div style="text-align: center; padding: 16px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <div style="font-size: 20px; margin-bottom: 4px;">💾</div>
+                            <div style="font-size: 28px; font-weight: bold; margin-bottom: 4px;">{{ systemInfo.disk || '--' }}%</div>
+                            <div style="font-size: 12px; opacity: 0.9;">磁盘使用率</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 服务管理 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Sing-Box 服务卡片 -->
+                    <div v-if="services['sing-box']" class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3>🚀 Sing-Box</h3>
+                            <span :class="getStatusClass(services['sing-box'].status)">{{ getStatusText(services['sing-box'].status) }}</span>
+                        </div>
+                        
+                        <div v-if="services['sing-box'].status === 0 && services['sing-box'].start_time" 
+                             style="margin-bottom: 12px; color: #666; font-size: 14px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span>⏱️</span>
+                                <span>运行时长: {{ getUptime(services['sing-box'].start_time) }}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <button v-if="services['sing-box'].status === 0" @click="controlService('sing-box', 'stop')" class="btn btn-danger btn-small">停止</button>
+                            <button v-if="services['sing-box'].status === 0" @click="controlService('sing-box', 'restart')" class="btn btn-primary btn-small">重启</button>
+                            <button v-if="services['sing-box'].status === 1" @click="controlService('sing-box', 'start')" class="btn btn-primary btn-small">启动</button>
+                            <button @click="viewLogs('sing-box')" class="btn btn-secondary btn-small">查看日志</button>
+                            <button @click="showServicePage('sing-box')" class="btn btn-info btn-small">管理配置</button>
+                        </div>
+                    </div>
+                    
+                    <!-- MosDNS 服务卡片 -->
+                    <div v-if="services['mosdns']" class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3>🌐 MosDNS</h3>
+                            <span :class="getStatusClass(services['mosdns'].status)">{{ getStatusText(services['mosdns'].status) }}</span>
+                        </div>
+                        
+                        <div v-if="services['mosdns'].status === 0 && services['mosdns'].start_time" 
+                             style="margin-bottom: 12px; color: #666; font-size: 14px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span>⏱️</span>
+                                <span>运行时长: {{ getUptime(services['mosdns'].start_time) }}</span>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <button v-if="services['mosdns'].status === 0" @click="controlService('mosdns', 'stop')" class="btn btn-danger btn-small">停止</button>
+                            <button v-if="services['mosdns'].status === 0" @click="controlService('mosdns', 'restart')" class="btn btn-primary btn-small">重启</button>
+                            <button v-if="services['mosdns'].status === 1" @click="controlService('mosdns', 'start')" class="btn btn-primary btn-small">启动</button>
+                            <button @click="viewLogs('mosdns')" class="btn btn-secondary btn-small">查看日志</button>
+                            <button @click="showServicePage('mosdns')" class="btn btn-info btn-small">管理配置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- MosDNS 页面 -->
+            <div v-if="currentPage === 'mosdns'">
+                <h1>🌐 MosDNS 管理</h1>
+                
+                <div v-if="services['mosdns']" class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3>MosDNS 服务</h3>
+                        <span :class="getStatusClass(services['mosdns'].status)">{{ getStatusText(services['mosdns'].status) }}</span>
+                    </div>
+                    
+                    <div v-if="services['mosdns'].status === 0 && services['mosdns'].start_time" style="margin-bottom: 12px; color: #666;">
+                        运行时长: {{ getUptime(services['mosdns'].start_time) }}
+                    </div>
+                    
+                    <div>
+                        <button v-if="services['mosdns'].status === 0" @click="controlService('mosdns', 'stop')" class="btn btn-danger">停止</button>
+                        <button v-if="services['mosdns'].status === 0" @click="controlService('mosdns', 'restart')" class="btn btn-primary">重启</button>
+                        <button v-if="services['mosdns'].status === 1" @click="controlService('mosdns', 'start')" class="btn btn-primary">启动</button>
+                        <button @click="viewLogs('mosdns')" class="btn btn-secondary">查看日志</button>
+                    </div>
+                </div>
+                
+                <!-- MosDNS 配置管理已简化 -->
+                <div class="card">
+                    <h3 style="margin-bottom: 16px;">MosDNS 配置管理</h3>
+                    <div style="padding: 20px; text-align: center; color: #666;">
+                        <p>MosDNS 服务正在运行</p>
+                        <p style="font-size: 14px; margin-top: 10px;">配置文件管理请通过服务器直接编辑</p>
+                    </div>
+                </div>
+                        
+                        <!-- 保留原有的本地DNS配置显示，以防需要 -->
+                        <div v-if="false" class="card" style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h4>🏠 国内DNS服务器</h4>
+                                <button @click="editLocalDNS" class="btn btn-primary btn-small">编辑</button>
+                            </div>
+                            
+                            <div v-if="mosdnsLocalConfig">
+                                <!-- 示例配置提示 -->
+                                <div v-if="mosdnsLocalConfig._note" style="margin-bottom: 12px; padding: 8px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; color: #92400e;">
+                                    <strong>⚠️ 注意:</strong> {{ mosdnsLocalConfig._note }}
+                                </div>
+                                
+                                <div class="config-item" style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                    <div style="margin-bottom: 8px;">
+                                        <strong>标签:</strong> {{ mosdnsLocalConfig.tag || 'forward_local' }}
+                                    </div>
+                                    <div style="margin-bottom: 8px;">
+                                        <strong>类型:</strong> {{ mosdnsLocalConfig.type || 'forward' }}
+                                    </div>
+                                    <div style="margin-bottom: 8px;">
+                                        <strong>并发数:</strong> {{ mosdnsLocalConfig.args?.concurrent || 2 }}
+                                    </div>
+                                    <div v-if="mosdnsLocalConfig.args?.upstreams">
+                                        <strong>上游服务器:</strong>
+                                        <ul style="margin-left: 20px; margin-top: 4px;">
+                                            <li v-for="(upstream, index) in mosdnsLocalConfig.args.upstreams" :key="index">
+                                                {{ upstream.addr }}
+                                                <span v-if="upstream.upstream_query_timeout" style="color: #666; font-size: 12px;">
+                                                    (超时: {{ upstream.upstream_query_timeout }}ms)
+                                                </span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="config-item" style="text-align: center; color: #6b7280;">
+                                暂无本地DNS配置
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sing-Box 页面 -->
+            <div v-if="currentPage === 'sing-box'">
+                <h1>🚀 Sing-Box 管理</h1>
+                
+                <div v-if="services['sing-box']" class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3>Sing-Box 服务</h3>
+                        <span :class="getStatusClass(services['sing-box'].status)">{{ getStatusText(services['sing-box'].status) }}</span>
+                    </div>
+                    
+                    <div v-if="services['sing-box'].status === 0 && services['sing-box'].start_time" style="margin-bottom: 12px; color: #666;">
+                        运行时长: {{ getUptime(services['sing-box'].start_time) }}
+                    </div>
+                    
+                    <div>
+                        <button v-if="services['sing-box'].status === 0" @click="controlService('sing-box', 'stop')" class="btn btn-danger">停止</button>
+                        <button v-if="services['sing-box'].status === 0" @click="controlService('sing-box', 'restart')" class="btn btn-primary">重启</button>
+                        <button v-if="services['sing-box'].status === 1" @click="controlService('sing-box', 'start')" class="btn btn-primary">启动</button>
+                        <button @click="viewLogs('sing-box')" class="btn btn-secondary">查看日志</button>
+                    </div>
+                </div>
+                
+                <!-- 配置信息 -->
+            <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3>配置信息</h3>
+                        <div>
+                            <span v-if="hasUnsavedChanges" style="color: #ea580c; font-size: 12px; margin-right: 8px;">
+                                ⚠️ 有未保存的更改
+                            </span>
+                            <button @click="saveConfigOnly" class="btn btn-primary btn-small" style="margin-right: 8px;" 
+                                    :disabled="!hasUnsavedChanges">
+                                保存配置
+                            </button>
+                            <button @click="saveAndRestart" class="btn btn-success btn-small" 
+                                    :disabled="!hasUnsavedChanges || services['sing-box']?.status !== 0">
+                                保存并重启
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div v-if="loadingConfig" class="loading">正在加载配置...</div>
+                    <div v-else-if="configError" class="error">{{ configError }}</div>
+                    <div v-else-if="singboxConfig">
+                        <div class="config-tabs">
+                            <button :class="{ active: activeTab === 'inbounds' }" @click="activeTab = 'inbounds'" class="config-tab">
+                                📥 入站 ({{ singboxConfig.inbounds?.length || 0 }})
+                            </button>
+                            <button :class="{ active: activeTab === 'proxies' }" @click="activeTab = 'proxies'" class="config-tab">
+                                🚀 代理节点 ({{ proxyNodes.length || 0 }})
+                            </button>
+                            <button :class="{ active: activeTab === 'outbounds' }" @click="activeTab = 'outbounds'" class="config-tab">
+                                📤 出站组 ({{ nonProxyOutbounds.length || 0 }})
+                            </button>
+                            <button :class="{ active: activeTab === 'route' }" @click="activeTab = 'route'; console.log('路由按钮被点击，activeTab设置为:', activeTab)" class="config-tab">
+                                🛣️ 路由 ({{ filteredRouteRules.length || 0 }})
+                            </button>
+                            <button :class="{ active: activeTab === 'ruleset' }" @click="activeTab = 'ruleset'" class="config-tab">
+                                📋 规则集 ({{ singboxConfig.route?.rule_set?.length || 0 }})
+                            </button>
+                            <button :class="{ active: activeTab === 'dns' }" @click="activeTab = 'dns'" class="config-tab">
+                                🌐 DNS ({{ singboxConfig.dns?.servers?.length || 0 }})
+                            </button>
+                        </div>
+                        
+                        <div v-if="activeTab === 'inbounds'" style="max-height: 500px; overflow-y: auto;">
+                            <div class="config-section-header">
+                                <span>入站配置 ({{ singboxConfig.inbounds?.length || 0 }} 个)</span>
+                                <button @click="addInbound" class="btn btn-primary btn-small">添加入站</button>
+                            </div>
+                            <div v-for="(inbound, i) in singboxConfig.inbounds" :key="'inbound-' + i" class="config-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <strong>{{ inbound.type }} - {{ inbound.tag || '入站' + (i+1) }}</strong>
+                                    <div>
+                                        <button @click="editInbound(i)" class="btn btn-secondary btn-small">编辑</button>
+                                        <button @click="deleteInbound(i)" class="btn btn-danger btn-small">删除</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="config-detail">
+                                    <div><strong>监听地址:</strong> {{ inbound.listen || '0.0.0.0' }}:{{ inbound.listen_port }}</div>
+                                    <div v-if="inbound.sniff"><strong>流量嗅探:</strong> 启用</div>
+                                    <div v-if="inbound.users && inbound.users.length"><strong>用户数:</strong> {{ inbound.users.length }} 个</div>
+                                    <div v-if="inbound.tls && inbound.tls.enabled"><strong>TLS:</strong> 启用</div>
+                                    <div v-if="inbound.transport"><strong>传输协议:</strong> {{ inbound.transport.type }}</div>
+                                </div>
+                                
+
+                            </div>
+                        </div>
+                        
+                        <div v-if="activeTab === 'proxies'" style="max-height: 500px; overflow-y: auto;">
+                            <div class="config-section-header">
+                                <span>代理节点配置 ({{ proxyNodes.length || 0 }} 个)</span>
+                                <button @click="addProxyNode" class="btn btn-primary btn-small">添加代理节点</button>
+                            </div>
+                            
+                            <div v-for="(proxy, i) in proxyNodes" :key="'proxy-' + i" class="config-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div>
+                                        <strong>{{ proxy.tag }}</strong>
+                                        <span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 3px; margin-left: 8px; font-size: 11px;">
+                                            {{ proxy.type.toUpperCase() }}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <button @click="editProxyNode(getProxyNodeOriginalIndex(i))" class="btn btn-secondary btn-small">编辑</button>
+                                        <button @click="deleteProxyNode(getProxyNodeOriginalIndex(i))" class="btn btn-danger btn-small">删除</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="config-detail">
+                                    <div><strong>服务器:</strong> {{ proxy.server }}:{{ proxy.server_port }}</div>
+                                    <div v-if="proxy.username"><strong>用户名:</strong> {{ proxy.username }}</div>
+                                    <div v-if="proxy.uuid"><strong>UUID:</strong> {{ proxy.uuid }}</div>
+                                    <div v-if="proxy.password"><strong>密码:</strong> ••••••••</div>
+                                    <div v-if="proxy.method"><strong>加密方式:</strong> {{ proxy.method }}</div>
+                                    <div v-if="proxy.network"><strong>传输协议:</strong> {{ proxy.network }}</div>
+                                    <div v-if="proxy.tls && proxy.tls.enabled"><strong>TLS:</strong> 启用</div>
+                                    <div v-if="proxy.transport && proxy.transport.type">
+                                        <strong>传输类型:</strong> {{ proxy.transport.type }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-if="activeTab === 'outbounds'" style="max-height: 500px; overflow-y: auto;">
+                            <div class="config-section-header">
+                                <span>出站组配置 ({{ nonProxyOutbounds.length || 0 }} 个)</span>
+                                <button @click="addOutbound" class="btn btn-primary btn-small">添加出站组</button>
+                            </div>
+                            <div v-for="(outbound, i) in nonProxyOutbounds" :key="'outbound-' + i" class="config-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <strong>{{ outbound.type }} - {{ outbound.tag || '出站' + (i+1) }}</strong>
+                                    <div>
+                                        <button @click="editOutbound(getNonProxyOriginalIndex(i))" class="btn btn-secondary btn-small">编辑</button>
+                                        <button @click="deleteOutbound(getNonProxyOriginalIndex(i))" class="btn btn-danger btn-small">删除</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="config-detail">
+                                    <!-- 普通代理节点信息 -->
+                                    <div v-if="outbound.server"><strong>服务器:</strong> {{ outbound.server }}:{{ outbound.server_port }}</div>
+                                    <div v-if="outbound.method"><strong>加密方法:</strong> {{ outbound.method }}</div>
+                                    <div v-if="outbound.password"><strong>密码:</strong> ●●●●●●●●</div>
+                                    <div v-if="outbound.uuid"><strong>UUID:</strong> {{ outbound.uuid.substring(0, 8) }}...</div>
+                                    <div v-if="outbound.tls && outbound.tls.enabled"><strong>TLS:</strong> 启用</div>
+                                    <div v-if="outbound.transport"><strong>传输协议:</strong> {{ outbound.transport.type }}</div>
+                                    <div v-if="outbound.multiplex && outbound.multiplex.enabled"><strong>多路复用:</strong> 启用</div>
+                                    
+                                    <!-- URLTest/Selector 节点组信息 -->
+                                    <div v-if="outbound.type === 'urltest' || outbound.type === 'selector'">
+                                        <div v-if="outbound.outbounds && outbound.outbounds.length">
+                                            <strong>包含节点:</strong> {{ outbound.outbounds.length }} 个
+                                            <div style="margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 4px;">
+                                                <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                                    <span v-for="node in outbound.outbounds" :key="node" 
+                                                          style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 12px; font-size: 11px;">
+                                                        {{ node }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-if="outbound.type === 'urltest'">
+                                            <div v-if="outbound.url"><strong>测试URL:</strong> {{ outbound.url }}</div>
+                                            <div v-if="outbound.interval"><strong>测试间隔:</strong> {{ outbound.interval }}</div>
+                                            <div v-if="outbound.tolerance"><strong>容差:</strong> {{ outbound.tolerance }}ms</div>
+                                        </div>
+                                        <div v-if="outbound.type === 'selector'">
+                                            <div v-if="outbound.default"><strong>默认选择:</strong> {{ outbound.default }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+
+                            </div>
+                        </div>
+                        
+                        <div v-if="activeTab === 'route'" style="max-height: 500px; overflow-y: auto;">
+                            <div class="config-section-header">
+                                <span>路由规则 ({{ filteredRouteRules.length || 0 }} 个)</span>
+                                <div>
+                                    <button @click="debugRouteRules" class="btn btn-secondary btn-small" style="margin-right: 8px;">调试</button>
+                                    <button @click="addRouteRule" class="btn btn-primary btn-small">添加路由规则</button>
+                                </div>
+                            </div>
+                            
+                            <div v-if="!filteredRouteRules || filteredRouteRules.length === 0" style="text-align: center; padding: 20px; color: #6b7280;">
+                                暂无路由规则，点击上方按钮添加第一个路由规则
+                            </div>
+                            
+                            <div v-for="(rule, i) in filteredRouteRules" :key="'route-' + i" 
+                                 :class="['config-item', rule.isSystem ? 'system-rule' : 'draggable-route-item']" 
+                                 :draggable="!rule.isSystem"
+                                 @dragstart="rule.isSystem ? null : onDragStart($event, i)"
+                                 @dragover="rule.isSystem ? null : onDragOver($event)"
+                                 @drop="rule.isSystem ? null : onDrop($event, i)"
+                                 @dragend="rule.isSystem ? null : onDragEnd($event)"
+                                 :style="rule.isSystem ? 'cursor: default; opacity: 0.8; transition: all 0.2s ease;' : 'cursor: move; transition: all 0.2s ease;'">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center;">
+                                        <span v-if="!rule.isSystem" style="color: #6b7280; margin-right: 8px; cursor: grab;" title="拖拽排序">⋮⋮</span>
+                                        <span v-else style="color: #dc2626; margin-right: 8px;" title="系统规则，不可移动">🔒</span>
+                                        <span :style="rule.isSystem ? 'background: #fecaca; color: #991b1b; padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-right: 8px;' : 'background: #f3f4f6; color: #6b7280; padding: 1px 6px; border-radius: 4px; font-size: 10px; margin-right: 8px;'">
+                                            {{ i + 1 }}
+                                        </span>
+                                        <strong :style="rule.isSystem ? 'color: #dc2626; font-size: 14px;' : 'color: #1f2937; font-size: 14px;'">
+                                            {{ getSystemRuleName(rule) || rule.outbound || '未设置出站' }}
+                                        </strong>
+                                        <span v-if="rule.isSystem" style="background: #dc2626; color: white; padding: 1px 4px; border-radius: 2px; font-size: 8px; margin-left: 8px;">
+                                            系统
+                                        </span>
+                                    </div>
+                                    <div v-if="!rule.isSystem">
+                                        <button @click="moveRouteUp(i)" :disabled="i === 0 || isSystemRuleNearby(i, 'up')" class="btn btn-secondary btn-small" style="margin-right: 4px;" title="上移">↑</button>
+                                        <button @click="moveRouteDown(i)" :disabled="i === filteredRouteRules.length - 1 || isSystemRuleNearby(i, 'down')" class="btn btn-secondary btn-small" style="margin-right: 4px;" title="下移">↓</button>
+                                        <button @click="editRouteRule(getOriginalRouteIndex(i))" class="btn btn-secondary btn-small">编辑</button>
+                                        <button @click="deleteRouteRule(getOriginalRouteIndex(i))" class="btn btn-danger btn-small">删除</button>
+                                    </div>
+                                    <div v-else style="color: #6b7280; font-size: 12px;">
+                                        系统规则，不可操作
+                                    </div>
+                                </div>
+                                
+                                <div class="config-detail">
+                                    <!-- 规则集 -->
+                                    <div v-if="getRuleSetArray(rule).length > 0">
+                                        <div style="margin-bottom: 8px;">
+                                            <strong>使用规则集:</strong> 
+                                            <span v-for="(ruleSet, rsIndex) in getRuleSetArray(rule)" :key="'ruleset-' + rsIndex">
+                                                <span style="background: #3b82f6; color: white; padding: 3px 8px; border-radius: 12px; margin: 2px 4px 2px 0; display: inline-block; font-size: 11px; font-weight: 500;">
+                                                    📋 {{ ruleSet }}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 传统规则 -->
+                                    <div v-if="hasTraditionalRules(rule)" style="margin-top: 8px;">
+                                        <div style="opacity: 0.8; font-size: 12px; margin-bottom: 4px;"><strong>传统规则:</strong></div>
+                                        <div style="margin-left: 12px;">
+                                            <div v-if="rule.domain && Array.isArray(rule.domain) && rule.domain.length" style="margin-bottom: 2px;">
+                                                <span style="color: #059669;">🌐 域名:</span> {{ rule.domain.length }} 个
+                                                <small style="opacity: 0.7; margin-left: 4px;" v-if="rule.domain.length > 0">
+                                                    ({{ rule.domain.filter(d => d && typeof d === 'string').slice(0, 3).join(', ') }}{{ rule.domain.length > 3 ? '...' : '' }})
+                                                </small>
+                                            </div>
+                                            <div v-if="rule.ip && Array.isArray(rule.ip) && rule.ip.length" style="margin-bottom: 2px;">
+                                                <span style="color: #dc2626;">📍 IP:</span> {{ rule.ip.length }} 个
+                                                <small style="opacity: 0.7; margin-left: 4px;" v-if="rule.ip.length > 0">
+                                                    ({{ rule.ip.slice(0, 2).join(', ') }}{{ rule.ip.length > 2 ? '...' : '' }})
+                                                </small>
+                                            </div>
+                                            <div v-if="rule.ip_cidr && Array.isArray(rule.ip_cidr) && rule.ip_cidr.length" style="margin-bottom: 2px;">
+                                                <span style="color: #dc2626;">🔗 IP CIDR:</span> {{ rule.ip_cidr.length }} 个
+                                                <small style="opacity: 0.7; margin-left: 4px;" v-if="rule.ip_cidr.length > 0">
+                                                    ({{ rule.ip_cidr.slice(0, 2).join(', ') }}{{ rule.ip_cidr.length > 2 ? '...' : '' }})
+                                                </small>
+                                            </div>
+                                            <div v-if="rule.domain_suffix && Array.isArray(rule.domain_suffix) && rule.domain_suffix.length" style="margin-bottom: 2px;">
+                                                <span style="color: #059669;">🔚 域名后缀:</span> {{ rule.domain_suffix.length }} 个
+                                                <small style="opacity: 0.7; margin-left: 4px;" v-if="rule.domain_suffix.length > 0">
+                                                    ({{ rule.domain_suffix.slice(0, 3).join(', ') }}{{ rule.domain_suffix.length > 3 ? '...' : '' }})
+                                                </small>
+                                            </div>
+                                            <div v-if="rule.geosite && Array.isArray(rule.geosite) && rule.geosite.length" style="margin-bottom: 2px;">
+                                                <span style="color: #7c3aed;">🌍 GeoSite:</span> {{ rule.geosite.join(', ') }}
+                                            </div>
+                                            <div v-if="rule.geoip && Array.isArray(rule.geoip) && rule.geoip.length" style="margin-bottom: 2px;">
+                                                <span style="color: #7c3aed;">🗺️ GeoIP:</span> {{ rule.geoip.join(', ') }}
+                                            </div>
+                                            <div v-if="rule.port && Array.isArray(rule.port) && rule.port.length" style="margin-bottom: 2px;">
+                                                <span style="color: #ea580c;">🚪 端口:</span> {{ rule.port.join(', ') }}
+                                            </div>
+                                            <div v-if="rule.inbound && Array.isArray(rule.inbound) && rule.inbound.length" style="margin-bottom: 2px;">
+                                                <span style="color: #0891b2;">📥 入站:</span> {{ rule.inbound.join(', ') }}
+                                            </div>
+                                            <div v-if="rule.ip_is_private !== undefined" style="margin-bottom: 2px;">
+                                                <span style="color: #dc2626;">🔒 私有IP:</span> {{ rule.ip_is_private ? '是' : '否' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 无规则提示 -->
+                                    <div v-if="getRuleSetArray(rule).length === 0 && !hasTraditionalRules(rule)" style="opacity: 0.6; font-style: italic; font-size: 12px;">
+                                        此规则未配置具体条件
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-if="activeTab === 'ruleset'" style="max-height: 500px; overflow-y: auto;">
+                            <div class="config-section-header">
+                                <span>规则集配置 ({{ singboxConfig.route?.rule_set?.length || 0 }} 个)</span>
+                                <button @click="addRuleSet" class="btn btn-primary btn-small">添加规则集</button>
+                            </div>
+                            <div v-for="(ruleset, i) in singboxConfig.route?.rule_set" :key="'ruleset-' + i" class="config-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <strong>{{ ruleset.type }} - {{ ruleset.tag || '规则集' + (i+1) }}</strong>
+                                    <div>
+                                        <button @click="editRuleSet(i)" class="btn btn-secondary btn-small">编辑</button>
+                                        <button @click="deleteRuleSet(i)" class="btn btn-danger btn-small">删除</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="config-detail">
+                                    <div v-if="ruleset.tag"><strong>标签:</strong> {{ ruleset.tag }}</div>
+                                    <div v-if="ruleset.type"><strong>类型:</strong> {{ ruleset.type }}</div>
+                                    <div v-if="ruleset.format"><strong>格式:</strong> {{ ruleset.format }}</div>
+                                    <div v-if="ruleset.url"><strong>URL:</strong> {{ ruleset.url }}</div>
+                                    <div v-if="ruleset.download_detour"><strong>下载出站:</strong> {{ ruleset.download_detour }}</div>
+                                    <div v-if="ruleset.update_interval"><strong>更新间隔:</strong> {{ ruleset.update_interval }}</div>
+                                    <div v-if="ruleset.path"><strong>本地路径:</strong> {{ ruleset.path }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-if="activeTab === 'dns'">
+                            <div v-if="singboxConfig.dns">
+                                <!-- DNS 基础设置 -->
+                                <div class="card" style="margin-bottom: 20px;">
+                                    <h3 style="margin-bottom: 16px;">🌐 DNS 基础设置</h3>
+                                    
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">默认DNS服务器</div>
+                                            <div style="font-weight: 600; color: #1e293b;">{{ singboxConfig.dns.final || 'auto' }}</div>
+                                        </div>
+                                        <div v-if="singboxConfig.dns.strategy" style="background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">
+                                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">查询策略</div>
+                                            <div style="font-weight: 600; color: #1e293b;">{{ singboxConfig.dns.strategy }}</div>
+                                        </div>
+                                        <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">DNS缓存</div>
+                                            <div style="font-weight: 600; color: #1e293b;">
+                                                <span :class="singboxConfig.dns.disable_cache ? 'badge badge-warning' : 'badge badge-success'">
+                                                    {{ singboxConfig.dns.disable_cache ? '已禁用' : '已启用' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div v-if="singboxConfig.dns.independent_cache !== undefined" style="background: #f8fafc; padding: 12px; border-radius: 8px; border-left: 4px solid #8b5cf6;">
+                                            <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">独立缓存</div>
+                                            <div style="font-weight: 600; color: #1e293b;">
+                                                <span :class="singboxConfig.dns.independent_cache ? 'badge badge-success' : 'badge badge-secondary'">
+                                                    {{ singboxConfig.dns.independent_cache ? '已启用' : '已禁用' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- DNS 服务器列表 -->
+                                <div class="card" style="margin-bottom: 20px;">
+                                    <h3 style="margin-bottom: 16px;">🔧 DNS 服务器 ({{ singboxConfig.dns.servers?.length || 0 }} 个)</h3>
+                                    
+                                    <div v-if="singboxConfig.dns.servers && singboxConfig.dns.servers.length > 0">
+                                        <div v-for="(server, index) in singboxConfig.dns.servers" :key="index" 
+                                             class="config-item" style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                                <div style="flex: 1;">
+                                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                                        <strong style="color: #1f2937;">{{ server.tag || `服务器${index + 1}` }}</strong>
+                                                        <span class="badge" :class="getDNSServerTypeClass(server.type)">
+                                                            {{ getDNSServerTypeText(server.type) }}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font-size: 14px; color: #6b7280;">
+                                                        <div v-if="server.server">
+                                                            <strong>地址:</strong> {{ server.server }}
+                                                        </div>
+                                                        <div v-if="server.address_resolver">
+                                                            <strong>地址解析器:</strong> {{ server.address_resolver }}
+                                                        </div>
+                                                        <div v-if="server.address_strategy">
+                                                            <strong>地址策略:</strong> {{ server.address_strategy }}
+                                                        </div>
+                                                        <div v-if="server.detour">
+                                                            <strong>出站:</strong> {{ server.detour }}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- FakeIP 特殊显示 -->
+                                                    <div v-if="server.type === 'fakeip'" style="margin-top: 8px; font-size: 14px;">
+                                                        <div v-if="server.inet4_range">
+                                                            <strong>IPv4范围:</strong> {{ server.inet4_range }}
+                                                        </div>
+                                                        <div v-if="server.inet6_range">
+                                                            <strong>IPv6范围:</strong> {{ server.inet6_range }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else class="config-item" style="text-align: center; color: #6b7280;">
+                                        暂无DNS服务器配置
+                                    </div>
+                                </div>
+
+                                <!-- DNS 规则列表 -->
+                                <div class="card">
+                                    <h3 style="margin-bottom: 16px;">📋 DNS 规则 ({{ singboxConfig.dns.rules?.length || 0 }} 个)</h3>
+                                    
+                                    <div v-if="singboxConfig.dns.rules && singboxConfig.dns.rules.length > 0">
+                                        <div v-for="(rule, index) in singboxConfig.dns.rules" :key="index" 
+                                             class="config-item" style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                                <div style="flex: 1;">
+                                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                                        <strong style="color: #1f2937;">规则 {{ index + 1 }}</strong>
+                                                        <span class="badge badge-info">
+                                                            → {{ rule.server || '默认' }}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font-size: 14px; color: #6b7280;">
+                                                        <div v-if="rule.domain && rule.domain.length > 0">
+                                                            <strong>域名:</strong> {{ rule.domain.slice(0, 2).join(', ') }}{{ rule.domain.length > 2 ? ` +${rule.domain.length - 2}` : '' }}
+                                                        </div>
+                                                        <div v-if="rule.domain_suffix && rule.domain_suffix.length > 0">
+                                                            <strong>域名后缀:</strong> {{ rule.domain_suffix.slice(0, 2).join(', ') }}{{ rule.domain_suffix.length > 2 ? ` +${rule.domain_suffix.length - 2}` : '' }}
+                                                        </div>
+                                                        <div v-if="rule.geosite && rule.geosite.length > 0">
+                                                            <strong>GeoSite:</strong> {{ rule.geosite.slice(0, 2).join(', ') }}{{ rule.geosite.length > 2 ? ` +${rule.geosite.length - 2}` : '' }}
+                                                        </div>
+                                                        <div v-if="rule.inbound && (Array.isArray(rule.inbound) ? rule.inbound.length > 0 : rule.inbound)">
+                                                            <strong>入站:</strong> 
+                                                            <span v-if="Array.isArray(rule.inbound)">
+                                                                {{ rule.inbound.slice(0, 2).join(', ') }}{{ rule.inbound.length > 2 ? ` +${rule.inbound.length - 2}` : '' }}
+                                                            </span>
+                                                            <span v-else>{{ rule.inbound }}</span>
+                                                        </div>
+                                                        <div v-if="rule.outbound && (Array.isArray(rule.outbound) ? rule.outbound.length > 0 : rule.outbound)">
+                                                            <strong>出站:</strong> 
+                                                            <span v-if="Array.isArray(rule.outbound)">
+                                                                {{ rule.outbound.slice(0, 2).join(', ') }}{{ rule.outbound.length > 2 ? ` +${rule.outbound.length - 2}` : '' }}
+                                                            </span>
+                                                            <span v-else>{{ rule.outbound }}</span>
+                                                        </div>
+                                                        <div v-if="rule.query_type && rule.query_type.length > 0">
+                                                            <strong>查询类型:</strong> {{ rule.query_type.join(', ') }}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div v-if="rule.disable_cache !== undefined || rule.rewrite_ttl !== undefined" 
+                                                         style="margin-top: 8px; font-size: 14px;">
+                                                        <span v-if="rule.disable_cache" class="badge badge-warning">禁用缓存</span>
+                                                        <span v-if="rule.rewrite_ttl !== undefined" class="badge badge-info">TTL: {{ rule.rewrite_ttl }}</span>
+                                                    </div>
+                                                </div>
+                                                
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else class="config-item" style="text-align: center; color: #6b7280;">
+                                        暂无DNS规则配置
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="config-item" style="text-align: center; color: #6b7280; padding: 40px;">
+                                <div style="font-size: 48px; margin-bottom: 16px;">🌐</div>
+                                <h3 style="margin-bottom: 8px;">暂无DNS配置</h3>
+                                <p>当前配置文件中没有DNS设置</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- 入站编辑模态框 -->
+        <div v-if="showInboundModal" class="modal-overlay" @click.self="closeInboundModal">
+            <div class="modal" style="max-width: 800px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">
+                        {{ editingInbound >= 0 ? '编辑入站配置' : '添加入站配置' }}
+                    </h3>
+                    <button @click="closeInboundModal" class="modal-close">×</button>
+                </div>
+                
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <!-- 基础配置 -->
+                    <div class="form-group">
+                        <label class="form-label">标签 *</label>
+                        <input v-model="editInboundData.tag" class="form-input" placeholder="例如: mixed-in, tun-in" />
+                        <small style="color: #6b7280;">用于标识此入站，必须唯一</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">类型 *</label>
+                        <select v-model="editInboundData.type" @change="onInboundTypeChange" class="form-select">
+                            <option value="">请选择入站类型</option>
+                            <optgroup label="代理入站">
+                                <option value="mixed">Mixed - HTTP + SOCKS 混合代理</option>
+                                <option value="http">HTTP - HTTP 代理</option>
+                                <option value="socks">SOCKS - SOCKS5 代理</option>
+                            </optgroup>
+                            <optgroup label="透明代理">
+                                <option value="tun">TUN - 虚拟网络接口</option>
+                                <option value="tproxy">TProxy - 透明代理</option>
+                                <option value="redirect">Redirect - 重定向</option>
+                                <option value="direct">Direct - 直连</option>
+                            </optgroup>
+                            <optgroup label="服务器入站">
+                                <option value="vmess">VMess 服务器</option>
+                                <option value="vless">VLESS 服务器</option>
+                                <option value="trojan">Trojan 服务器</option>
+                                <option value="shadowsocks">Shadowsocks 服务器</option>
+                                <option value="hysteria2">Hysteria2 服务器</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <!-- 监听配置 (除 TUN 外都有) -->
+                    <div v-if="editInboundData.type && editInboundData.type !== 'tun'">
+                        <div class="form-group">
+                            <label class="form-label">监听地址</label>
+                            <select v-model="editInboundData.listen" class="form-select">
+                                <option value="127.0.0.1">127.0.0.1 - 仅本地访问</option>
+                                <option value="0.0.0.0">0.0.0.0 - 所有 IPv4 地址</option>
+                                <option value="::">:: - 所有 IPv6 地址</option>
+                                <option value="::1">::1 - 仅本地 IPv6</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">监听端口 *</label>
+                            <input v-model.number="editInboundData.listen_port" type="number" 
+                                   class="form-input" placeholder="端口号" min="1" max="65535" />
+                            <small style="color: #6b7280;">
+                                <span v-if="editInboundData.type === 'mixed'">推荐: 7890, 1080</span>
+                                <span v-else-if="editInboundData.type === 'http'">推荐: 8080, 8888</span>
+                                <span v-else-if="editInboundData.type === 'socks'">推荐: 1080, 7891</span>
+                                <span v-else-if="editInboundData.type === 'tproxy'">推荐: 7896</span>
+                                <span v-else-if="editInboundData.type === 'redirect'">推荐: 7877</span>
+                                <span v-else>1-65535 之间的数字</span>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- TUN 特有配置 -->
+                    <div v-if="editInboundData.type === 'tun'">
+                        <div class="form-group">
+                            <label class="form-label">接口名称</label>
+                            <input v-model="editInboundData.interface_name" class="form-input" placeholder="tun0" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">IPv4 地址</label>
+                            <input v-model="editInboundData.inet4_address" class="form-input" placeholder="198.18.0.1/16" />
+                            <small style="color: #6b7280;">CIDR 格式，例如: 198.18.0.1/16</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">IPv6 地址</label>
+                            <input v-model="editInboundData.inet6_address" class="form-input" placeholder="fdfe:dcba:9876::1/126" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">协议栈</label>
+                            <select v-model="editInboundData.stack" class="form-select">
+                                <option value="system">System - 系统栈</option>
+                                <option value="gvisor">gVisor - 用户态栈</option>
+                                <option value="mixed">Mixed - 混合栈 (推荐)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" v-model="editInboundData.auto_route" />
+                                自动路由
+                            </label>
+                            <small style="color: #6b7280;">自动配置系统路由</small>
+                        </div>
+                    </div>
+
+                    <!-- 用户认证配置 (HTTP, SOCKS, 服务器类型) -->
+                    <div v-if="['http', 'socks', 'vmess', 'vless', 'trojan', 'shadowsocks', 'hysteria2'].includes(editInboundData.type)">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span v-if="['vmess', 'vless'].includes(editInboundData.type)">用户 UUID</span>
+                                <span v-else-if="editInboundData.type === 'shadowsocks'">用户密码</span>
+                                <span v-else-if="['trojan', 'hysteria2'].includes(editInboundData.type)">用户密码</span>
+                                <span v-else>用户认证</span>
+                            </label>
+                            <div v-if="['vmess', 'vless'].includes(editInboundData.type)">
+                                <div v-for="(user, index) in editInboundData.users" :key="index" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                    <input v-model="user.uuid" class="form-input" placeholder="UUID" style="flex: 1;" />
+                                    <input v-model="user.name" class="form-input" placeholder="用户名 (可选)" style="flex: 1;" />
+                                    <button @click="removeInboundUser(index)" class="btn btn-danger btn-small">删除</button>
+                                </div>
+                                <button @click="addInboundUser" class="btn btn-secondary btn-small">添加用户</button>
+                            </div>
+                            <div v-else-if="['http', 'socks'].includes(editInboundData.type)">
+                                <div v-for="(user, index) in editInboundData.users" :key="index" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                    <input v-model="user.username" class="form-input" placeholder="用户名" style="flex: 1;" />
+                                    <input v-model="user.password" type="password" class="form-input" placeholder="密码" style="flex: 1;" />
+                                    <button @click="removeInboundUser(index)" class="btn btn-danger btn-small">删除</button>
+                                </div>
+                                <button @click="addInboundUser" class="btn btn-secondary btn-small">添加用户</button>
+                                <small style="color: #6b7280;">留空表示不需要认证</small>
+                            </div>
+                            <div v-else-if="['trojan', 'hysteria2', 'shadowsocks'].includes(editInboundData.type)">
+                                <div v-for="(password, index) in editInboundData.passwords" :key="index" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                    <input v-model="editInboundData.passwords[index]" type="password" class="form-input" placeholder="密码" style="flex: 1;" />
+                                    <button @click="removeInboundPassword(index)" class="btn btn-danger btn-small">删除</button>
+                                </div>
+                                <button @click="addInboundPassword" class="btn btn-secondary btn-small">添加密码</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shadowsocks 特有配置 -->
+                    <div v-if="editInboundData.type === 'shadowsocks'">
+                        <div class="form-group">
+                            <label class="form-label">加密方法</label>
+                            <select v-model="editInboundData.method" class="form-select">
+                                <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm (推荐)</option>
+                                <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm</option>
+                                <option value="aes-128-gcm">aes-128-gcm</option>
+                                <option value="aes-256-gcm">aes-256-gcm</option>
+                                <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 高级选项 -->
+                    <details style="margin-top: 16px;">
+                        <summary style="cursor: pointer; font-weight: 500; color: #374151;">🔧 高级选项</summary>
+                        <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px;">
+                            
+                            <!-- 流量嗅探 -->
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" v-model="editInboundData.sniff" />
+                                    启用流量嗅探
+                                </label>
+                                <small style="color: #6b7280;">自动识别目标域名和协议</small>
+                            </div>
+                            
+                            <div v-if="editInboundData.sniff">
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" v-model="editInboundData.sniff_override_destination" />
+                                        覆盖目标地址
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">嗅探超时</label>
+                                    <input v-model="editInboundData.sniff_timeout" class="form-input" placeholder="300ms" />
+                                </div>
+                            </div>
+
+                            <!-- TCP 优化 -->
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" v-model="editInboundData.tcp_fast_open" />
+                                    TCP Fast Open
+                                </label>
+                                <small style="color: #6b7280;">减少连接建立时间</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" v-model="editInboundData.tcp_multi_path" />
+                                    TCP Multipath
+                                </label>
+                            </div>
+
+                            <!-- UDP 配置 -->
+                            <div v-if="['mixed', 'socks', 'tun', 'tproxy'].includes(editInboundData.type)">
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" v-model="editInboundData.udp_fragment" />
+                                        UDP 分片
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">UDP 超时</label>
+                                    <input v-model="editInboundData.udp_timeout" class="form-input" placeholder="5m" />
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+                
+                <div class="modal-footer">
+                    <button @click="closeInboundModal" class="btn btn-secondary">取消</button>
+                    <button @click="saveInboundModal" class="btn btn-primary" 
+                            :disabled="!editInboundData.tag || !editInboundData.type || (!editInboundData.listen_port && editInboundData.type !== 'tun')">
+                        {{ editingInbound >= 0 ? '更新' : '添加' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 代理节点编辑模态框 -->
+        <div v-if="showProxyModal" class="modal-overlay" @click.self="closeProxyModal">
+            <div class="modal" style="max-width: 1200px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">
+                        {{ editingProxy >= 0 ? '编辑代理节点' : '添加代理节点' }}
+                    </h3>
+                    <button @click="closeProxyModal" class="modal-close">&times;</button>
+                </div>
+                
+                <div class="modal-body" style="display: flex; gap: 20px; height: 600px;">
+                    <!-- 左侧：配置输入区 -->
+                    <div style="flex: 1; display: flex; flex-direction: column;">
+                        <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
+                            <label>配置内容:</label>
+                            <textarea
+                                v-model="proxyConfigText"
+                                class="form-control"
+                                style="flex: 1; font-family: monospace; resize: none;"
+                                placeholder="请输入代理节点配置..."
+                            ></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：VLESS模板 -->
+                    <div style="flex: 1; display: flex; flex-direction: column;">
+                        <div class="form-group" style="flex: 1; display: flex; flex-direction: column;">
+                            <label>VLESS节点模板:</label>
+                            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; flex: 1; overflow: auto; margin: 0; font-family: monospace;">
+{
+  "type": "vless",
+  "tag": "HK-01",
+  "server": "192.168.1.100",
+  "server_port": 443,
+  "uuid": "12345678-1234-1234-1234-123456789abc",
+  "flow": "",
+  "packet_encoding": "xudp",
+  "tls": {
+    "enabled": true,
+    "server_name": "www.example.com",
+    "reality": {
+      "enabled": true,
+      "public_key": "abcdefghijklmnopqrstuvwxyz1234567890ABCDEF",
+      "short_id": ""
+    },
+    "utls": {
+      "enabled": true,
+      "fingerprint": "chrome"
+    }
+  },
+  "multiplex": {
+    "enabled": true,
+    "protocol": "h2mux",
+    "max_connections": 1,
+    "min_streams": 4,
+    "padding": true,
+    "brutal": {
+      "enabled": true,
+      "up_mbps": 1000,
+      "down_mbps": 1000
+    }
+  }
+}</pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button @click="closeProxyModal" class="btn btn-secondary">取消</button>
+                    <button @click="saveProxyModal" class="btn btn-primary">保存</button>
+                </div>
+            </div>
+        </div>
+        
+                <!-- 出站编辑模态框 -->
+        <div v-if="showOutboundModal" class="modal-overlay" @click.self="closeOutboundModal">
+            <div class="modal" style="max-width: 800px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">
+                        {{ editingOutbound >= 0 ? '编辑出站配置' : '添加出站配置' }}
+                    </h3>
+                    <button @click="closeOutboundModal" class="modal-close">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">标签</label>
+                        <input v-model="editOutboundData.tag" class="form-input" placeholder="出站标签名称" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">类型</label>
+                        <select v-model="editOutboundData.type" class="form-select" @change="onOutboundTypeChange">
+                            <option value="direct">Direct (直连)</option>
+                            <option value="urltest">URLTest (自动测试)</option>
+                            <option value="selector">Selector (手动选择)</option>
+                        </select>
+                    </div>
+                    
+                    
+                    
+                    <!-- URLTest/Selector 节点组配置 -->
+                    <div v-if="editOutboundData.type === 'urltest' || editOutboundData.type === 'selector'">
+                        <div class="form-group">
+                            <label class="form-label">包含的代理节点</label>
+                            
+                            <!-- 节点类型过滤器 -->
+                            <div class="node-type-filter">
+                                <button v-for="filter in outboundTypeFilters" :key="filter.type"
+                                        @click="toggleOutboundFilter(filter.type)"
+                                        :class="{ active: filter.active }"
+                                        class="filter-btn">
+                                    {{ filter.name }}
+                                </button>
+                            </div>
+                            
+                            <!-- 可选节点展示 -->
+                            <div class="node-selector">
+                                <div style="font-weight: 500; margin-bottom: 8px;">
+                                    可用出站节点 ({{ filteredAllOutbounds.length }} 个) - 点击添加:
+                                </div>
+                                <div class="available-nodes">
+                                    <div v-for="node in filteredAllOutbounds" :key="node.tag"
+                                         @click="addNodeToGroup(node.tag)"
+                                         :class="{ selected: selectedNodes.includes(node.tag) }"
+                                         class="node-item">
+                                        <div style="font-weight: 500;">{{ node.tag }}</div>
+                                        <div style="font-size: 10px; opacity: 0.8;">{{ node.type }} 
+                                            <span v-if="node.server">• {{ node.server }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="filteredAllOutbounds.length === 0" style="text-align: center; color: #6b7280; padding: 20px;">
+                                    没有可用的出站节点
+                                </div>
+                            </div>
+                            
+                            <!-- 已选节点展示 -->
+                            <div class="selected-nodes">
+                                <div style="font-weight: 500; margin-bottom: 8px;">
+                                    已选节点 ({{ selectedNodes.length }} 个) - 点击移除:
+                                </div>
+                                <div v-if="selectedNodes.length === 0" style="text-align: center; color: #6b7280; padding: 10px; border: 1px dashed #d1d5db; border-radius: 4px;">
+                                    请从上方选择代理节点
+                                </div>
+                                <span v-for="(nodeTag, index) in selectedNodes" :key="nodeTag"
+                                      @click="removeNodeFromGroup(index)"
+                                      class="selected-node"
+                                      :title="'点击移除 ' + nodeTag">
+                                    {{ nodeTag }} ×
+                                </span>
+                            </div>
+                            
+                            <!-- 节点控制按钮 -->
+                            <div class="node-controls">
+                                <button @click="clearAllNodes" class="btn btn-secondary btn-small">清空所有</button>
+                                <button @click="selectAllFilteredNodes" class="btn btn-primary btn-small">添加所有可见</button>
+                            </div>
+                        </div>
+                        
+                        <!-- URLTest 特有配置 -->
+                        <div v-if="editOutboundData.type === 'urltest'">
+                            <div class="form-group">
+                                <label class="form-label">测试URL</label>
+                                <input v-model="editOutboundData.url" class="form-input" 
+                                       placeholder="https://www.gstatic.com/generate_204" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">测试间隔</label>
+                                <input v-model="editOutboundData.interval" class="form-input" 
+                                       placeholder="300s" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">延迟容差 (ms)</label>
+                                <input v-model.number="editOutboundData.tolerance" type="number" 
+                                       class="form-input" placeholder="50" />
+                            </div>
+                        </div>
+                        
+                        <!-- Selector 特有配置 -->
+                        <div v-if="editOutboundData.type === 'selector'">
+                            <div class="form-group">
+                                <label class="form-label">默认选择</label>
+                                <select v-model="editOutboundData.default" class="form-select">
+                                    <option value="">自动选择第一个</option>
+                                    <option v-for="nodeTag in selectedNodes" :key="nodeTag" :value="nodeTag">{{ nodeTag }}</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button @click="closeOutboundModal" class="btn btn-secondary">取消</button>
+                    <button @click="saveOutboundModal" class="btn btn-primary">
+                        {{ editingOutbound >= 0 ? '更新' : '添加' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 规则集编辑模态框 -->
+        <div v-if="showRuleSetModal" class="modal-overlay" @click.self="closeRuleSetModal">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">
+                        {{ editingRuleSet >= 0 ? '编辑规则集' : '添加规则集' }}
+                    </h3>
+                    <button @click="closeRuleSetModal" class="modal-close">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">标签</label>
+                        <input v-model="editRuleSetData.tag" class="form-input" placeholder="规则集标签名称" />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">类型</label>
+                        <select v-model="editRuleSetData.type" class="form-select" @change="onRuleSetTypeChange">
+                            <option value="remote">Remote (远程)</option>
+                            <option value="local">Local (本地)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Remote 类型配置 -->
+                    <div v-if="editRuleSetData.type === 'remote'">
+                        <div class="form-group">
+                            <label class="form-label">URL</label>
+                            <input v-model="editRuleSetData.url" class="form-input" 
+                                   placeholder="https://example.com/rules.srs" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">格式</label>
+                            <select v-model="editRuleSetData.format" class="form-select">
+                                <option value="binary">Binary (.srs)</option>
+                                <option value="source">Source (.json)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">下载出站</label>
+                            <select v-model="editRuleSetData.download_detour" class="form-select">
+                                <option value="direct">direct</option>
+                                <option v-for="outbound in allOutboundNodes" :key="outbound.tag" :value="outbound.tag">
+                                    {{ outbound.tag }}
+                                </option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">更新间隔</label>
+                            <input v-model="editRuleSetData.update_interval" class="form-input" 
+                                   placeholder="7d" />
+                            <small style="color: #6b7280;">例如：1h, 1d, 7d</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Local 类型配置 -->
+                    <div v-if="editRuleSetData.type === 'local'">
+                        <div class="form-group">
+                            <label class="form-label">本地路径</label>
+                            <input v-model="editRuleSetData.path" class="form-input" 
+                                   placeholder="/path/to/rules.srs" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">格式</label>
+                            <select v-model="editRuleSetData.format" class="form-select">
+                                <option value="binary">Binary (.srs)</option>
+                                <option value="source">Source (.json)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button @click="closeRuleSetModal" class="btn btn-secondary">取消</button>
+                    <button @click="saveRuleSetModal" class="btn btn-primary">
+                        {{ editingRuleSet >= 0 ? '更新' : '添加' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 路由规则编辑模态框 -->
+        <div v-if="showRouteRuleModal" class="modal-overlay" @click.self="closeRouteRuleModal">
+            <div class="modal" style="max-width: 700px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">
+                        {{ editingRouteRule >= 0 ? '编辑路由规则' : '添加路由规则' }}
+                    </h3>
+                    <button @click="closeRouteRuleModal" class="modal-close">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">出站</label>
+                        <select v-model="editRouteRuleData.outbound" class="form-select">
+                            <option value="">选择出站</option>
+                            <option v-for="outbound in singboxConfig.outbounds" :key="outbound.tag" :value="outbound.tag">
+                                {{ outbound.tag }} ({{ outbound.type }})
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <!-- 规则集选择 -->
+                    <div class="form-group">
+                        <label class="form-label">规则集</label>
+                        <div style="border: 1px solid #d1d5db; border-radius: 4px; padding: 8px; min-height: 60px;">
+                            <div v-if="selectedRuleSets.length === 0" style="color: #6b7280; text-align: center; padding: 10px;">
+                                请选择要使用的规则集
+                            </div>
+                            <div v-for="(ruleSetTag, index) in selectedRuleSets" :key="ruleSetTag" 
+                                 style="display: inline-block; background: #3b82f6; color: white; padding: 4px 8px; border-radius: 12px; margin: 2px; font-size: 11px; cursor: pointer;"
+                                 @click="removeRuleSetFromRoute(index)"
+                                 :title="'点击移除 ' + ruleSetTag">
+                                {{ ruleSetTag }} ×
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 8px;">
+                            <label style="font-size: 12px; color: #6b7280;">可用规则集 (点击添加):</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+                                <button v-for="ruleSet in availableRuleSets" :key="ruleSet.tag"
+                                        @click="addRuleSetToRoute(ruleSet.tag)"
+                                        :disabled="selectedRuleSets.includes(ruleSet.tag)"
+                                        :class="['btn', 'btn-small', selectedRuleSets.includes(ruleSet.tag) ? 'btn-secondary' : 'btn-primary']"
+                                        style="font-size: 11px; padding: 2px 6px;">
+                                    {{ ruleSet.tag }}
+                                </button>
+                            </div>
+                            <div v-if="availableRuleSets.length === 0" style="color: #6b7280; font-size: 12px; margin-top: 4px;">
+                                暂无可用规则集，请先在"规则集"标签页中添加
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 传统规则（可选） -->
+                    <details style="margin-top: 16px;">
+                        <summary style="cursor: pointer; font-weight: 500;">传统规则 (可选)</summary>
+                        <div style="margin-top: 12px;">
+                            <div class="form-group">
+                                <label class="form-label">域名 (每行一个)</label>
+                                <textarea v-model="domainText" class="form-textarea" rows="3" 
+                                          placeholder="example.com&#10;*.google.com&#10;github.com"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">域名后缀 (每行一个)</label>
+                                <textarea v-model="domainSuffixText" class="form-textarea" rows="2" 
+                                          placeholder="google.com&#10;youtube.com"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">IP地址 (每行一个)</label>
+                                <textarea v-model="ipText" class="form-textarea" rows="2" 
+                                          placeholder="8.8.8.8&#10;1.1.1.1"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">IP CIDR (每行一个)</label>
+                                <textarea v-model="ipCidrText" class="form-textarea" rows="2" 
+                                          placeholder="192.168.1.0/24&#10;10.0.0.0/8"></textarea>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">GeoSite (逗号分隔)</label>
+                                <input v-model="geositeText" class="form-input" 
+                                       placeholder="google,youtube,github" />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">GeoIP (逗号分隔)</label>
+                                <input v-model="geoipText" class="form-input" 
+                                       placeholder="cn,us,private" />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">私有IP判断</label>
+                                <select v-model="editRouteRuleData.ip_is_private" class="form-select">
+                                    <option value="">不限制</option>
+                                    <option :value="true">仅私有IP</option>
+                                    <option :value="false">仅公网IP</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+                
+                <div class="modal-footer">
+                    <button @click="closeRouteRuleModal" class="btn btn-secondary">取消</button>
+                    <button @click="saveRouteRuleModal" class="btn btn-primary">
+                        {{ editingRouteRule >= 0 ? '更新' : '添加' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+    </div> <!-- Vue app end -->
+
+    <script>
+        console.log('开始初始化Vue应用...');
+        console.log('Vue对象:', Vue);
+        
+        if (!Vue) {
+            console.error('Vue未加载！');
+            document.body.innerHTML = '<div style="color: red; padding: 20px; font-size: 18px;">错误：Vue框架未加载！请检查网络连接。</div>';
+            throw new Error('Vue未加载');
+        }
+        
+        let app;
+        try {
+            const { createApp, ref, reactive, onMounted } = Vue;
+        
+        // Vue应用定义已移动到下面的try-catch块中
+                
+                // 出站类型过滤器
+                const outboundTypeFilters = ref([
+                    { type: 'all', name: '全部', active: true },
+                    { type: 'direct', name: 'Direct', active: true },
+                    { type: 'vmess', name: 'VMess', active: true },
+                    { type: 'vless', name: 'VLESS', active: true },
+                    { type: 'trojan', name: 'Trojan', active: true },
+                    { type: 'shadowsocks', name: 'Shadowsocks', active: true },
+                    { type: 'hysteria2', name: 'Hysteria2', active: true },
+                    { type: 'urltest', name: 'URLTest', active: true },
+                    { type: 'selector', name: 'Selector', active: true }
+                ]);
+                
+                // 模态框状态
+                const showInboundModal = ref(false);
+                const showProxyModal = ref(false);
+                const showOutboundModal = ref(false);
+                const showRuleSetModal = ref(false);
+
+                const usersConfigText = ref('');
+                const enableSniffing = ref(false);
+                const enableTLS = ref(false);
+                
+                // 规则集编辑状态
+                const editingRuleSet = ref(-1);
+                const editRuleSetData = ref({});
+                
+                // 路由规则编辑状态
+                const showRouteRuleModal = ref(false);
+                const editingRouteRule = ref(-1);
+                const editRouteRuleData = ref({});
+                const selectedRuleSets = ref([]);
+                const domainText = ref('');
+                const domainSuffixText = ref('');
+                const ipText = ref('');
+                const ipCidrText = ref('');
+                const geositeText = ref('');
+                const geoipText = ref('');
+                
+                // 拖拽排序状态
+                const draggedIndex = ref(-1);
+                const dragOverIndex = ref(-1);
+                
+                // 配置变更跟踪
+                const hasUnsavedChanges = ref(false);
+                const originalConfig = ref(null);
+                
+                const fetchServices = async () => {
+                    try {
+                        const response = await fetch('/api/services');
+                        const data = await response.json();
+                        Object.assign(services, data.services);
+            } catch (error) {
+                console.error('获取服务状态失败:', error);
+            }
+                };
+                
+                const fetchSystemInfo = async () => {
+                    try {
+                        const response = await fetch('/api/system');
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        const data = await response.json();
+                        console.log('获取到的系统信息:', data);
+                        systemInfo.value = data;
+                    } catch (error) {
+                        console.error('获取系统信息失败:', error);
+                        systemInfo.value = { cpu: 0, memory: 0, disk: 0 };
+                    }
+                };
+        
+                const fetchSingBoxConfig = async () => {
+                    loadingConfig.value = true;
+                    configError.value = null;
+            try {
+                        const response = await fetch('/api/config/sing-box');
+                const data = await response.json();
+                        if (response.ok) {
+                            singboxConfig.value = data.config;
+                        } else {
+                            configError.value = data.error;
+                        }
+                    } catch (error) {
+                        configError.value = error.message;
+                    } finally {
+                        loadingConfig.value = false;
+                    }
+                };
+                
+                const showServicePage = (serviceName) => {
+                    currentPage.value = serviceName;
+                    fetchServices();
+                    
+                    // 切换到不同页面时加载对应配置
+                    if (serviceName === 'sing-box') {
+                        fetchSingBoxConfig();
+                    }
+                    // MosDNS页面已简化，无需获取配置
+                };
+                
+                const controlService = async (serviceName, action) => {
+                    try {
+                        const response = await fetch(`/api/services/${serviceName}/${action}`, { method: 'POST' });
+                const data = await response.json();
+                        if (response.ok) {
+                            alert(`${action}操作成功`);
+                            setTimeout(fetchServices, 1000);
+                        } else {
+                            alert(`操作失败: ${data.error}`);
+                        }
+                    } catch (error) {
+                        alert(`操作失败: ${error.message}`);
+                    }
+                };
+                
+                const viewLogs = async (serviceName) => {
+                    try {
+                        const response = await fetch(`/api/logs/${serviceName}?lines=50`);
+                        const data = await response.json();
+                if (response.ok) {
+                            const logs = data.logs.join('\n');
+                            const newWindow = window.open('', '_blank');
+                            newWindow.document.write(`<pre style="padding:20px;font-family:monospace;">${logs || '暂无日志'}</pre>`);
+                } else {
+                            alert(`获取日志失败: ${data.error}`);
+                }
+            } catch (error) {
+                        alert(`获取日志失败: ${error.message}`);
+                    }
+                };
+                
+                const getServiceName = (name) => {
+                    return name === 'sing-box' ? 'Sing-Box' : name === 'mosdns' ? 'MosDNS' : name;
+                };
+                
+                const getStatusClass = (status) => {
+                    return status === 0 ? 'status-running' : 'status-stopped';
+                };
+                
+                const getStatusText = (status) => {
+                    return status === 0 ? '运行中' : status === 1 ? '已停止' : '未安装';
+                };
+                
+                const getUptime = (startTime) => {
+                    const start = new Date(startTime);
+                    const now = new Date();
+                    const diff = now - start;
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    
+                    if (days > 0) return `${days}天 ${hours}小时`;
+                    if (hours > 0) return `${hours}小时 ${minutes}分钟`;
+                    if (minutes > 0) return `${minutes}分钟`;
+                    return '少于1分钟';
+                };
+                
+                // 判断是否为代理类型的出站
+                const isProxyOutbound = (type) => {
+                    return !['direct', 'block', 'dns', 'urltest', 'selector'].includes(type);
+                };
+                
+                // 获取可用的代理节点
+                const availableNodes = Vue.computed(() => {
+                    if (!singboxConfig.value || !singboxConfig.value.outbounds) return [];
+                    
+                    return singboxConfig.value.outbounds
+                        .filter(outbound => isProxyOutbound(outbound.type))
+                        .map(outbound => ({
+                            tag: outbound.tag || '未命名节点',
+                            type: outbound.type,
+                            server: outbound.server || ''
+                        }));
+                });
+                
+                // 过滤后的可用节点
+                const filteredAvailableNodes = Vue.computed(() => {
+                    const activeFilters = nodeTypeFilters.value
+                        .filter(f => f.active && f.type !== 'all')
+                        .map(f => f.type);
+                    
+                    if (activeFilters.length === 0 || nodeTypeFilters.value.find(f => f.type === 'all')?.active) {
+                        return availableNodes.value;
+                    }
+                    
+                    return availableNodes.value.filter(node => activeFilters.includes(node.type));
+                });
+                
+                // 所有出站节点（用于出站模态框）
+                const allOutboundNodes = Vue.computed(() => {
+                    if (!singboxConfig.value || !singboxConfig.value.outbounds) return [];
+                    return singboxConfig.value.outbounds
+                        .filter(outbound => {
+                            if (!outbound.tag) return false;
+                            
+                            const tag = outbound.tag;
+                            const type = outbound.type;
+                            
+                            // Direct节点总是显示
+                            if (type === 'direct') return true;
+                            
+                            // 代理协议节点总是显示
+                            if (['vmess', 'vless', 'trojan', 'shadowsocks', 'hysteria2'].includes(type)) return true;
+                            
+                            // 对于urltest/selector，只显示包含"节点"或"代理"关键词的
+                            if (type === 'urltest' || type === 'selector') {
+                                return /节点|代理/i.test(tag);
+                            }
+                            
+                            return false;
+                        })
+                        .map(outbound => ({
+                            tag: outbound.tag,
+                            type: outbound.type,
+                            server: outbound.server || ''
+                        }));
+                });
+                
+                const filteredAllOutbounds = Vue.computed(() => {
+                    const activeFilters = outboundTypeFilters.value
+                        .filter(f => f.active && f.type !== 'all')
+                        .map(f => f.type);
+                    
+                    if (activeFilters.length === 0 || outboundTypeFilters.value.find(f => f.type === 'all')?.active) {
+                        return allOutboundNodes.value;
+                    }
+                    
+                    return allOutboundNodes.value.filter(node => activeFilters.includes(node.type));
+                });
+                
+                // 可用规则集
+                const availableRuleSets = Vue.computed(() => {
+                    if (!singboxConfig.value || !singboxConfig.value.route || !singboxConfig.value.route.rule_set) return [];
+                    return singboxConfig.value.route.rule_set.map(ruleSet => ({
+                        tag: ruleSet.tag,
+                        type: ruleSet.type
+                    }));
+                });
+                
+                // 代理节点类型
+                const proxyTypes = ['vmess', 'vless', 'trojan', 'shadowsocks', 'hysteria2', 'tuic', 'wireguard'];
+                
+                // 代理节点（分离出来的代理服务器）
+                const proxyNodes = Vue.computed(() => {
+                    if (!singboxConfig.value || !singboxConfig.value.outbounds) return [];
+                    return singboxConfig.value.outbounds.filter(outbound => 
+                        proxyTypes.includes(outbound.type)
+                    );
+                });
+                
+                // 非代理出站（direct、selector、urltest等）
+                const nonProxyOutbounds = Vue.computed(() => {
+                    if (!singboxConfig.value || !singboxConfig.value.outbounds) return [];
+                    return singboxConfig.value.outbounds.filter(outbound => 
+                        !proxyTypes.includes(outbound.type)
+                    );
+                });
+                
+                // 检查是否为系统规则
+                const isSystemRule = (rule) => {
+                    // hijack-dns 规则
+                    if (rule.action === 'hijack-dns') return true;
+                    
+                    // reject + drop + udp + port 443 规则
+                    if (rule.action === 'reject' && 
+                        rule.method === 'drop' && 
+                        rule.network === 'udp' && 
+                        (rule.port === 443 || (Array.isArray(rule.port) && rule.port.includes(443)))) {
+                        return true;
+                    }
+                    
+                    // DNS服务器规则（Google DNS等）
+                    if (rule.ip_cidr && Array.isArray(rule.ip_cidr)) {
+                        const googleDns = ['8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1', '9.9.9.9'];
+                        const chinaDns = ['223.5.5.5', '223.6.6.5', '119.29.29.29', '119.28.28.28'];
+                        const ruleIps = rule.ip_cidr;
+                        
+                        // 检查是否为Google DNS规则
+                        if (googleDns.some(ip => ruleIps.includes(ip))) return true;
+                        
+                        // 检查是否为中国DNS规则
+                        if (chinaDns.some(ip => ruleIps.includes(ip))) return true;
+                    }
+                    
+                    // 私有IP直连规则（作为兜底规则）
+                    if (rule.ip_is_private === true && rule.outbound === 'direct') {
+                        return true;
+                    }
+                    
+                    return false;
+                };
+                
+                // 过滤后的路由规则（现在显示所有规则，包括系统规则）
+                const filteredRouteRules = Vue.computed(() => {
+                    if (!singboxConfig.value || !singboxConfig.value.route || !singboxConfig.value.route.rules) return [];
+                    
+                    return singboxConfig.value.route.rules.map((rule, index) => ({
+                        ...rule,
+                        originalIndex: index,
+                        isSystem: isSystemRule(rule)
+                    }));
+                });
+                
+                // 获取原始规则索引
+                const getOriginalRouteIndex = (filteredIndex) => {
+                    const filteredRule = filteredRouteRules.value[filteredIndex];
+                    if (!filteredRule) return -1;
+                    
+                    return filteredRule.originalIndex;
+                };
+                
+                // 获取规则集数组
+                const getRuleSetArray = (rule) => {
+                    if (!rule || !rule.rule_set) return [];
+                    
+                    // 如果是数组，直接返回过滤后的结果
+                    if (Array.isArray(rule.rule_set)) {
+                        return rule.rule_set.filter(item => item && typeof item === 'string' && item.trim());
+                    }
+                    
+                    // 如果是字符串，按逗号分割
+                    if (typeof rule.rule_set === 'string') {
+                        return rule.rule_set.split(',').map(s => s.trim()).filter(s => s);
+                    }
+                    
+                    return [];
+                };
+                
+                // 检查是否有传统规则
+                const hasTraditionalRules = (rule) => {
+                    if (!rule) return false;
+                    return (rule.domain && Array.isArray(rule.domain) && rule.domain.length) ||
+                           (rule.ip && Array.isArray(rule.ip) && rule.ip.length) ||
+                           (rule.ip_cidr && Array.isArray(rule.ip_cidr) && rule.ip_cidr.length) ||
+                           (rule.domain_suffix && Array.isArray(rule.domain_suffix) && rule.domain_suffix.length) ||
+                           (rule.geosite && Array.isArray(rule.geosite) && rule.geosite.length) ||
+                           (rule.geoip && Array.isArray(rule.geoip) && rule.geoip.length) ||
+                           (rule.port && Array.isArray(rule.port) && rule.port.length) ||
+                           (rule.inbound && Array.isArray(rule.inbound) && rule.inbound.length) ||
+                           (rule.ip_is_private !== undefined);
+                };
+                
+                // 获取系统规则显示名称
+                const getSystemRuleName = (rule) => {
+                    if (rule.action === 'hijack-dns') {
+                        return 'DNS劫持规则';
+                    }
+                    
+                    if (rule.action === 'reject' && rule.method === 'drop' && rule.network === 'udp' && rule.port === 443) {
+                        return 'UDP 443阻断';
+                    }
+                    
+                    if (rule.ip_cidr && Array.isArray(rule.ip_cidr)) {
+                        const googleDns = ['8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1', '9.9.9.9'];
+                        const chinaDns = ['223.5.5.5', '223.6.6.5', '119.29.29.29', '119.28.28.28'];
+                        const ruleIps = rule.ip_cidr;
+                        
+                        if (googleDns.some(ip => ruleIps.includes(ip))) {
+                            return '海外DNS规则';
+                        }
+                        
+                        if (chinaDns.some(ip => ruleIps.includes(ip))) {
+                            return '国内DNS规则';
+                        }
+                    }
+                    
+                    if (rule.ip_is_private === true && rule.outbound === 'direct') {
+                        return '内网直连规则';
+                    }
+                    
+                    return rule.outbound || '系统规则';
+                };
+                
+                // 检查系统规则附近是否有其他系统规则（防止移动到系统规则之间）
+                const isSystemRuleNearby = (currentIndex, direction) => {
+                    if (direction === 'up') {
+                        return currentIndex > 0 && filteredRouteRules.value[currentIndex - 1]?.isSystem;
+                    } else {
+                        return currentIndex < filteredRouteRules.value.length - 1 && filteredRouteRules.value[currentIndex + 1]?.isSystem;
+                    }
+                };
+                
+                // 入站模态框功能
+                const openInboundModal = (index = -1) => {
+                    editingInbound.value = index;
+                    
+                    if (index >= 0) {
+                        // 编辑现有入站
+                        const originalInbound = singboxConfig.value.inbounds[index];
+                        editInboundData.value = JSON.parse(JSON.stringify(originalInbound));
+                        
+                        // 确保必要的字段存在
+                        if (!editInboundData.value.users) {
+                            editInboundData.value.users = [];
+                        }
+                        if (!editInboundData.value.passwords) {
+                            editInboundData.value.passwords = [];
+                        }
+                    } else {
+                        // 添加新入站 - 设置默认值
+                        editInboundData.value = {
+                            type: '',
+                            tag: '',
+                            listen: '127.0.0.1',
+                            listen_port: null,
+                            users: [],
+                            passwords: [],
+                            sniff: false,
+                            sniff_override_destination: false,
+                            sniff_timeout: '300ms',
+                            tcp_fast_open: false,
+                            tcp_multi_path: false,
+                            udp_fragment: false,
+                            udp_timeout: '5m',
+                            // TUN 相关
+                            interface_name: 'tun0',
+                            inet4_address: '198.18.0.1/16',
+                            inet6_address: '',
+                            auto_route: true,
+                            stack: 'mixed',
+                            // Shadowsocks 相关
+                            method: '2022-blake3-aes-128-gcm'
+                        };
+                    }
+                    
+                    showInboundModal.value = true;
+                };
+                
+                const closeInboundModal = () => {
+                    showInboundModal.value = false;
+                    editingInbound.value = -1;
+                    editInboundData.value = {};
+                };
+                
+                // 入站类型改变时的处理
+                const onInboundTypeChange = () => {
+                    const type = editInboundData.value.type;
+                    
+                    // 重置用户和密码数组
+                    editInboundData.value.users = [];
+                    editInboundData.value.passwords = [];
+                    
+                    // 根据类型设置默认端口
+                    if (!editInboundData.value.listen_port) {
+                        switch (type) {
+                            case 'mixed':
+                                editInboundData.value.listen_port = 7890;
+                                break;
+                            case 'http':
+                                editInboundData.value.listen_port = 8080;
+                                break;
+                            case 'socks':
+                                editInboundData.value.listen_port = 1080;
+                                break;
+                            case 'tproxy':
+                                editInboundData.value.listen_port = 7896;
+                                break;
+                            case 'redirect':
+                                editInboundData.value.listen_port = 7877;
+                                break;
+                            default:
+                                editInboundData.value.listen_port = 7890;
+                        }
+                    }
+                    
+                    // TUN 类型不需要监听地址和端口
+                    if (type === 'tun') {
+                        delete editInboundData.value.listen;
+                        delete editInboundData.value.listen_port;
+                    }
+                    
+                    // 自动生成标签
+                    if (!editInboundData.value.tag || editingInbound.value === -1) {
+                        editInboundData.value.tag = `${type}-in`;
+                    }
+                };
+                
+                // 用户管理功能
+                const addInboundUser = () => {
+                    const type = editInboundData.value.type;
+                    if (['vmess', 'vless'].includes(type)) {
+                        editInboundData.value.users.push({
+                            uuid: generateUUID(),
+                            name: `user${editInboundData.value.users.length + 1}`
+                        });
+                    } else if (['http', 'socks'].includes(type)) {
+                        editInboundData.value.users.push({
+                            username: `user${editInboundData.value.users.length + 1}`,
+                            password: generateRandomPassword()
+                        });
+                    }
+                };
+                
+                const removeInboundUser = (index) => {
+                    editInboundData.value.users.splice(index, 1);
+                };
+                
+                // 密码管理功能
+                const addInboundPassword = () => {
+                    editInboundData.value.passwords.push(generateRandomPassword());
+                };
+                
+                const removeInboundPassword = (index) => {
+                    editInboundData.value.passwords.splice(index, 1);
+                };
+                
+                // 工具函数
+                const generateUUID = () => {
+                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                        const r = Math.random() * 16 | 0;
+                        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                    });
+                };
+                
+                const generateRandomPassword = () => {
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                    let result = '';
+                    for (let i = 0; i < 16; i++) {
+                        result += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+                    return result;
+                };
+                
+                const saveInboundModal = async () => {
+                    try {
+                        // 验证必填字段
+                        if (!editInboundData.value.tag) {
+                            alert('请输入标签');
+                            return;
+                        }
+                        
+                        if (!editInboundData.value.type) {
+                            alert('请选择入站类型');
+                            return;
+                        }
+                        
+                        if (editInboundData.value.type !== 'tun' && !editInboundData.value.listen_port) {
+                            alert('请输入监听端口');
+                            return;
+                        }
+                        
+                        // 检查标签唯一性
+                        const existingTags = singboxConfig.value.inbounds
+                            .map((inbound, index) => index !== editingInbound.value ? inbound.tag : null)
+                            .filter(tag => tag);
+                        
+                        if (existingTags.includes(editInboundData.value.tag)) {
+                            alert('标签已存在，请使用不同的标签');
+                            return;
+                        }
+                        
+                        // 构建最终的入站配置
+                        const inboundData = JSON.parse(JSON.stringify(editInboundData.value));
+                        
+                        // 清理空字段
+                        Object.keys(inboundData).forEach(key => {
+                            if (inboundData[key] === '' || inboundData[key] === null || inboundData[key] === undefined) {
+                                delete inboundData[key];
+                            }
+                            if (Array.isArray(inboundData[key]) && inboundData[key].length === 0) {
+                                delete inboundData[key];
+                            }
+                        });
+                        
+                        // 特殊处理不同类型的配置
+                        if (['trojan', 'hysteria2', 'shadowsocks'].includes(inboundData.type)) {
+                            if (inboundData.passwords && inboundData.passwords.length > 0) {
+                                // 对于这些类型，用户配置使用 passwords 字段
+                                delete inboundData.users;
+                            } else {
+                                delete inboundData.passwords;
+                            }
+                        } else if (['vmess', 'vless'].includes(inboundData.type)) {
+                            // 清理空的UUID
+                            if (inboundData.users) {
+                                inboundData.users = inboundData.users.filter(user => user.uuid && user.uuid.trim());
+                            }
+                            delete inboundData.passwords;
+                        } else if (['http', 'socks'].includes(inboundData.type)) {
+                            // 清理空的用户名密码
+                            if (inboundData.users) {
+                                inboundData.users = inboundData.users.filter(user => user.username && user.username.trim());
+                            }
+                            delete inboundData.passwords;
+                        } else {
+                            // 其他类型不需要用户配置
+                            delete inboundData.users;
+                            delete inboundData.passwords;
+                        }
+                        
+                        // 保存配置
+                        if (editingInbound.value >= 0) {
+                            // 更新现有配置
+                            singboxConfig.value.inbounds[editingInbound.value] = inboundData;
+                        } else {
+                            // 添加新配置
+                            if (!singboxConfig.value.inbounds) {
+                                singboxConfig.value.inbounds = [];
+                            }
+                            singboxConfig.value.inbounds.push(inboundData);
+                        }
+                        
+                        // 标记有未保存的更改
+                        hasUnsavedChanges.value = true;
+                        closeInboundModal();
+                        alert(editingInbound.value >= 0 ? '入站配置更新成功' : '入站配置添加成功');
+            } catch (error) {
+                        console.error('保存入站配置失败:', error);
+                        alert(`保存失败: ${error.message}`);
+                    }
+                };
+                
+                const deleteInbound = async (index) => {
+                    if (!confirm('确定要删除这个入站配置吗？')) return;
+                    
+                    try {
+                        singboxConfig.value.inbounds.splice(index, 1);
+                        saveConfig();
+                        alert('入站配置删除成功');
+            } catch (error) {
+                        alert(`删除失败: ${error.message}`);
+                    }
+                };
+                
+                // 兼容性函数
+                const editInbound = (index) => openInboundModal(index);
+                const addInbound = () => openInboundModal(-1);
+                
+                // 出站模态框功能
+                const openOutboundModal = (index = -1) => {
+                    editingOutbound.value = index;
+                    
+                    if (index >= 0) {
+                        // 编辑现有出站
+                        editOutboundData.value = { ...singboxConfig.value.outbounds[index] };
+                        
+                        // 处理节点组配置
+                        if (editOutboundData.value.type === 'urltest' || editOutboundData.value.type === 'selector') {
+                            if (editOutboundData.value.outbounds && Array.isArray(editOutboundData.value.outbounds)) {
+                                selectedNodes.value = [...editOutboundData.value.outbounds];
+                            }
+                        } else {
+                            selectedNodes.value = [];
+                        }
+                    } else {
+                        // 添加新出站
+                        editOutboundData.value = {
+                            type: 'direct',
+                            tag: '新出站'
+                        };
+                        selectedNodes.value = [];
+                    }
+                    
+                    showOutboundModal.value = true;
+                };
+                
+                const closeOutboundModal = () => {
+                    showOutboundModal.value = false;
+                    editingOutbound.value = -1;
+                    editOutboundData.value = {};
+                    selectedNodes.value = [];
+                };
+                
+                const onOutboundTypeChange = () => {
+                    // 当类型改变时，重置相关配置
+                    if (editOutboundData.value.type === 'direct') {
+                        // Direct类型，清除节点组配置
+                        selectedNodes.value = [];
+                    }
+                };
+                
+                const saveOutboundModal = async () => {
+                    try {
+                        const outboundData = { ...editOutboundData.value };
+                        
+                        // 处理节点组类型
+                        if (outboundData.type === 'urltest' || outboundData.type === 'selector') {
+                            outboundData.outbounds = [...selectedNodes.value];
+                            
+                            // 设置URLTest默认值
+                            if (outboundData.type === 'urltest') {
+                                if (!outboundData.url) outboundData.url = 'https://www.gstatic.com/generate_204';
+                                if (!outboundData.interval) outboundData.interval = '300s';
+                                if (!outboundData.tolerance) outboundData.tolerance = 50;
+                            }
+                        }
+                        
+                        // 保存配置
+                        if (editingOutbound.value >= 0) {
+                            // 更新现有配置
+                            singboxConfig.value.outbounds[editingOutbound.value] = outboundData;
+                        } else {
+                            // 添加新配置
+                            if (!singboxConfig.value.outbounds) {
+                                singboxConfig.value.outbounds = [];
+                            }
+                            singboxConfig.value.outbounds.push(outboundData);
+                        }
+                        
+                        saveConfig();
+                        closeOutboundModal();
+                        alert(editingOutbound.value >= 0 ? '出站配置更新成功' : '出站配置添加成功');
+            } catch (error) {
+                        alert(`保存失败: ${error.message}`);
+                    }
+                };
+                
+                const deleteOutbound = async (index) => {
+                    if (!confirm('确定要删除这个出站配置吗？')) return;
+                    
+                    try {
+                        singboxConfig.value.outbounds.splice(index, 1);
+                        saveConfig();
+                        alert('出站配置删除成功');
+                    } catch (error) {
+                        alert(`删除失败: ${error.message}`);
+                    }
+                };
+                
+                // 兼容性函数
+                const editOutbound = (index) => openOutboundModal(index);
+                const addOutbound = () => openOutboundModal(-1);
+                const cancelEditOutbound = () => closeOutboundModal();
+                const saveOutbound = (index) => saveOutboundModal();
+                
+                // 保存配置到内存（不重启服务）
+                const saveConfigToMemory = () => {
+                    hasUnsavedChanges.value = true;
+                    console.log('配置已修改，等待保存');
+                };
+                
+                // 仅保存配置文件
+                const saveConfigOnly = async () => {
+                    try {
+                        const response = await fetch('/api/config/sing-box', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                content: JSON.stringify(singboxConfig.value, null, 2)
+                            })
+                        });
+                        
+                const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.error || '保存配置失败');
+                        }
+                        
+                        hasUnsavedChanges.value = false;
+                        originalConfig.value = JSON.parse(JSON.stringify(singboxConfig.value));
+                        alert('配置已保存到文件');
+                        console.log('配置保存成功');
+            } catch (error) {
+                        console.error('保存配置失败:', error);
+                        alert(`保存失败: ${error.message}`);
+                        throw error;
+                    }
+                };
+                
+                // 保存配置并重启服务
+                const saveAndRestart = async () => {
+                    try {
+                        // 先验证配置
+                        const configToSave = JSON.stringify(singboxConfig.value, null, 2);
+                        
+                        console.log('开始验证配置...');
+                        const validateResponse = await fetch('/api/config/sing-box/validate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ content: configToSave })
+                        });
+                        
+                        const validateData = await validateResponse.json();
+                        
+                        if (!validateResponse.ok || !validateData.valid) {
+                            // 配置验证失败 - 回退到原始配置
+                            console.error('配置验证失败:', validateData.error);
+                            
+                            // 确认是否要回退
+                            const rollback = confirm(
+                                `配置验证失败：\n${validateData.error}\n\n点击"确定"回退到修改前的配置，点击"取消"保留当前编辑。`
+                            );
+                            
+                            if (rollback && originalConfig.value) {
+                                // 回退到原始配置
+                                singboxConfig.value = JSON.parse(JSON.stringify(originalConfig.value));
+                                hasUnsavedChanges.value = false;
+                                alert('已回退到修改前的配置');
+                            }
+                            
+                            return; // 停止保存和重启流程
+                        }
+                        
+                        console.log('配置验证通过，开始保存...');
+                        
+                        // 验证通过，保存配置
+                        await saveConfigOnly();
+                        
+                        // 然后重启服务
+                        const response = await fetch('/api/services/sing-box/restart', {
+                    method: 'POST'
+                });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || '重启失败');
+                        }
+                        
+                        alert('配置验证通过，已保存并重启服务');
+                        // 延迟刷新服务状态
+                        setTimeout(() => fetchServices(), 2000);
+                        
+                    } catch (error) {
+                        console.error('保存并重启失败:', error);
+                        alert(`操作失败: ${error.message}`);
+                    }
+                };
+                
+                // 保留原来的函数名作为内部使用（现在只保存不重启）
+                const saveConfig = saveConfigToMemory;
+                
+                // 节点选择器功能
+                const toggleNodeFilter = (filterType) => {
+                    if (filterType === 'all') {
+                        const allFilter = nodeTypeFilters.value.find(f => f.type === 'all');
+                        allFilter.active = !allFilter.active;
+                        // 如果选择了"全部"，取消其他过滤器
+                        if (allFilter.active) {
+                            nodeTypeFilters.value.forEach(f => {
+                                if (f.type !== 'all') f.active = false;
+                            });
+                        }
+                } else {
+                        const filter = nodeTypeFilters.value.find(f => f.type === filterType);
+                        filter.active = !filter.active;
+                        // 取消"全部"过滤器
+                        const allFilter = nodeTypeFilters.value.find(f => f.type === 'all');
+                        allFilter.active = false;
+                    }
+                };
+                
+                const addNodeToGroup = (nodeTag) => {
+                    if (!selectedNodes.value.includes(nodeTag)) {
+                        selectedNodes.value.push(nodeTag);
+                    }
+                };
+                
+                const removeNodeFromGroup = (index) => {
+                    selectedNodes.value.splice(index, 1);
+                };
+                
+                const clearAllNodes = () => {
+                    selectedNodes.value = [];
+                };
+                
+                const selectAllFilteredNodes = () => {
+                    filteredAvailableNodes.value.forEach(node => {
+                        if (!selectedNodes.value.includes(node.tag)) {
+                            selectedNodes.value.push(node.tag);
+                        }
+                    });
+                };
+                
+                // 出站过滤器功能
+                const toggleOutboundFilter = (filterType) => {
+                    if (filterType === 'all') {
+                        const allFilter = outboundTypeFilters.value.find(f => f.type === 'all');
+                        allFilter.active = !allFilter.active;
+                        // 如果选择了"全部"，取消其他过滤器
+                        if (allFilter.active) {
+                            outboundTypeFilters.value.forEach(f => {
+                                if (f.type !== 'all') f.active = false;
+                            });
+                        }
+                } else {
+                        const filter = outboundTypeFilters.value.find(f => f.type === filterType);
+                        filter.active = !filter.active;
+                        // 取消"全部"过滤器
+                        const allFilter = outboundTypeFilters.value.find(f => f.type === 'all');
+                        allFilter.active = false;
+                    }
+                };
+                
+                // 规则集管理功能
+                const openRuleSetModal = (index = -1) => {
+                    editingRuleSet.value = index;
+                    
+                    if (index >= 0) {
+                        // 编辑现有规则集
+                        editRuleSetData.value = { ...singboxConfig.value.route.rule_set[index] };
+                    } else {
+                        // 添加新规则集
+                        editRuleSetData.value = {
+                            type: 'remote',
+                            tag: '新规则集',
+                            format: 'binary',
+                            download_detour: 'direct',
+                            update_interval: '7d'
+                        };
+                    }
+                    
+                    showRuleSetModal.value = true;
+                };
+                
+                const closeRuleSetModal = () => {
+                    showRuleSetModal.value = false;
+                    editingRuleSet.value = -1;
+                    editRuleSetData.value = {};
+                };
+                
+                const onRuleSetTypeChange = () => {
+                    // 当类型改变时，重置相关配置
+                    if (editRuleSetData.value.type === 'local') {
+                        // 清除远程相关配置
+                        delete editRuleSetData.value.url;
+                        delete editRuleSetData.value.download_detour;
+                        delete editRuleSetData.value.update_interval;
+                    } else {
+                        // 清除本地相关配置
+                        delete editRuleSetData.value.path;
+                    }
+                };
+                
+                const saveRuleSetModal = async () => {
+                    try {
+                        const ruleSetData = { ...editRuleSetData.value };
+                        
+                        // 确保route和rule_set存在
+                        if (!singboxConfig.value.route) {
+                            singboxConfig.value.route = {};
+                        }
+                        if (!singboxConfig.value.route.rule_set) {
+                            singboxConfig.value.route.rule_set = [];
+                        }
+                        
+                        // 保存配置
+                        if (editingRuleSet.value >= 0) {
+                            // 更新现有规则集
+                            singboxConfig.value.route.rule_set[editingRuleSet.value] = ruleSetData;
+                        } else {
+                            // 添加新规则集
+                            singboxConfig.value.route.rule_set.push(ruleSetData);
+                        }
+                        
+                        saveConfig();
+                        closeRuleSetModal();
+                        alert(editingRuleSet.value >= 0 ? '规则集更新成功' : '规则集添加成功');
+            } catch (error) {
+                        alert(`保存失败: ${error.message}`);
+                    }
+                };
+                
+                const deleteRuleSet = async (index) => {
+                    if (!confirm('确定要删除这个规则集吗？')) return;
+                    
+                    try {
+                        singboxConfig.value.route.rule_set.splice(index, 1);
+                        saveConfig();
+                        alert('规则集删除成功');
+                    } catch (error) {
+                        alert(`删除失败: ${error.message}`);
+                    }
+                };
+                
+                // 兼容性函数
+                const editRuleSet = (index) => openRuleSetModal(index);
+                const addRuleSet = () => openRuleSetModal(-1);
+                
+                // 路由规则管理功能
+                const openRouteRuleModal = (index = -1) => {
+                    editingRouteRule.value = index;
+                    
+                    if (index >= 0) {
+                        // 编辑现有规则
+                        const rule = singboxConfig.value.route.rules[index];
+                        editRouteRuleData.value = { ...rule };
+                        
+                        // 处理规则集
+                        selectedRuleSets.value = rule.rule_set ? [...rule.rule_set] : [];
+                        
+                        // 处理传统规则
+                        domainText.value = rule.domain ? rule.domain.join('\n') : '';
+                        domainSuffixText.value = rule.domain_suffix ? rule.domain_suffix.join('\n') : '';
+                        ipText.value = rule.ip ? rule.ip.join('\n') : '';
+                        ipCidrText.value = rule.ip_cidr ? rule.ip_cidr.join('\n') : '';
+                        geositeText.value = rule.geosite ? rule.geosite.join(',') : '';
+                        geoipText.value = rule.geoip ? rule.geoip.join(',') : '';
+                    } else {
+                        // 添加新规则
+                        editRouteRuleData.value = {
+                            outbound: ''
+                        };
+                        selectedRuleSets.value = [];
+                        domainText.value = '';
+                        domainSuffixText.value = '';
+                        ipText.value = '';
+                        ipCidrText.value = '';
+                        geositeText.value = '';
+                        geoipText.value = '';
+                    }
+                    
+                    showRouteRuleModal.value = true;
+                };
+                
+                const closeRouteRuleModal = () => {
+                    showRouteRuleModal.value = false;
+                    editingRouteRule.value = -1;
+                    editRouteRuleData.value = {};
+                    selectedRuleSets.value = [];
+                    domainText.value = '';
+                    domainSuffixText.value = '';
+                    ipText.value = '';
+                    ipCidrText.value = '';
+                    geositeText.value = '';
+                    geoipText.value = '';
+                };
+                
+                const addRuleSetToRoute = (ruleSetTag) => {
+                    if (!selectedRuleSets.value.includes(ruleSetTag)) {
+                        selectedRuleSets.value.push(ruleSetTag);
+                    }
+                };
+                
+                const removeRuleSetFromRoute = (index) => {
+                    selectedRuleSets.value.splice(index, 1);
+                };
+                
+                const saveRouteRuleModal = async () => {
+                    try {
+                        const ruleData = { ...editRouteRuleData.value };
+                        
+                        // 处理规则集
+                        if (selectedRuleSets.value.length > 0) {
+                            ruleData.rule_set = [...selectedRuleSets.value];
+                        }
+                        
+                        // 处理传统规则
+                        if (domainText.value.trim()) {
+                            ruleData.domain = domainText.value.split('\n').filter(line => line.trim());
+                        }
+                        if (domainSuffixText.value.trim()) {
+                            ruleData.domain_suffix = domainSuffixText.value.split('\n').filter(line => line.trim());
+                        }
+                        if (ipText.value.trim()) {
+                            ruleData.ip = ipText.value.split('\n').filter(line => line.trim());
+                        }
+                        if (ipCidrText.value.trim()) {
+                            ruleData.ip_cidr = ipCidrText.value.split('\n').filter(line => line.trim());
+                        }
+                        if (geositeText.value.trim()) {
+                            ruleData.geosite = geositeText.value.split(',').map(s => s.trim()).filter(s => s);
+                        }
+                        if (geoipText.value.trim()) {
+                            ruleData.geoip = geoipText.value.split(',').map(s => s.trim()).filter(s => s);
+                        }
+                        
+                        // 确保route和rules存在
+                        if (!singboxConfig.value.route) {
+                            singboxConfig.value.route = {};
+                        }
+                        if (!singboxConfig.value.route.rules) {
+                            singboxConfig.value.route.rules = [];
+                        }
+                        
+                        // 保存配置
+                        if (editingRouteRule.value >= 0) {
+                            // 更新现有规则
+                            singboxConfig.value.route.rules[editingRouteRule.value] = ruleData;
+                } else {
+                            // 添加新规则
+                            singboxConfig.value.route.rules.push(ruleData);
+                }
+                        
+                        saveConfig();
+                        closeRouteRuleModal();
+                        alert(editingRouteRule.value >= 0 ? '路由规则更新成功' : '路由规则添加成功');
+                } catch (error) {
+                        alert(`保存失败: ${error.message}`);
+                    }
+                };
+                
+                const deleteRouteRule = async (index) => {
+                    if (!confirm('确定要删除这个路由规则吗？')) return;
+                    
+                    try {
+                        singboxConfig.value.route.rules.splice(index, 1);
+                        saveConfig();
+                        alert('路由规则删除成功');
+                    } catch (error) {
+                        alert(`删除失败: ${error.message}`);
+                    }
+                };
+                
+                // 兼容性函数
+                const editRouteRule = (index) => openRouteRuleModal(index);
+                const addRouteRule = () => openRouteRuleModal(-1);
+                
+                // 代理节点管理函数
+                const getProxyNodeOriginalIndex = (proxyIndex) => {
+                    const proxyNode = proxyNodes.value[proxyIndex];
+                    if (!proxyNode) return -1;
+                    return singboxConfig.value.outbounds.findIndex(outbound => outbound === proxyNode);
+                };
+                
+                const addProxyNode = () => {
+                    openProxyModal(-1);
+                };
+                
+                const editProxyNode = (originalIndex) => {
+                    openProxyModal(originalIndex);
+                };
+                
+                const deleteProxyNode = async (originalIndex) => {
+                    if (!confirm('确定要删除这个代理节点吗？')) return;
+                    
+                    try {
+                        singboxConfig.value.outbounds.splice(originalIndex, 1);
+                        saveConfig();
+                        alert('代理节点删除成功');
+                    } catch (error) {
+                        alert(`删除失败: ${error.message}`);
+                    }
+                };
+                
+                // 获取非代理出站的原始索引
+                const getNonProxyOriginalIndex = (nonProxyIndex) => {
+                    const nonProxyOutbound = nonProxyOutbounds.value[nonProxyIndex];
+                    if (!nonProxyOutbound) return -1;
+                    return singboxConfig.value.outbounds.findIndex(outbound => outbound === nonProxyOutbound);
+                };
+                
+                                // 代理节点模态框管理
+                const openProxyModal = (index) => {
+                    editingProxy.value = index;
+                    
+                    if (index >= 0) {
+                        // 编辑现有代理节点
+                        const proxy = singboxConfig.value.outbounds[index];
+                        if (proxy) {
+                            proxyConfigText.value = JSON.stringify(proxy, null, 2);
+                        }
+                    } else {
+                        // 清空配置文本
+                        proxyConfigText.value = '';
+                    }
+                    
+                    showProxyModal.value = true;
+                };
+                
+                const closeProxyModal = () => {
+                    showProxyModal.value = false;
+                    editingProxy.value = -1;
+                    proxyConfigText.value = '';
+                };
+                
+                const saveProxyModal = async () => {
+                    try {
+                        // 尝试解析JSON
+                        let proxyConfig;
+                        try {
+                            proxyConfig = JSON.parse(proxyConfigText.value);
+                        } catch (e) {
+                            throw new Error('配置格式错误，请检查JSON语法');
+                        }
+                        
+                        // 验证必要字段
+                        if (!proxyConfig.type) {
+                            throw new Error('缺少必要字段: type');
+                        }
+                        if (!proxyConfig.server) {
+                            throw new Error('缺少必要字段: server');
+                        }
+                        if (!proxyConfig.server_port) {
+                            throw new Error('缺少必要字段: server_port');
+                        }
+                        
+                        if (editingProxy.value >= 0) {
+                            // 更新现有代理节点
+                            singboxConfig.value.outbounds[editingProxy.value] = proxyConfig;
+                        } else {
+                            // 添加新代理节点
+                            if (!singboxConfig.value.outbounds) {
+                                singboxConfig.value.outbounds = [];
+                            }
+                            singboxConfig.value.outbounds.push(proxyConfig);
+                        }
+                        
+                        saveConfig();
+                        closeProxyModal();
+                        alert(editingProxy.value >= 0 ? '代理节点更新成功' : '代理节点添加成功');
+                } catch (error) {
+                        alert(`保存失败: ${error.message}`);
+                    }
+                };
+                
+                // 调试函数
+                const debugRouteRules = () => {
+                    console.log('=== 路由规则调试信息 ===');
+                    console.log('singboxConfig.value:', singboxConfig.value);
+                    console.log('singboxConfig.value.route:', singboxConfig.value?.route);
+                    console.log('原始路由规则:', singboxConfig.value?.route?.rules);
+                    console.log('过滤后的路由规则:', filteredRouteRules.value);
+                    console.log('规则集配置:', singboxConfig.value?.route?.rule_set);
+                    alert('调试信息已输出到控制台，请按F12查看Console面板');
+                };
+                
+                // 拖拽开始
+                const onDragStart = (event, index) => {
+                    draggedIndex.value = index;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/html', event.target);
+                    event.target.style.opacity = '0.5';
+                };
+                
+                // 拖拽结束
+                const onDragEnd = (event) => {
+                    event.target.style.opacity = '1';
+                    draggedIndex.value = -1;
+                    dragOverIndex.value = -1;
+                };
+                
+                // 拖拽悬停
+                const onDragOver = (event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = 'move';
+                };
+                
+                // 拖拽放置
+                const onDrop = async (event, dropIndex) => {
+                    event.preventDefault();
+                    
+                    if (draggedIndex.value === dropIndex || draggedIndex.value === -1) return;
+                    
+                    // 检查是否拖拽到系统规则或系统规则附近
+                    const draggedRule = filteredRouteRules.value[draggedIndex.value];
+                    const targetRule = filteredRouteRules.value[dropIndex];
+                    
+                    if (draggedRule?.isSystem || targetRule?.isSystem) {
+                        alert('不能移动系统规则或移动到系统规则位置');
+                        return;
+                    }
+                    
+                    try {
+                        // 获取原始索引
+                        const dragOriginalIndex = getOriginalRouteIndex(draggedIndex.value);
+                        const dropOriginalIndex = getOriginalRouteIndex(dropIndex);
+                        
+                        if (dragOriginalIndex === -1 || dropOriginalIndex === -1) return;
+                        
+                        // 移动规则
+                        const rules = [...singboxConfig.value.route.rules];
+                        const draggedRuleData = rules[dragOriginalIndex];
+                        
+                        // 删除原位置
+                        rules.splice(dragOriginalIndex, 1);
+                        
+                        // 计算新位置
+                        let newDropIndex = dropOriginalIndex;
+                        if (dragOriginalIndex < dropOriginalIndex) {
+                            newDropIndex--;
+                        }
+                        
+                        // 插入新位置
+                        rules.splice(newDropIndex, 0, draggedRuleData);
+                        
+                        // 更新配置
+                        singboxConfig.value.route.rules = rules;
+                        
+                        saveConfig();
+                        console.log('路由规则排序已保存');
+                    } catch (error) {
+                        console.error('排序失败:', error);
+                        alert(`排序失败: ${error.message}`);
+                    }
+                };
+                
+                // 上移规则
+                const moveRouteUp = async (index) => {
+                    if (index === 0) return;
+                    
+                    try {
+                        const currentIndex = getOriginalRouteIndex(index);
+                        const prevIndex = getOriginalRouteIndex(index - 1);
+                        
+                        if (currentIndex === -1 || prevIndex === -1) return;
+                        
+                        // 交换规则
+                        const rules = [...singboxConfig.value.route.rules];
+                        [rules[prevIndex], rules[currentIndex]] = [rules[currentIndex], rules[prevIndex]];
+                        
+                        singboxConfig.value.route.rules = rules;
+                        saveConfig();
+                        console.log('路由规则上移成功');
+                    } catch (error) {
+                        console.error('上移失败:', error);
+                        alert(`上移失败: ${error.message}`);
+                    }
+                };
+                
+                // 下移规则
+                const moveRouteDown = async (index) => {
+                    if (index === filteredRouteRules.value.length - 1) return;
+                    
+                    try {
+                        const currentIndex = getOriginalRouteIndex(index);
+                        const nextIndex = getOriginalRouteIndex(index + 1);
+                        
+                        if (currentIndex === -1 || nextIndex === -1) return;
+                        
+                        // 交换规则
+                        const rules = [...singboxConfig.value.route.rules];
+                        [rules[currentIndex], rules[nextIndex]] = [rules[nextIndex], rules[currentIndex]];
+                        
+                        singboxConfig.value.route.rules = rules;
+                        saveConfig();
+                        console.log('路由规则下移成功');
+                    } catch (error) {
+                        console.error('下移失败:', error);
+                        alert(`下移失败: ${error.message}`);
+                    }
+                };
+
+                onMounted(() => {
+                    console.log('Vue组件已挂载，开始获取服务状态');
+                    fetchServices();
+                    fetchSystemInfo();
+                    
+                    // 定时刷新系统信息（每5秒）
+                    setInterval(fetchSystemInfo, 5000);
+                });
+                
+                // MosDNS 管理函数已简化
+                
+                // DNS 相关函数已简化，移除编辑功能
+                
+
+                
+                
+                
+                const getDNSServerTypeClass = (server) => {
+                    if (!server || !server.address) return 'badge badge-secondary';
+                    
+                    const address = server.address.toLowerCase();
+                    if (address.includes('fakeip')) return 'badge badge-warning';
+                    if (address.startsWith('tls://')) return 'badge badge-success';
+                    if (address.startsWith('https://')) return 'badge badge-info';
+                    if (address.startsWith('quic://')) return 'badge badge-primary';
+                    return 'badge badge-secondary';
+                };
+                
+                const getDNSServerTypeText = (server) => {
+                    if (!server || !server.address) return '未知';
+                    
+                    const address = server.address.toLowerCase();
+                    if (address.includes('fakeip')) return 'FakeIP';
+                    if (address.startsWith('tls://')) return 'DNS-over-TLS';
+                    if (address.startsWith('https://')) return 'DNS-over-HTTPS';
+                    if (address.startsWith('quic://')) return 'DNS-over-QUIC';
+                    if (address.includes(':53')) return 'UDP/TCP';
+                    return '标准DNS';
+                };
+                
+
+                
+                return {
+                    currentPage, services, systemInfo, singboxConfig, loadingConfig, configError, activeTab, hasUnsavedChanges,
+                    editingInbound, editingProxy, editingOutbound, editInboundData, editProxyData, proxyConfigText, editOutboundData, outboundNodesText,
+                    selectedNodes, nodeTypeFilters, availableNodes, filteredAvailableNodes,
+                    outboundTypeFilters, allOutboundNodes, filteredAllOutbounds, availableRuleSets, filteredRouteRules,
+                    proxyNodes, nonProxyOutbounds,
+                    showInboundModal, showProxyModal, showOutboundModal, showRuleSetModal, showRouteRuleModal, usersConfigText, enableSniffing, enableTLS,
+                    editingRuleSet, editRuleSetData, editingRouteRule, editRouteRuleData, selectedRuleSets,
+                    domainText, domainSuffixText, ipText, ipCidrText, geositeText, geoipText,
+                    showServicePage, controlService, viewLogs, getServiceName, getStatusClass, getStatusText, getUptime,
+                    editInbound, deleteInbound, addInbound, openInboundModal, closeInboundModal, saveInboundModal,
+                    onInboundTypeChange, addInboundUser, removeInboundUser, addInboundPassword, removeInboundPassword,
+                    editOutbound, cancelEditOutbound, saveOutbound, deleteOutbound, addOutbound, 
+                    openOutboundModal, closeOutboundModal, saveOutboundModal, onOutboundTypeChange,
+                    editRuleSet, deleteRuleSet, addRuleSet, openRuleSetModal, closeRuleSetModal, saveRuleSetModal, onRuleSetTypeChange,
+                    editRouteRule, deleteRouteRule, addRouteRule, openRouteRuleModal, closeRouteRuleModal, saveRouteRuleModal,
+                    addRuleSetToRoute, removeRuleSetFromRoute, getOriginalRouteIndex, hasTraditionalRules, debugRouteRules, getRuleSetArray,
+                    draggedIndex, dragOverIndex, onDragStart, onDragEnd, onDragOver, onDrop, moveRouteUp, moveRouteDown,
+                    saveConfigOnly, saveAndRestart, isSystemRule, getSystemRuleName, isSystemRuleNearby,
+                    addProxyNode, editProxyNode, deleteProxyNode, getProxyNodeOriginalIndex, getNonProxyOriginalIndex,
+                    openProxyModal, closeProxyModal, saveProxyModal,
+                    isProxyOutbound, toggleNodeFilter, toggleOutboundFilter, addNodeToGroup, removeNodeFromGroup, clearAllNodes, selectAllFilteredNodes,
+                    // DNS 相关函数 - 仅保留显示功能
+                    getDNSServerTypeClass, getDNSServerTypeText,
+                    // MosDNS 相关函数已简化
+                };
+            }
+            app = createApp({
+                setup() {
+                    // 在这里只返回必要的变量，避免未定义错误
+                    return {
+                        currentPage: ref('home'),
+                        services: reactive({}),
+                        systemInfo: ref({}),
+                        singboxConfig: ref(null),
+                        loadingConfig: ref(false),
+                        configError: ref(null),
+                        activeTab: ref('inbounds'),
+                        hasUnsavedChanges: ref(false)
+                    };
+                }
+            });
+            
+            app.mount('#app');
+            
+            console.log('Vue应用已创建并挂载');
+            console.log('DOM元素 #app:', document.getElementById('app'));
+            
+        } catch (error) {
+            console.error('Vue应用创建失败:', error);
+            document.body.innerHTML = '<div style="color: red; padding: 20px; font-size: 18px;">错误：' + error.message + '</div>';
+        }
+    </script>
+</body>
+</html>
