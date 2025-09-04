@@ -8,6 +8,9 @@
 * `mihomo` 稳定版，开发版
 * `mosdns` PH 魔改UI增强版本
 
+### mybox
+* MyBox 是一个现代化的代理服务控制中心，专为管理 Sing-Box 和 MosDNS 服务而设计。提供直观的 Web 界面，支持配置管理、服务控制和实时监控。
+
 ### 脚本
 * `install.sh` 脚本
 ``` shell
