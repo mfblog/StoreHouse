@@ -15,13 +15,13 @@ wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/inst
 ```
 ### MyBox 代理服务控制中心
 
-#### 📦 当前版本: v1.0.3
+#### 📦 当前版本: v1.0.4
 
 **最新更新**:
-- ✨ 新增版本信息显示功能
-- 🎨 优化界面布局和视觉效果
-- 🔧 完善 API 接口和错误处理
-- 📱 改进响应式设计
+- ✨ 新增一键内核更新功能
+- 🚀 支持多分支自动识别和更新
+- ⚡ 优化定时刷新，节省系统资源
+- 👨‍💻 添加作者信息和项目链接
 
 #### ✅ 已完成功能
 
@@ -42,11 +42,18 @@ wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/inst
 - ✅ 配置文件备份与恢复
 - ✅ 实时配置验证
 - ✅ RESTful API 接口
+- ✅ 一键内核更新（Sing-Box、MosDNS）
+- ✅ 多分支自动识别和更新
+- ✅ GitHub Release 智能解析
 
 #### 🚧 待完成功能
 
-- [ ] 更新 sing-box内核
-- [ ] 更新 mosdns 内核
+- [ ] 配置模板管理
+- [ ] 批量节点导入
+- [ ] 订阅管理功能
+- [ ] 流量统计和分析
+- [ ] 定时任务调度
+- [ ] 插件系统扩展
 
 
 ### 脚本

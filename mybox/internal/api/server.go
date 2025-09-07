@@ -88,6 +88,16 @@ func (s *Server) setupRoutes() {
 		// 版本信息
 		api.GET("/version/:service", s.getServiceVersion)
 		
+		// 内核更新
+		update := api.Group("/update")
+		{
+			update.GET("/:service/info", s.getUpdateInfo)
+			update.POST("/:service/core", s.updateCore)
+			update.POST("/:service/github", s.updateFromGitHub)
+			update.GET("/:service/backups", s.getUpdateBackups)
+			update.POST("/:service/restore", s.restoreFromBackup)
+		}
+		
 		// 网络信息
 		network := api.Group("/network")
 		{
@@ -1172,23 +1182,34 @@ func (s *Server) getServiceVersion(c *gin.Context) {
 		return
 	}
 	
+	// 检查服务是否安装
 	if version == "" && err != nil {
-		version = "未知版本"
+		// 检查是否是"未找到可执行文件"的错误
+		if strings.Contains(err.Error(), "executable file not found") || 
+		   strings.Contains(err.Error(), "command not found") ||
+		   strings.Contains(err.Error(), "not found in $PATH") {
+			version = "未安装"
+			utils.Logger.Infof("服务 %s 未安装", serviceName)
+		} else {
+			version = "未知版本"
+			utils.Logger.Errorf("获取服务 %s 版本失败: %v", serviceName, err)
+		}
+	} else {
+		utils.Logger.Infof("获取服务 %s 版本信息: %s, 分支: %s", serviceName, version, branch)
 	}
-	
-	utils.Logger.Infof("获取服务 %s 版本信息: %s, 分支: %s", serviceName, version, branch)
 	
 	response := gin.H{
 		"service": serviceName,
 		"version": version,
 	}
 	
-	if branch != "" {
+	if branch != "" && version != "未安装" {
 		response["branch"] = branch
 		response["branch_path"] = versionPath
 	}
 	
-	if err != nil {
+	// 只有在版本不是"未安装"时才显示错误信息
+	if err != nil && version != "未安装" {
 		response["error"] = err.Error()
 	}
 	
@@ -1256,4 +1277,200 @@ func parseNftablesRules(output string) map[string]interface{} {
 	}
 	
 	return result
+}
+
+// getUpdateInfo 获取更新信息
+func (s *Server) getUpdateInfo(c *gin.Context) {
+	serviceName := c.Param("service")
+	
+	// 验证服务名称
+	if serviceName != "sing-box" && serviceName != "mosdns" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "不支持的服务: " + serviceName,
+		})
+		return
+	}
+	
+	updater := utils.NewCoreUpdater(serviceName)
+	
+	// 获取系统信息
+	systemInfo := updater.GetSystemInfo()
+	
+	// 获取当前版本
+	currentVersion, err := updater.GetCurrentVersion()
+	if err != nil {
+		utils.Logger.Errorf("获取当前版本失败: %v", err)
+		currentVersion = "未知"
+	}
+	
+	// 获取备份列表
+	backups, err := updater.ListBackups()
+	if err != nil {
+		utils.Logger.Errorf("获取备份列表失败: %v", err)
+		backups = []string{}
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"service":         serviceName,
+		"current_version": currentVersion,
+		"system_info":     systemInfo,
+		"backups":         backups,
+	})
+}
+
+// updateCore 更新内核
+func (s *Server) updateCore(c *gin.Context) {
+	serviceName := c.Param("service")
+	
+	// 验证服务名称
+	if serviceName != "sing-box" && serviceName != "mosdns" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "不支持的服务: " + serviceName,
+		})
+		return
+	}
+	
+	// 解析请求参数
+	var req struct {
+		DownloadURL string `json:"download_url" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+	
+	utils.Logger.Infof("开始更新 %s 内核，下载地址: %s", serviceName, req.DownloadURL)
+	
+	// 创建更新器并执行更新
+	updater := utils.NewCoreUpdater(serviceName)
+	result := updater.UpdateCore(req.DownloadURL)
+	
+	if result.Success {
+		utils.Logger.Infof("成功更新 %s 内核: %s", serviceName, result.Message)
+		c.JSON(http.StatusOK, result)
+	} else {
+		utils.Logger.Errorf("更新 %s 内核失败: %s", serviceName, result.Error)
+		c.JSON(http.StatusInternalServerError, result)
+	}
+}
+
+// getUpdateBackups 获取备份列表
+func (s *Server) getUpdateBackups(c *gin.Context) {
+	serviceName := c.Param("service")
+	
+	// 验证服务名称
+	if serviceName != "sing-box" && serviceName != "mosdns" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "不支持的服务: " + serviceName,
+		})
+		return
+	}
+	
+	updater := utils.NewCoreUpdater(serviceName)
+	backups, err := updater.ListBackups()
+	if err != nil {
+		utils.Logger.Errorf("获取备份列表失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "获取备份列表失败: " + err.Error(),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"service": serviceName,
+		"backups": backups,
+	})
+}
+
+// restoreFromBackup 从备份恢复
+func (s *Server) restoreFromBackup(c *gin.Context) {
+	serviceName := c.Param("service")
+	
+	// 验证服务名称
+	if serviceName != "sing-box" && serviceName != "mosdns" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "不支持的服务: " + serviceName,
+		})
+		return
+	}
+	
+	// 解析请求参数
+	var req struct {
+		BackupPath string `json:"backup_path" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+	
+	utils.Logger.Infof("开始从备份恢复 %s 内核: %s", serviceName, req.BackupPath)
+	
+	updater := utils.NewCoreUpdater(serviceName)
+	if err := updater.RestoreFromBackup(req.BackupPath); err != nil {
+		utils.Logger.Errorf("恢复 %s 内核失败: %v", serviceName, err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "恢复失败: " + err.Error(),
+		})
+		return
+	}
+	
+	// 获取恢复后的版本
+	newVersion, err := updater.GetCurrentVersion()
+	if err != nil {
+		utils.Logger.Warnf("获取恢复后版本失败: %v", err)
+		newVersion = "未知"
+	}
+	
+	utils.Logger.Infof("成功从备份恢复 %s 内核", serviceName)
+	c.JSON(http.StatusOK, gin.H{
+		"success":     true,
+		"message":     fmt.Sprintf("成功从备份恢复 %s 内核", serviceName),
+		"new_version": newVersion,
+	})
+}
+
+// updateFromGitHub 从 GitHub Release 更新内核
+func (s *Server) updateFromGitHub(c *gin.Context) {
+	serviceName := c.Param("service")
+	
+	// 验证服务名称
+	if serviceName != "sing-box" && serviceName != "mosdns" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "不支持的服务: " + serviceName,
+		})
+		return
+	}
+	
+	// 解析请求参数
+	var req struct {
+		ReleaseURL string `json:"release_url" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+	
+	utils.Logger.Infof("开始从 GitHub Release 更新 %s 内核: %s", serviceName, req.ReleaseURL)
+	
+	// 创建更新器并执行更新
+	updater := utils.NewCoreUpdater(serviceName)
+	result := updater.UpdateFromGitHubRelease(req.ReleaseURL)
+	
+	if result.Success {
+		utils.Logger.Infof("成功从 GitHub Release 更新 %s 内核: %s", serviceName, result.Message)
+		c.JSON(http.StatusOK, result)
+	} else {
+		utils.Logger.Errorf("从 GitHub Release 更新 %s 内核失败: %s", serviceName, result.Error)
+		c.JSON(http.StatusInternalServerError, result)
+	}
 }

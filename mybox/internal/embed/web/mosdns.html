@@ -446,6 +446,13 @@
                     <div class="metric-value" style="font-size: 0.8em; color: #ef4444;">{{ versionInfo.error }}</div>
                     <div class="metric-label">版本错误</div>
                 </div>
+                <div class="metric-card update-card">
+                    <button class="update-btn" @click="showUpdateDialog = true" :disabled="updateInProgress">
+                        <span v-if="updateInProgress">⏳ 更新中...</span>
+                        <span v-else>🔄 一键更新</span>
+                    </button>
+                    <div class="metric-label">内核更新</div>
+                </div>
             </div>
 
             <!-- DNS 统计信息 -->
