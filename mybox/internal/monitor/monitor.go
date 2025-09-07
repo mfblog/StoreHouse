@@ -165,7 +165,7 @@ func (m *Monitor) GetServiceMetrics(serviceName string) (*ServiceMetrics, error)
 	
 	metrics := &ServiceMetrics{
 		Name:        serviceName,
-		Status:      string(info.Status),
+		Status:      fmt.Sprintf("%d", info.Status),
 		PID:         info.PID,
 		CPUPercent:  info.CPUPercent,
 		MemoryBytes: info.MemoryBytes,

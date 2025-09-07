@@ -432,6 +432,22 @@
                 <p>智能 DNS 解析服务管理控制台</p>
             </div>
 
+            <!-- 版本信息 -->
+            <div class="service-metrics">
+                <div class="metric-card">
+                    <div class="metric-value">{{ versionInfo.version || '未获取' }}</div>
+                    <div class="metric-label">核心版本</div>
+                </div>
+                <div class="metric-card" v-if="versionInfo.branch">
+                    <div class="metric-value">{{ versionInfo.branch }}</div>
+                    <div class="metric-label">分支版本</div>
+                </div>
+                <div class="metric-card" v-if="versionInfo.error">
+                    <div class="metric-value" style="font-size: 0.8em; color: #ef4444;">{{ versionInfo.error }}</div>
+                    <div class="metric-label">版本错误</div>
+                </div>
+            </div>
+
             <!-- DNS 统计信息 -->
             <div v-if="service.status === 0" class="dns-stats">
                 <transition-group name="list" tag="div" class="dns-stats">
@@ -538,7 +554,7 @@
             </transition>
 
             <div class="footer">
-                <p>MyBox v1.0.0 - MosDNS 管理页面</p>
+                <p>MyBox v1.0.3 - MosDNS 管理页面</p>
             </div>
         </div>
     </div>
@@ -549,6 +565,7 @@
         const App = {
             setup() {
                 const service = reactive({});
+                const versionInfo = reactive({});
                 const loading = ref(true);
                 const error = ref(null);
                 const actionInProgress = ref(false);
@@ -630,6 +647,30 @@
                         console.error('获取服务状态失败:', err);
                         loading.value = false;
                         error.value = '加载服务状态失败: ' + err.message;
+                    }
+                };
+
+                const fetchVersionInfo = async () => {
+                    console.log('开始获取 MosDNS 版本信息...');
+                    try {
+                        const url = `${API_BASE}/version/mosdns`;
+                        console.log('请求URL:', url);
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        console.log('版本信息响应:', data);
+                        
+                        if (response.ok) {
+                            Object.assign(versionInfo, data);
+                            console.log('版本信息更新成功:', versionInfo);
+                        } else {
+                            console.error('获取版本信息失败:', data.error);
+                            versionInfo.version = '获取失败';
+                            versionInfo.error = data.error;
+                        }
+                    } catch (err) {
+                        console.error('获取版本信息异常:', err);
+                        versionInfo.version = '网络错误';
+                        versionInfo.error = err.message;
                     }
                 };
 
@@ -715,6 +756,7 @@
 
                 onMounted(() => {
                     fetchServiceStatus();
+                    fetchVersionInfo();
                     refreshTimer = setInterval(fetchServiceStatus, 30000);
                 });
 
@@ -726,6 +768,7 @@
 
                 return {
                     service,
+                    versionInfo,
                     loading,
                     error,
                     actionInProgress,

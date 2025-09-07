@@ -70,17 +70,6 @@ func (s *Server) setupRoutes() {
 			services.POST("/:name/disable", s.disableService)
 		}
 		
-		// 配置管理
-		configs := api.Group("/config")
-		{
-			configs.GET("/:service", s.getConfig)
-			configs.PUT("/:service", s.updateConfig)
-			configs.POST("/:service/validate", s.validateConfig)
-			configs.POST("/:service/backup", s.backupConfig)
-			configs.GET("/:service/backups", s.listBackups)
-			configs.POST("/:service/restore", s.restoreConfig)
-		}
-		
 		// 日志管理
 		logs := api.Group("/logs")
 		{
@@ -96,6 +85,9 @@ func (s *Server) setupRoutes() {
 		// 系统信息
 		api.GET("/system", s.getSystemInfo)
 		
+		// 版本信息
+		api.GET("/version/:service", s.getServiceVersion)
+		
 		// 网络信息
 		network := api.Group("/network")
 		{
@@ -106,9 +98,12 @@ func (s *Server) setupRoutes() {
 		// 配置管理
 		config := api.Group("/config")
 		{
+			// Sing-Box 专用配置接口（具体路由优先）
 			config.GET("/sing-box", s.getSingBoxConfig)
 			config.PUT("/sing-box", s.updateSingBoxConfig)
 			config.POST("/sing-box/validate", s.validateSingBoxConfig)
+			
+			// MosDNS 专用配置接口
 			config.GET("/mosdns", s.getMosDNSConfig)
 			config.PUT("/mosdns", s.updateMosDNSConfig)
 			config.POST("/mosdns/validate", s.validateMosDNSConfig)
@@ -124,6 +119,14 @@ func (s *Server) setupRoutes() {
 				mosdns.GET("/parsed-config", s.getMosDNSParsedConfig)
 				mosdns.PUT("/parsed-config", s.updateMosDNSParsedConfig)
 			}
+			
+			// 通用配置接口（通配符路由放最后）
+			config.GET("/:service", s.getConfig)
+			config.PUT("/:service", s.updateConfig)
+			config.POST("/:service/validate", s.validateConfig)
+			config.POST("/:service/backup", s.backupConfig)
+			config.GET("/:service/backups", s.listBackups)
+			config.POST("/:service/restore", s.restoreConfig)
 		}
 	}
 	
@@ -692,14 +695,14 @@ func (s *Server) getSingBoxConfig(c *gin.Context) {
 	
 	config, err := s.configManager.GetSingBoxConfig()
 	if err != nil {
-		utils.Logger.Error("获取Sing-Box配置失败: %v", err)
+		utils.Logger.Errorf("获取Sing-Box配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("获取配置失败: %v", err),
 		})
 		return
 	}
 
-	utils.Logger.Info("成功获取Sing-Box配置，包含 %d 个顶级键", len(config))
+	utils.Logger.Infof("成功获取Sing-Box配置，包含 %d 个顶级键", len(config))
 	c.JSON(http.StatusOK, gin.H{
 		"config": config,
 	})
@@ -709,7 +712,7 @@ func (s *Server) getSingBoxConfig(c *gin.Context) {
 func (s *Server) getMosDNSConfig(c *gin.Context) {
 	config, err := s.configManager.GetMosDNSConfig()
 	if err != nil {
-		utils.Logger.Error("获取MosDNS配置失败: %v", err)
+		utils.Logger.Errorf("获取MosDNS配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("获取配置失败: %v", err),
 		})
@@ -735,7 +738,7 @@ func (s *Server) updateSingBoxConfig(c *gin.Context) {
 	}
 	
 	if err := s.configManager.SetConfigContent("sing-box", req.Content); err != nil {
-		utils.Logger.Error("更新Sing-Box配置失败: %v", err)
+		utils.Logger.Errorf("更新Sing-Box配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("更新配置失败: %v", err),
 		})
@@ -762,7 +765,7 @@ func (s *Server) updateMosDNSConfig(c *gin.Context) {
 	}
 	
 	if err := s.configManager.SetConfigContent("mosdns", req.Content); err != nil {
-		utils.Logger.Error("更新MosDNS配置失败: %v", err)
+		utils.Logger.Errorf("更新MosDNS配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("更新配置失败: %v", err),
 		})
@@ -791,7 +794,7 @@ func (s *Server) validateSingBoxConfig(c *gin.Context) {
 	// 使用临时文件进行验证
 	tempConfig, err := s.configManager.ValidateConfigContent("sing-box", req.Content)
 	if err != nil {
-		utils.Logger.Error("Sing-Box配置验证失败: %v", err)
+		utils.Logger.Errorf("Sing-Box配置验证失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"valid": false,
 			"error": err.Error(),
@@ -823,7 +826,7 @@ func (s *Server) validateMosDNSConfig(c *gin.Context) {
 	// 使用临时文件进行验证
 	tempConfig, err := s.configManager.ValidateConfigContent("mosdns", req.Content)
 	if err != nil {
-		utils.Logger.Error("MosDNS配置验证失败: %v", err)
+		utils.Logger.Errorf("MosDNS配置验证失败: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"valid": false,
 			"error": err.Error(),
@@ -843,7 +846,7 @@ func (s *Server) validateMosDNSConfig(c *gin.Context) {
 func (s *Server) getMosDNSLocalDNS(c *gin.Context) {
 	config, err := s.configManager.GetMosDNSLocalDNS()
 	if err != nil {
-		utils.Logger.Error("获取MosDNS本地DNS配置失败: %v", err)
+		utils.Logger.Errorf("获取MosDNS本地DNS配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("获取配置失败: %v", err),
 		})
@@ -867,7 +870,7 @@ func (s *Server) updateMosDNSLocalDNS(c *gin.Context) {
 	}
 	
 	if err := s.configManager.UpdateMosDNSLocalDNS(req); err != nil {
-		utils.Logger.Error("更新MosDNS本地DNS配置失败: %v", err)
+		utils.Logger.Errorf("更新MosDNS本地DNS配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("更新配置失败: %v", err),
 		})
@@ -884,7 +887,7 @@ func (s *Server) updateMosDNSLocalDNS(c *gin.Context) {
 func (s *Server) getMosDNSRemoteDNS(c *gin.Context) {
 	config, err := s.configManager.GetMosDNSRemoteDNS()
 	if err != nil {
-		utils.Logger.Error("获取MosDNS远程DNS配置失败: %v", err)
+		utils.Logger.Errorf("获取MosDNS远程DNS配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("获取配置失败: %v", err),
 		})
@@ -908,7 +911,7 @@ func (s *Server) updateMosDNSRemoteDNS(c *gin.Context) {
 	}
 	
 	if err := s.configManager.UpdateMosDNSRemoteDNS(req); err != nil {
-		utils.Logger.Error("更新MosDNS远程DNS配置失败: %v", err)
+		utils.Logger.Errorf("更新MosDNS远程DNS配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("更新配置失败: %v", err),
 		})
@@ -955,13 +958,13 @@ func (s *Server) getMosDNSRawConfig(c *gin.Context) {
 func (s *Server) getMosDNSParsedConfig(c *gin.Context) {
 	localConfig, err := s.configManager.GetMosDNSLocalDNS()
 	if err != nil {
-		utils.Logger.Error("获取本地DNS配置失败: %v", err)
+		utils.Logger.Errorf("获取本地DNS配置失败: %v", err)
 		localConfig = nil
 	}
 	
 	remoteConfig, err := s.configManager.GetMosDNSRemoteDNS()
 	if err != nil {
-		utils.Logger.Error("获取远程DNS配置失败: %v", err)
+		utils.Logger.Errorf("获取远程DNS配置失败: %v", err)
 		remoteConfig = nil
 	}
 	
@@ -1000,14 +1003,14 @@ func (s *Server) updateMosDNSParsedConfig(c *gin.Context) {
 	}
 	
 	if err != nil {
-		utils.Logger.Error("更新MosDNS配置失败: %v", err)
+		utils.Logger.Errorf("更新MosDNS配置失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("更新配置失败: %v", err),
 		})
 		return
 	}
 	
-	utils.Logger.Info("MosDNS配置更新成功: %s", req.Type)
+	utils.Logger.Infof("MosDNS配置更新成功: %s", req.Type)
 	c.JSON(http.StatusOK, gin.H{
 		"message": "配置更新成功",
 	})
@@ -1018,7 +1021,7 @@ func (s *Server) getStaticRoutes(c *gin.Context) {
 	// 执行ip route show命令获取路由表
 	output, err := utils.RunCommand("ip", "route", "show")
 	if err != nil {
-		utils.Logger.Error("获取路由表失败: %v", err)
+		utils.Logger.Errorf("获取路由表失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("获取路由表失败: %v", err),
 		})
@@ -1038,7 +1041,7 @@ func (s *Server) getNftablesRules(c *gin.Context) {
 	// 执行nft list ruleset命令获取规则
 	output, err := utils.RunCommand("nft", "list", "ruleset")
 	if err != nil {
-		utils.Logger.Error("获取nftables规则失败: %v", err)
+		utils.Logger.Errorf("获取nftables规则失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("获取nftables规则失败: %v", err),
 		})
@@ -1103,6 +1106,93 @@ func parseRoutes(output string) []map[string]interface{} {
 	}
 	
 	return routes
+}
+
+// getServiceVersion 获取服务版本信息
+func (s *Server) getServiceVersion(c *gin.Context) {
+	serviceName := c.Param("service")
+	
+	var version string
+	var branch string
+	var versionPath string
+	var err error
+	
+	switch serviceName {
+	case "sing-box":
+		versionPath = "/etc/sing-box/version"
+		
+		// 优先通过命令获取版本号
+		if output, cmdErr := utils.RunCommand("sing-box", "version"); cmdErr == nil {
+			// 解析sing-box version输出
+			lines := strings.Split(output, "\n")
+			for _, line := range lines {
+				if strings.Contains(strings.ToLower(line), "version") {
+					parts := strings.Fields(line)
+					if len(parts) >= 2 {
+						version = parts[len(parts)-1] // 取最后一个字段作为版本号
+						break
+					}
+				}
+			}
+			if version == "" {
+				// 如果没有找到version关键字，尝试解析第一行
+				lines = strings.Split(strings.TrimSpace(output), "\n")
+				if len(lines) > 0 && lines[0] != "" {
+					version = strings.TrimSpace(lines[0])
+				}
+			}
+		} else {
+			err = cmdErr
+		}
+		
+		// 读取分支信息
+		if content, readErr := os.ReadFile(versionPath); readErr == nil {
+			branch = strings.TrimSpace(string(content))
+		}
+		
+	case "mosdns":
+		versionPath = "/etc/mosdns/version"
+		
+		// 优先通过命令获取版本号
+		if output, cmdErr := utils.RunCommand("mosdns", "version"); cmdErr == nil {
+			version = strings.TrimSpace(output)
+		} else {
+			err = cmdErr
+		}
+		
+		// 读取分支信息
+		if content, readErr := os.ReadFile(versionPath); readErr == nil {
+			branch = strings.TrimSpace(string(content))
+		}
+		
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "不支持的服务: " + serviceName,
+		})
+		return
+	}
+	
+	if version == "" && err != nil {
+		version = "未知版本"
+	}
+	
+	utils.Logger.Infof("获取服务 %s 版本信息: %s, 分支: %s", serviceName, version, branch)
+	
+	response := gin.H{
+		"service": serviceName,
+		"version": version,
+	}
+	
+	if branch != "" {
+		response["branch"] = branch
+		response["branch_path"] = versionPath
+	}
+	
+	if err != nil {
+		response["error"] = err.Error()
+	}
+	
+	c.JSON(http.StatusOK, response)
 }
 
 // parseNftablesRules 解析nftables规则输出

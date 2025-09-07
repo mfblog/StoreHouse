@@ -377,6 +377,18 @@
                 <p>多协议代理平台管理控制台</p>
             </div>
 
+            <!-- 版本信息 -->
+            <div class="service-metrics">
+                <div class="metric-card">
+                    <div class="metric-value">{{ versionInfo.version || '未获取' }}</div>
+                    <div class="metric-label">核心版本</div>
+                </div>
+                <div class="metric-card" v-if="versionInfo.error">
+                    <div class="metric-value" style="font-size: 0.8em; color: #ef4444;">{{ versionInfo.error }}</div>
+                    <div class="metric-label">版本错误</div>
+                </div>
+            </div>
+
             <!-- 服务指标 -->
             <div v-if="service.status === 0" class="service-metrics">
                 <div class="metric-card">
@@ -426,6 +438,24 @@
                                 {{ uptime || (service.status === 1 ? '已停止' : '未安装') }}
                             </span>
                         </div>
+                        <div class="service-uptime">
+                            <span class="uptime-label">核心版本</span>
+                            <span class="uptime-value">
+                                {{ versionInfo.version || '获取中...' }}
+                            </span>
+                        </div>
+                        <div v-if="versionInfo.branch" class="service-uptime">
+                            <span class="uptime-label">分支版本</span>
+                            <span class="uptime-value">
+                                {{ versionInfo.branch }}
+                            </span>
+                        </div>
+                        <div v-if="versionInfo.branch_path" class="service-uptime">
+                            <span class="uptime-label">分支文件</span>
+                            <span class="uptime-value" style="font-size: 0.8em;">
+                                {{ versionInfo.branch_path }}
+                            </span>
+                        </div>
                     </div>
                     
                     <div class="service-actions">
@@ -473,7 +503,7 @@
             </transition>
 
             <div class="footer">
-                <p>MyBox v1.0.0 - Sing-Box 管理页面</p>
+                <p>MyBox v1.0.3 - Sing-Box 管理页面</p>
             </div>
         </div>
     </div>
@@ -484,6 +514,7 @@
         const App = {
             setup() {
                 const service = reactive({});
+                const versionInfo = reactive({});
                 const loading = ref(true);
                 const error = ref(null);
                 const actionInProgress = ref(false);
@@ -555,6 +586,30 @@
                         console.error('获取服务状态失败:', err);
                         loading.value = false;
                         error.value = '加载服务状态失败: ' + err.message;
+                    }
+                };
+
+                const fetchVersionInfo = async () => {
+                    console.log('开始获取版本信息...');
+                    try {
+                        const url = `${API_BASE}/version/sing-box`;
+                        console.log('请求URL:', url);
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        console.log('版本信息响应:', data);
+                        
+                        if (response.ok) {
+                            Object.assign(versionInfo, data);
+                            console.log('版本信息更新成功:', versionInfo);
+                        } else {
+                            console.error('获取版本信息失败:', data.error);
+                            versionInfo.version = '获取失败';
+                            versionInfo.error = data.error;
+                        }
+                    } catch (err) {
+                        console.error('获取版本信息异常:', err);
+                        versionInfo.version = '网络错误';
+                        versionInfo.error = err.message;
                     }
                 };
 
@@ -640,6 +695,7 @@
 
                 onMounted(() => {
                     fetchServiceStatus();
+                    fetchVersionInfo();
                     refreshTimer = setInterval(fetchServiceStatus, 30000);
                 });
 
@@ -651,6 +707,7 @@
 
                 return {
                     service,
+                    versionInfo,
                     loading,
                     error,
                     actionInProgress,
