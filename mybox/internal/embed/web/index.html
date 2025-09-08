@@ -24,7 +24,7 @@
         }
 
         .sidebar {
-            width: 250px;
+            width: 200px;
             background: white;
             box-shadow: 2px 0 4px rgba(0,0,0,0.1);
             z-index: 100;
@@ -74,13 +74,14 @@
         
         /* 为导航链接添加图标支持 */
         .nav-icon {
-            display: none;
+            display: inline-block;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
         }
         
-        @media screen and (min-width: 769px) {
-            .sidebar.collapsed .nav-icon {
-                display: block;
-            }
+        .nav-text {
+            font-size: 14px;
         }
         
         /* 双栏布局响应式 */
@@ -112,13 +113,14 @@
         }
 
         .sidebar-header {
-            padding: 20px;
+            padding: 12px 15px;
             border-bottom: 1px solid #eee;
         }
 
         .sidebar-header h2 {
             color: #333;
-            font-size: 18px;
+            font-size: 16px;
+            margin: 0;
         }
 
         .version-badge {
@@ -182,8 +184,10 @@
         }
 
         .nav-item {
-            display: block;
-            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 15px;
             color: #666;
             text-decoration: none;
             cursor: pointer;
@@ -302,6 +306,46 @@
 
         .btn-secondary:hover {
             background: #545b62;
+        }
+
+        .btn-info {
+            background: #0ea5e9;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #0284c7;
+        }
+
+        .btn-info:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-xs {
+            padding: 2px 8px;
+            font-size: 12px;
+            border-radius: 3px;
+            min-width: auto;
         }
 
         .status-running {
@@ -506,40 +550,47 @@
         @media screen and (max-width: 768px) {
             .debug-info::after { content: "手机 ≤768px"; }
             
-            /* 移动端清除PC端折叠样式 */
+            /* 移动端清除PC端折叠样式，保持与PC端一致 */
             .sidebar.collapsed {
-                width: 280px !important;
+                width: 200px !important;
+            }
+            
+            .sidebar.collapsed .sidebar-header {
+                padding: 12px 15px;
             }
             
             .sidebar.collapsed .sidebar-header h2 {
-                font-size: 24px;
+                font-size: 16px;
                 writing-mode: initial;
                 text-orientation: initial;
-            text-align: center;
-                padding: 20px 0 10px 0;
+                text-align: left;
+                padding: 0;
                 line-height: normal;
+                margin: 0;
             }
             
             .sidebar.collapsed .nav-item {
-                display: block;
+                display: flex;
+                align-items: center;
+                gap: 8px;
                 text-align: left;
-                padding: 15px 20px;
-                font-size: 16px;
+                padding: 8px 15px;
+                font-size: 14px;
                 white-space: normal;
                 overflow: visible;
                 text-overflow: initial;
-                flex-direction: row;
-                align-items: center;
-                gap: 10px;
             }
             
             .sidebar.collapsed .nav-item .nav-text {
                 display: inline;
+                font-size: 14px;
             }
             
             .sidebar.collapsed .nav-item .nav-icon {
-                display: inline;
+                display: inline-block;
                 font-size: 16px;
+                width: 20px;
+                text-align: center;
             }
             
             /* 移动端汉堡按钮位置调整 */
@@ -576,7 +627,7 @@
                 position: fixed !important;
                 top: 0;
                 left: 0;
-                width: 280px !important;
+                width: 200px !important;
                 height: 100vh;
                 background: #2c3e50;
                 z-index: 1000;
@@ -591,15 +642,15 @@
             }
             
             .sidebar-header {
-                padding: 20px 0 10px 0;
+                padding: 12px 15px;
                 border-bottom: 1px solid #34495e;
-                margin-bottom: 20px;
+                margin-bottom: 0;
             }
             
             .sidebar-header h2 {
                 color: white;
-                text-align: center;
-                font-size: 24px;
+                text-align: left;
+                font-size: 16px;
                 margin: 0;
             }
 
@@ -614,6 +665,38 @@
                 letter-spacing: 0.8px;
                 text-transform: uppercase;
                 box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            }
+            
+            .sidebar .nav-item {
+                color: #bdc3c7;
+                border-left-color: transparent;
+                padding: 8px 15px;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .sidebar .nav-item:hover {
+                background: #34495e;
+                color: white;
+            }
+            
+            .sidebar .nav-item.active {
+                background: #3498db;
+                color: white;
+                border-left-color: #2980b9;
+            }
+            
+            .sidebar .nav-icon {
+                display: inline-block;
+                font-size: 16px;
+                width: 20px;
+                text-align: center;
+            }
+            
+            .sidebar .nav-text {
+                font-size: 14px;
             }
             
             .sidebar nav ul {
@@ -1676,7 +1759,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>📦 MyBox</h2>
-                <div class="version-badge">v1.0.4</div>
+                <div class="version-badge">v1.0.5</div>
             </div>
             <nav>
                 <div class="nav-item" :class="{ active: currentPage === 'home' }" @click="showDashboard">
@@ -1797,6 +1880,7 @@
                                     日志
                                 </button>
                                 
+                                
                                 <!-- 管理按钮（仅运行中或已停止时显示） -->
                                 <button v-if="service.status === 0 || service.status === 1" @click="showServicePage(name)" class="btn btn-primary">管理</button>
                             </div>
@@ -1831,6 +1915,50 @@
                                     <span v-if="updateInProgress">⏳ 更新中...</span>
                                     <span v-else-if="versions['sing-box']?.version === '未安装'">❌ 未安装</span>
                                     <span v-else>🔄 一键更新</span>
+                                </button>
+                            </div>
+                            <!-- 服务状态集成在版本信息栏 -->
+                            <div v-if="services['sing-box']" class="version-item">
+                                <span class="version-label">服务状态:</span>
+                                <span class="version-value" :class="getStatusClass(services['sing-box'].status)">
+                                    {{ getStatusText(services['sing-box'].status) }}
+                                </span>
+                            </div>
+                            <!-- 服务控制按钮 -->
+                            <div class="version-item" style="display: flex; gap: 8px; align-items: center;">
+                                <span class="version-label">服务控制:</span>
+                                <!-- 运行中状态(0): 显示停止和重启按钮 -->
+                                <button v-if="services['sing-box'] && services['sing-box'].status === 0" 
+                                        @click="controlService('sing-box', 'stop')" 
+                                        class="btn btn-danger btn-xs"
+                                        :class="{ loading: loadingStates.services['sing-box']?.stop }"
+                                        :disabled="loadingStates.services['sing-box']?.stop || loadingStates.services['sing-box']?.restart">
+                                    停止
+                                </button>
+                                <button v-if="services['sing-box'] && services['sing-box'].status === 0" 
+                                        @click="controlService('sing-box', 'restart')" 
+                                        class="btn btn-secondary btn-xs"
+                                        :class="{ loading: loadingStates.services['sing-box']?.restart }"
+                                        :disabled="loadingStates.services['sing-box']?.stop || loadingStates.services['sing-box']?.restart">
+                                    重启
+                                </button>
+                                <!-- 已停止状态(1): 显示启动按钮 -->
+                                <button v-if="services['sing-box'] && services['sing-box'].status === 1" 
+                                        @click="controlService('sing-box', 'start')" 
+                                        class="btn btn-success btn-xs"
+                                        :class="{ loading: loadingStates.services['sing-box']?.start }"
+                                        :disabled="loadingStates.services['sing-box']?.start">
+                                    启动
+                                </button>
+                                <!-- 未安装状态(2): 显示安装提示 -->
+                                <span v-if="services['sing-box'] && services['sing-box'].status === 2" class="btn btn-secondary btn-xs" style="cursor: not-allowed;">需要安装服务</span>
+                                <!-- 错误状态(3): 显示重试按钮 -->
+                                <button v-if="services['sing-box'] && services['sing-box'].status === 3" 
+                                        @click="controlService('sing-box', 'start')" 
+                                        class="btn btn-warning btn-xs"
+                                        :class="{ loading: loadingStates.services['sing-box']?.start }"
+                                        :disabled="loadingStates.services['sing-box']?.start">
+                                    重试启动
                                 </button>
                             </div>
                         </div>
@@ -2308,21 +2436,114 @@
                                     <span v-else>🔄 一键更新</span>
                                 </button>
                             </div>
+                            <!-- 服务状态集成在版本信息栏 -->
+                            <div v-if="services.mosdns" class="version-item">
+                                <span class="version-label">服务状态:</span>
+                                <span class="version-value" :class="getStatusClass(services.mosdns.status)">
+                                    {{ getStatusText(services.mosdns.status) }}
+                                </span>
+                            </div>
+                            <!-- WebUI 访问按钮集成在版本信息栏 -->
+                            <div class="version-item" style="display: flex; gap: 8px; align-items: center;">
+                                <span class="version-label">Web界面:</span>
+                                <button 
+                                    :disabled="!canAccessMosDNSWebUI"
+                                    @click="openMosDNSWebUI"
+                                    class="btn btn-info btn-xs"
+                                    title="打开MosDNS Web界面"
+                                    style="padding: 2px 8px; font-size: 12px;">
+                                    🌐 WebUI
+                                </button>
+                                <button 
+                                    :disabled="!canAccessMosDNSWebUI"
+                                    @click="openMosDNSWebLog"
+                                    class="btn btn-secondary btn-xs"
+                                    title="查看MosDNS Web日志"
+                                    style="padding: 2px 8px; font-size: 12px;">
+                                    📊 日志
+                                </button>
+                            </div>
+                            <!-- 服务控制按钮 -->
+                            <div class="version-item" style="display: flex; gap: 8px; align-items: center;">
+                                <span class="version-label">服务控制:</span>
+                                <!-- 运行中状态(0): 显示停止和重启按钮 -->
+                                <button v-if="services.mosdns && services.mosdns.status === 0" 
+                                        @click="controlService('mosdns', 'stop')" 
+                                        class="btn btn-danger btn-xs"
+                                        :class="{ loading: loadingStates.services.mosdns?.stop }"
+                                        :disabled="loadingStates.services.mosdns?.stop || loadingStates.services.mosdns?.restart">
+                                    停止
+                                </button>
+                                <button v-if="services.mosdns && services.mosdns.status === 0" 
+                                        @click="controlService('mosdns', 'restart')" 
+                                        class="btn btn-secondary btn-xs"
+                                        :class="{ loading: loadingStates.services.mosdns?.restart }"
+                                        :disabled="loadingStates.services.mosdns?.stop || loadingStates.services.mosdns?.restart">
+                                    重启
+                                </button>
+                                <!-- 已停止状态(1): 显示启动按钮 -->
+                                <button v-if="services.mosdns && services.mosdns.status === 1" 
+                                        @click="controlService('mosdns', 'start')" 
+                                        class="btn btn-success btn-xs"
+                                        :class="{ loading: loadingStates.services.mosdns?.start }"
+                                        :disabled="loadingStates.services.mosdns?.start">
+                                    启动
+                                </button>
+                                <!-- 未安装状态(2): 显示安装提示 -->
+                                <span v-if="services.mosdns && services.mosdns.status === 2" class="btn btn-secondary btn-xs" style="cursor: not-allowed;">需要安装服务</span>
+                                <!-- 错误状态(3): 显示重试按钮 -->
+                                <button v-if="services.mosdns && services.mosdns.status === 3" 
+                                        @click="controlService('mosdns', 'start')" 
+                                        class="btn btn-warning btn-xs"
+                                        :class="{ loading: loadingStates.services.mosdns?.start }"
+                                        :disabled="loadingStates.services.mosdns?.start">
+                                    重试启动
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="card">
+                <!-- MosDNS 远程访问配置 -->
+                <div class="card" style="margin-top: 20px;">
                     <div class="card-header">
-                        <h3 class="card-title">服务状态</h3>
+                        <h3 class="card-title">🔧 远程访问配置</h3>
                     </div>
-                    <div v-if="services.mosdns">
-                        <div :class="getStatusClass(services.mosdns.status)">
-                            {{ getStatusText(services.mosdns.status) }}
-                        </div>
-                        <div v-if="services.mosdns.status === 0" style="margin-top: 10px;">
-                            <p>MosDNS 服务正在运行</p>
-                            <p style="font-size: 14px; margin-top: 10px;">配置文件管理请通过服务器直接编辑</p>
+                    <div class="card-body">
+                        <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                            如果MosDNS未安装在本地，您可以配置远程服务器的IP地址来访问其Web界面
+                        </p>
+                        
+                        <div class="custom-ip-config">
+                            <div class="input-group">
+                                <label for="customMosDNSIP" class="input-label">远程服务器IP地址:</label>
+                                <div class="input-with-button">
+                                    <input 
+                                        type="text" 
+                                        id="customMosDNSIP" 
+                                        v-model="customMosDNSIP" 
+                                        placeholder="例如: 192.168.1.100" 
+                                        class="form-input"
+                                        @keyup.enter="saveCustomMosDNSIP"
+                                        style="flex: 1; margin-right: 10px;"
+                                    />
+                                    <button 
+                                        class="btn btn-primary" 
+                                        @click="saveCustomMosDNSIP"
+                                        :disabled="!customMosDNSIP.trim()">
+                                        保存
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-if="savedCustomMosDNSIP" class="saved-ip-info" style="margin-top: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #bae6fd; border-radius: 6px;">
+                                    <span style="color: #666; font-size: 14px;">当前配置:</span>
+                                    <span style="color: #2563eb; font-weight: 600; font-family: monospace;">{{ savedCustomMosDNSIP }}</span>
+                                    <button class="btn btn-danger" @click="clearCustomMosDNSIP" style="padding: 2px 8px; font-size: 12px;" title="清除配置">
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2823,6 +3044,10 @@
                     const updateResult = reactive({});
                     const isGitHubRelease = ref(false);
                     
+                    // MosDNS 自定义IP相关状态
+                    const customMosDNSIP = ref('');
+                    const savedCustomMosDNSIP = ref('');
+                    
                     // Sing-Box 配置状态
                     const singboxConfig = ref(null);
                     const loadingConfig = ref(false);
@@ -2930,6 +3155,73 @@
                         } catch (e) {
                             console.error('创建备份失败:', e);
                             alert('创建配置备份失败，请检查浏览器存储空间');
+                        }
+                    };
+
+                    // MosDNS WebUI 相关计算属性和方法
+                    const canAccessMosDNSWebUI = computed(() => {
+                        // 如果本地MosDNS正在运行，或者有自定义IP配置，则可以访问
+                        return (services.mosdns && services.mosdns.status === 0) || savedCustomMosDNSIP.value.trim() !== '';
+                    });
+
+                    // 获取当前使用的IP地址
+                    const getCurrentMosDNSIP = () => {
+                        if (savedCustomMosDNSIP.value.trim()) {
+                            return savedCustomMosDNSIP.value.trim();
+                        }
+                        // 如果没有自定义IP，使用当前页面的host
+                        return window.location.hostname;
+                    };
+
+                    // 打开MosDNS WebUI界面
+                    const openMosDNSWebUI = () => {
+                        const ip = getCurrentMosDNSIP();
+                        const url = `http://${ip}:9099/graphic`;
+                        window.open(url, '_blank');
+                    };
+
+                    // 打开MosDNS Web日志界面
+                    const openMosDNSWebLog = () => {
+                        const ip = getCurrentMosDNSIP();
+                        const url = `http://${ip}:9099/rlog`;
+                        window.open(url, '_blank');
+                    };
+
+                    // 保存自定义MosDNS IP
+                    const saveCustomMosDNSIP = () => {
+                        const ip = customMosDNSIP.value.trim();
+                        if (!ip) return;
+                        
+                        // 简单的IP格式验证
+                        const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+                        
+                        if (!ipPattern.test(ip)) {
+                            alert('请输入有效的IP地址或域名');
+                            return;
+                        }
+                        
+                        savedCustomMosDNSIP.value = ip;
+                        customMosDNSIP.value = '';
+                        
+                        // 保存到localStorage
+                        localStorage.setItem('mybox_mosdns_custom_ip', ip);
+                        
+                        alert(`MosDNS自定义IP已保存: ${ip}`);
+                    };
+
+                    // 清除自定义MosDNS IP
+                    const clearCustomMosDNSIP = () => {
+                        if (confirm('确定要清除MosDNS自定义IP配置吗？')) {
+                            savedCustomMosDNSIP.value = '';
+                            localStorage.removeItem('mybox_mosdns_custom_ip');
+                        }
+                    };
+
+                    // 从localStorage加载自定义MosDNS IP
+                    const loadCustomMosDNSIP = () => {
+                        const saved = localStorage.getItem('mybox_mosdns_custom_ip');
+                        if (saved) {
+                            savedCustomMosDNSIP.value = saved;
                         }
                     };
 
@@ -4110,6 +4402,7 @@
                         fetchServices();
                         fetchVersions();
                         fetchSystemInfo();
+                        loadCustomMosDNSIP();
                         
                         // 如果当前页面是服务页面，加载相应的配置数据
                         if (currentPage.value === 'sing-box') {
@@ -4447,7 +4740,19 @@
                         
                         // 移动设备优化
                         initMobileOptimizations,
-                        initMobileMenu
+                        initMobileMenu,
+                        
+                        // MosDNS WebUI 功能
+                        customMosDNSIP,
+                        savedCustomMosDNSIP,
+                        canAccessMosDNSWebUI,
+                        openMosDNSWebUI,
+                        openMosDNSWebLog,
+                        saveCustomMosDNSIP,
+                        clearCustomMosDNSIP,
+                        
+                        // 服务控制功能
+                        controlService
                     };
                 }
             });

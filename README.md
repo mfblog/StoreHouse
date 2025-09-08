@@ -45,6 +45,11 @@ wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/inst
 - ✅ 一键内核更新（Sing-Box、MosDNS）
 - ✅ 多分支自动识别和更新
 - ✅ GitHub Release 智能解析
+- ✅ WebUI 按钮: 直接访问 ip:9099/graphic 管理界面
+- ✅ Web日志按钮: 直接访问 ip:9099/rlog 日志界面
+- ✅ 自定义IP配置: 支持输入远程MosDNS服务器IP地址
+- ✅ 根据MosDNS安装状态自动启用/禁用按钮
+
 
 #### 🚧 待完成功能
 

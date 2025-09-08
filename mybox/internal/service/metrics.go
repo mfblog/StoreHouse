@@ -83,8 +83,8 @@ func getProcessCPU(pid int) (float64, error) {
 		return 0, err
 	}
 	
-	// 等待100毫秒
-	time.Sleep(100 * time.Millisecond)
+	// 等待200毫秒，与系统CPU采样间隔保持一致
+	time.Sleep(200 * time.Millisecond)
 	
 	// 读取第二次数据
 	cpuTime2, err := readProcessCPUTime(statPath)
@@ -106,6 +106,14 @@ func getProcessCPU(pid int) (float64, error) {
 	}
 	
 	cpuPercent := (float64(cpuDelta) / float64(totalDelta)) * 100.0
+	
+	// 确保结果在合理范围内
+	if cpuPercent < 0 {
+		cpuPercent = 0
+	} else if cpuPercent > 100 {
+		cpuPercent = 100
+	}
+	
 	return cpuPercent, nil
 }
 
@@ -277,7 +285,7 @@ func getSystemCPU() (float64, error) {
 		return 0, err
 	}
 	
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond) // 增加采样间隔，提高准确性
 	
 	stat2, err := readCPUStat()
 	if err != nil {
@@ -291,7 +299,20 @@ func getSystemCPU() (float64, error) {
 		return 0, nil
 	}
 	
+	// 防止负值和异常值
+	if idleDelta > totalDelta {
+		idleDelta = totalDelta
+	}
+	
 	cpuPercent := (1.0 - float64(idleDelta)/float64(totalDelta)) * 100.0
+	
+	// 确保结果在合理范围内
+	if cpuPercent < 0 {
+		cpuPercent = 0
+	} else if cpuPercent > 100 {
+		cpuPercent = 100
+	}
+	
 	return cpuPercent, nil
 }
 
@@ -312,18 +333,24 @@ func readCPUStat() (*cpuStat, error) {
 	}
 	
 	cpuLine := lines[0]
-	fields := strings.Fields(cpuLine)
-	if len(fields) < 5 {
+	if !strings.HasPrefix(cpuLine, "cpu ") {
 		return nil, fmt.Errorf("CPU统计格式错误")
+	}
+	
+	fields := strings.Fields(cpuLine)
+	if len(fields) < 8 { // 至少需要8个字段: cpu user nice system idle iowait irq softirq
+		return nil, fmt.Errorf("CPU统计字段不足")
 	}
 	
 	var total, idle uint64
 	
-	// 累加所有时间
-	for i := 1; i < len(fields); i++ {
+	// 解析各个时间字段
+	// fields[1] = user, fields[2] = nice, fields[3] = system, fields[4] = idle
+	// fields[5] = iowait, fields[6] = irq, fields[7] = softirq
+	for i := 1; i < len(fields) && i <= 7; i++ {
 		if val, err := strconv.ParseUint(fields[i], 10, 64); err == nil {
 			total += val
-			if i == 4 { // idle时间
+			if i == 4 { // idle时间在第4个位置(索引4)
 				idle = val
 			}
 		}

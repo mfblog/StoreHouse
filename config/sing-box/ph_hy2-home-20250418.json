@@ -141,7 +141,7 @@
         {
             "type": "hysteria2",
             "server": "home_domain",       
-            "server_port": "home_port", 
+            "server_port": home_port, 
             "tag": "home", 
             "up_mbps": 50,
             "down_mbps": 500,

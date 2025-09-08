@@ -347,6 +347,96 @@
             transform: none;
         }
 
+        .btn-info {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+        }
+
+        .custom-ip-config {
+            margin-top: var(--space-md);
+        }
+
+        .input-group {
+            margin-bottom: var(--space-md);
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: var(--space-xs);
+            font-weight: 600;
+            color: var(--text-color-dark);
+            font-size: 0.9em;
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: var(--space-sm);
+            align-items: center;
+        }
+
+        .ip-input {
+            flex: 1;
+            padding: var(--space-sm) var(--space-md);
+            border: 2px solid var(--border-color-light);
+            border-radius: var(--border-radius-md);
+            font-size: 0.9em;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            background: var(--bg-color-card);
+        }
+
+        .ip-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .ip-input::placeholder {
+            color: var(--text-color-muted);
+        }
+
+        .saved-ip-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #bae6fd;
+            border-radius: var(--border-radius-md);
+            font-size: 0.9em;
+        }
+
+        .saved-ip-label {
+            color: var(--text-color-muted);
+            font-weight: 500;
+        }
+
+        .saved-ip-value {
+            color: var(--primary-color);
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        }
+
+        .btn-clear {
+            background: none;
+            border: none;
+            color: var(--text-color-muted);
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: var(--border-radius-sm);
+            transition: all 0.2s ease;
+            font-size: 0.8em;
+        }
+
+        .btn-clear:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
         .loading {
             text-align: center;
             padding: var(--space-xl);
@@ -556,9 +646,66 @@
                         >
                             查看日志
                         </button>
+                        <button 
+                            class="btn btn-info btn-sm" 
+                            :disabled="!canAccessWebUI"
+                            @click="openWebUI"
+                            title="打开MosDNS Web界面"
+                        >
+                            🌐 WebUI
+                        </button>
+                        <button 
+                            class="btn btn-secondary btn-sm" 
+                            :disabled="!canAccessWebUI"
+                            @click="openWebLog"
+                            title="查看MosDNS Web日志"
+                        >
+                            📊 Web日志
+                        </button>
                     </div>
                 </div>
             </transition>
+
+            <!-- 自定义IP配置区域 -->
+            <div class="service-card" style="margin-top: 20px;">
+                <div class="service-header">
+                    <div class="service-name">
+                        <span class="service-icon">🔧</span>
+                        远程访问配置
+                    </div>
+                </div>
+                <div class="service-description">
+                    如果MosDNS未安装在本地，您可以配置远程服务器的IP地址来访问其Web界面
+                </div>
+                
+                <div class="custom-ip-config">
+                    <div class="input-group">
+                        <label for="customIp" class="input-label">远程服务器IP地址:</label>
+                        <div class="input-with-button">
+                            <input 
+                                type="text" 
+                                id="customIp" 
+                                v-model="customIP" 
+                                placeholder="例如: 192.168.1.100" 
+                                class="ip-input"
+                                @keyup.enter="saveCustomIP"
+                            />
+                            <button 
+                                class="btn btn-primary btn-sm" 
+                                @click="saveCustomIP"
+                                :disabled="!customIP.trim()"
+                            >
+                                保存
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="savedCustomIP" class="saved-ip-info">
+                        <span class="saved-ip-label">当前配置:</span>
+                        <span class="saved-ip-value">{{ savedCustomIP }}</span>
+                        <button class="btn-clear" @click="clearCustomIP" title="清除配置">✕</button>
+                    </div>
+                </div>
+            </div>
 
             <div class="footer">
                 <p>MyBox v1.0.3 - MosDNS 管理页面</p>
@@ -576,6 +723,8 @@
                 const loading = ref(true);
                 const error = ref(null);
                 const actionInProgress = ref(false);
+                const customIP = ref('');
+                const savedCustomIP = ref('');
                 let refreshTimer = null;
 
                 const API_BASE = '/api';
@@ -629,6 +778,21 @@
                         return '少于1分钟';
                     }
                 });
+
+                // 计算是否可以访问WebUI
+                const canAccessWebUI = computed(() => {
+                    // 如果本地MosDNS正在运行，或者有自定义IP配置，则可以访问
+                    return service.status === 0 || savedCustomIP.value.trim() !== '';
+                });
+
+                // 获取当前使用的IP地址
+                const getCurrentIP = () => {
+                    if (savedCustomIP.value.trim()) {
+                        return savedCustomIP.value.trim();
+                    }
+                    // 如果没有自定义IP，使用当前页面的host
+                    return window.location.hostname;
+                };
 
                 const formatBytes = (bytes) => {
                     if (bytes === 0) return '0 B';
@@ -761,9 +925,62 @@
                     }
                 };
 
+                // 打开WebUI界面
+                const openWebUI = () => {
+                    const ip = getCurrentIP();
+                    const url = `http://${ip}:9099/graphic`;
+                    window.open(url, '_blank');
+                };
+
+                // 打开Web日志界面
+                const openWebLog = () => {
+                    const ip = getCurrentIP();
+                    const url = `http://${ip}:9099/rlog`;
+                    window.open(url, '_blank');
+                };
+
+                // 保存自定义IP
+                const saveCustomIP = () => {
+                    const ip = customIP.value.trim();
+                    if (!ip) return;
+                    
+                    // 简单的IP格式验证
+                    const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+                    
+                    if (!ipPattern.test(ip)) {
+                        alert('请输入有效的IP地址或域名');
+                        return;
+                    }
+                    
+                    savedCustomIP.value = ip;
+                    customIP.value = '';
+                    
+                    // 保存到localStorage
+                    localStorage.setItem('mosdns_custom_ip', ip);
+                    
+                    alert(`自定义IP已保存: ${ip}`);
+                };
+
+                // 清除自定义IP
+                const clearCustomIP = () => {
+                    if (confirm('确定要清除自定义IP配置吗？')) {
+                        savedCustomIP.value = '';
+                        localStorage.removeItem('mosdns_custom_ip');
+                    }
+                };
+
+                // 从localStorage加载自定义IP
+                const loadCustomIP = () => {
+                    const saved = localStorage.getItem('mosdns_custom_ip');
+                    if (saved) {
+                        savedCustomIP.value = saved;
+                    }
+                };
+
                 onMounted(() => {
                     fetchServiceStatus();
                     fetchVersionInfo();
+                    loadCustomIP();
                     refreshTimer = setInterval(fetchServiceStatus, 30000);
                 });
 
@@ -784,7 +1001,14 @@
                     statusText,
                     uptime,
                     formatBytes,
-                    handleAction
+                    handleAction,
+                    customIP,
+                    savedCustomIP,
+                    canAccessWebUI,
+                    openWebUI,
+                    openWebLog,
+                    saveCustomIP,
+                    clearCustomIP
                 };
             }
         };
