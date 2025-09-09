@@ -366,6 +366,339 @@
             to { opacity: 1; max-height: 300px; }
         }
 
+        /* 配置编辑器样式 */
+        .config-editor-container {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        .config-info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+
+        .config-info-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .config-file-info code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .config-validation-status {
+            font-weight: 500;
+        }
+
+        .config-info-right {
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .code-editor-wrapper {
+            position: relative;
+            width: 100%; /* 默认充满整个宽度 */
+        }
+
+        .code-editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .editor-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .editor-btn {
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            color: #374151;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .editor-btn:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .config-changed-indicator {
+            color: #f59e0b;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .config-editor {
+            width: 100%;
+            height: 500px;
+            padding: 16px;
+            border: none;
+            outline: none;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            background: #fafbfc;
+            color: #24292f;
+            resize: vertical;
+            min-height: 300px;
+            max-height: 800px;
+        }
+
+        .config-editor:focus {
+            background: #ffffff;
+            box-shadow: inset 0 0 0 1px #0969da;
+        }
+
+        .config-tips {
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .tip-item {
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .tip-content {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        /* 配置编辑器层级结构样式 */
+        .config-editor-layout {
+            display: flex;
+            gap: 0;
+            height: 500px;
+            width: 100%; /* 确保布局容器充满宽度 */
+        }
+
+        .config-outline-panel {
+            width: 280px;
+            background: #f8fafc;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .outline-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #e2e8f0;
+            border-bottom: 1px solid #cbd5e1;
+        }
+
+        .outline-header h4 {
+            margin: 0;
+            font-size: 13px;
+            color: #374151;
+        }
+
+        .outline-btn {
+            background: transparent;
+            border: none;
+            padding: 2px 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #6b7280;
+            border-radius: 3px;
+        }
+
+        .outline-btn:hover {
+            background: #cbd5e1;
+        }
+
+        .outline-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .outline-section {
+            margin-bottom: 4px;
+        }
+
+        .outline-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 13px;
+        }
+
+        .outline-item:hover {
+            background: #e2e8f0;
+        }
+
+        .outline-item.collapsed .outline-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .outline-toggle {
+            width: 16px;
+            color: #6b7280;
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        .outline-icon {
+            margin-right: 6px;
+            font-size: 14px;
+        }
+
+        .outline-label {
+            flex: 1;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .outline-count {
+            font-size: 11px;
+            color: #6b7280;
+            background: #e5e7eb;
+            padding: 1px 6px;
+            border-radius: 10px;
+        }
+
+        .outline-children {
+            margin-left: 16px;
+            border-left: 1px solid #e5e7eb;
+        }
+
+        .outline-child-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .outline-child-item:hover {
+            background: #e2e8f0;
+        }
+
+        .outline-child-icon {
+            margin-right: 6px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .outline-child-label {
+            flex: 1;
+            color: #4b5563;
+        }
+
+        .outline-child-info {
+            font-size: 10px;
+            color: #9ca3af;
+            margin-left: 8px;
+        }
+
+        .outline-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100px;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+
+        .outline-empty small {
+            margin-top: 4px;
+            font-size: 11px;
+        }
+
+        .code-editor-wrapper.with-outline {
+            flex: 1;
+        }
+
+        .code-editor-wrapper.with-outline .config-editor {
+            border-left: none;
+        }
+
+        /* 当没有大纲面板时，编辑器充满整个宽度 */
+        .config-editor-layout.no-outline .code-editor-wrapper {
+            width: 100%;
+            flex: 1;
+        }
+
+        .editor-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .config-info-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .config-info-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            
+            .code-editor-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .editor-controls {
+                flex-wrap: wrap;
+            }
+            
+            .config-editor {
+                font-size: 12px;
+                height: 400px;
+            }
+
+            .config-editor-layout {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .config-outline-panel {
+                width: 100%;
+                height: 200px;
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            .code-editor-wrapper.with-outline .config-editor {
+                height: 300px;
+            }
+        }
+
         .input-group {
             margin-bottom: 15px;
         }
@@ -2058,11 +2391,11 @@
                         <div class="tab" :class="{ active: activeTab === 'route' }" @click="activeTab = 'route'">
                             路由规则
                         </div>
-                        <div class="tab" :class="{ active: activeTab === 'dns' }" @click="activeTab = 'dns'">
-                            DNS配置
-                        </div>
                         <div class="tab" :class="{ active: activeTab === 'network' }" @click="activeTab = 'network'">
                             网络状态
+                        </div>
+                        <div class="tab" :class="{ active: activeTab === 'config-editor' }" @click="activeTab = 'config-editor'">
+                            配置编辑
                         </div>
                     </div>
 
@@ -2275,94 +2608,6 @@
                         </div>
                     </div>
 
-                    <!-- DNS配置 -->
-                    <div v-if="activeTab === 'dns'" class="config-section">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">DNS 配置</h3>
-                            </div>
-                            <div v-if="singboxConfig.dns">
-                                <!-- DNS服务器列表 -->
-                                <div class="config-item">
-                                    <strong>DNS 服务器</strong>
-                                </div>
-                                <div v-if="singboxConfig.dns.servers && singboxConfig.dns.servers.length" style="margin-left: 20px;">
-                                    <div v-for="(server, index) in singboxConfig.dns.servers" :key="index" class="config-item" style="border-left: 3px solid #e5e7eb; padding-left: 15px; margin: 8px 0;">
-                                        <div>
-                                            <strong v-if="typeof server === 'string'">{{ server }}</strong>
-                                            <strong v-else-if="server.address">{{ server.address }}</strong>
-                                            <strong v-else>DNS服务器 {{ index + 1 }}</strong>
-                                            
-                                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                                                <span v-if="typeof server === 'object'">
-                                                    <span v-if="server.tag">标签: {{ server.tag }} | </span>
-                                                    <span v-if="server.detour">分流: {{ server.detour }} | </span>
-                                                    <span v-if="server.address_resolver">地址解析器: {{ server.address_resolver }}</span>
-                                                </span>
-                                                <span v-else>标准DNS服务器</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div v-else style="margin-left: 20px; color: #666; font-size: 14px;">
-                                    未配置DNS服务器
-                                </div>
-                                
-                                <!-- DNS规则 -->
-                                <div v-if="singboxConfig.dns.rules && singboxConfig.dns.rules.length" class="config-item">
-                                    <strong>DNS 规则</strong>
-                                </div>
-                                <div v-if="singboxConfig.dns.rules && singboxConfig.dns.rules.length" style="margin-left: 20px;">
-                                    <div v-for="(rule, index) in singboxConfig.dns.rules" :key="index" class="config-item" style="border-left: 3px solid #dbeafe; padding-left: 15px; margin: 8px 0;">
-                                        <div>
-                                            <strong>规则 {{ index + 1 }}</strong>
-                                            <span v-if="rule.server"> → {{ rule.server }}</span>
-                                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                                                <span v-if="rule.domain">域名: {{ Array.isArray(rule.domain) ? rule.domain.join(', ') : rule.domain }}</span>
-                                                <span v-if="rule.domain_suffix">后缀: {{ Array.isArray(rule.domain_suffix) ? rule.domain_suffix.join(', ') : rule.domain_suffix }}</span>
-                                                <span v-if="rule.geosite">Geosite: {{ Array.isArray(rule.geosite) ? rule.geosite.join(', ') : rule.geosite }}</span>
-                                                <span v-if="rule.rule_set">规则集: {{ Array.isArray(rule.rule_set) ? rule.rule_set.join(', ') : rule.rule_set }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- 其他DNS设置 -->
-                                <div class="config-item">
-                                    <strong>其他设置</strong>
-                                </div>
-                                <div style="margin-left: 20px;">
-                                    <div class="config-item">
-                                        <span>解析策略</span>
-                                        <span>{{ singboxConfig.dns.strategy || 'prefer_ipv4' }}</span>
-                                    </div>
-                                    <div v-if="singboxConfig.dns.final" class="config-item">
-                                        <span>最终DNS</span>
-                                        <span>{{ singboxConfig.dns.final }}</span>
-                                    </div>
-                                    <div v-if="singboxConfig.dns.fakeip" class="config-item">
-                                        <span>FakeIP</span>
-                                        <span>
-                                            {{ singboxConfig.dns.fakeip.enabled ? '已启用' : '已禁用' }}
-                                            <span v-if="singboxConfig.dns.fakeip.inet4_range"> (IPv4: {{ singboxConfig.dns.fakeip.inet4_range }})</span>
-                                            <span v-if="singboxConfig.dns.fakeip.inet6_range"> (IPv6: {{ singboxConfig.dns.fakeip.inet6_range }})</span>
-                                        </span>
-                                    </div>
-                                    <div v-if="singboxConfig.dns.independent_cache !== undefined" class="config-item">
-                                        <span>独立缓存</span>
-                                        <span>{{ singboxConfig.dns.independent_cache ? '已启用' : '已禁用' }}</span>
-                                    </div>
-                                    <div v-if="singboxConfig.dns.reverse_mapping !== undefined" class="config-item">
-                                        <span>反向映射</span>
-                                        <span>{{ singboxConfig.dns.reverse_mapping ? '已启用' : '已禁用' }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div v-else style="text-align: center; color: #666; padding: 20px;">
-                                暂无DNS配置
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- 网络状态 -->
                     <div v-if="activeTab === 'network'" class="config-section">
@@ -2444,6 +2689,154 @@
                             </div>
                             <div v-else style="margin-left: 20px; color: #666; font-size: 14px;">
                                 正在获取防火墙规则...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 配置编辑 -->
+                    <div v-if="activeTab === 'config-editor'" class="config-section">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">📝 配置文件编辑器</h3>
+                                <div style="display: flex; gap: 10px;">
+                                    <button @click="loadFullConfig" class="btn btn-secondary btn-sm" :disabled="loadingStates.config">
+                                        <span v-if="loadingStates.config">⏳ 加载中...</span>
+                                        <span v-else>🔄 重新加载</span>
+                                    </button>
+                                    <button @click="validateConfig" class="btn btn-info btn-sm" :disabled="!fullConfigText.trim()">
+                                        ✅ 验证配置
+                                    </button>
+                                    <button @click="saveFullConfig" class="btn btn-primary btn-sm" :disabled="!fullConfigText.trim() || loadingStates.config">
+                                        <span v-if="loadingStates.config">⏳ 保存中...</span>
+                                        <span v-else>💾 保存配置</span>
+                                    </button>
+                                    <button @click="saveAndRestartService" class="btn btn-success btn-sm" :disabled="!fullConfigText.trim() || loadingStates.configRestart">
+                                        <span v-if="loadingStates.configRestart">⏳ 保存重启中...</span>
+                                        <span v-else>🚀 保存并重启</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="config-editor-container">
+                                <!-- 配置信息栏 -->
+                                <div class="config-info-bar">
+                                    <div class="config-info-left">
+                                        <span class="config-file-info">
+                                            📄 配置文件: <code>/etc/sing-box/config.json</code>
+                                        </span>
+                                        <button @click="toggleOutline" class="editor-btn" :class="{ active: showOutline }" title="显示/隐藏分级结构">
+                                            📊 分级显示
+                                        </button>
+                                        <span v-if="configValidation.isValid !== null" class="config-validation-status">
+                                            <span v-if="configValidation.isValid" style="color: #059669;">
+                                                ✅ 配置有效
+                                            </span>
+                                            <span v-else style="color: #dc2626;">
+                                                ❌ 配置错误: {{ configValidation.error }}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div class="config-info-right">
+                                        <span class="config-size-info">
+                                            大小: {{ formatFileSize(fullConfigText.length) }} | 
+                                            行数: {{ fullConfigText.split('\n').length }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 双栏布局：结构大纲 + 代码编辑器 -->
+                                <div class="config-editor-layout" :class="{ 'no-outline': !showOutline }">
+                                    <!-- JSON结构大纲 -->
+                                    <div v-if="showOutline" class="config-outline-panel">
+                                        <div class="outline-header">
+                                            <h4>📊 分级结构</h4>
+                                            <button @click="expandAllOutline" class="outline-btn" title="展开全部">
+                                                ⬇️
+                                            </button>
+                                            <button @click="collapseAllOutline" class="outline-btn" title="收起全部">
+                                                ⬆️
+                                            </button>
+                                        </div>
+                                        <div class="outline-content">
+                                            <div v-if="configOutline.length > 0">
+                                                <div v-for="(section, index) in configOutline" :key="index" class="outline-section">
+                                                    <div class="outline-item" 
+                                                         :class="{ collapsed: section.collapsed }"
+                                                         @click="toggleSection(section)">
+                                                        <span class="outline-toggle">
+                                                            {{ section.collapsed ? '▶' : '▼' }}
+                                                        </span>
+                                                        <span class="outline-icon">{{ section.icon }}</span>
+                                                        <span class="outline-label">{{ section.label }}</span>
+                                                        <span class="outline-count" v-if="section.count !== undefined">
+                                                            ({{ section.count }})
+                                                        </span>
+                                                    </div>
+                                                    <div v-if="!section.collapsed && section.children" class="outline-children">
+                                                        <div v-for="(child, childIndex) in section.children" 
+                                                             :key="childIndex" 
+                                                             class="outline-child-item"
+                                                             @click="jumpToLine(child.line)">
+                                                            <span class="outline-child-icon">{{ child.icon }}</span>
+                                                            <span class="outline-child-label">{{ child.label }}</span>
+                                                            <span class="outline-child-info" v-if="child.info">{{ child.info }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="outline-empty">
+                                                <span>暂无结构信息</span>
+                                                <small>请先加载配置文件</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 代码编辑器 -->
+                                    <div class="code-editor-wrapper" :class="{ 'with-outline': showOutline }">
+                                        <div class="code-editor-header">
+                                            <div class="editor-controls">
+                                                <button @click="formatConfig" class="editor-btn" title="格式化JSON">
+                                                    🎨 格式化
+                                                </button>
+                                                <button @click="copyConfig" class="editor-btn" title="复制配置">
+                                                    📋 复制
+                                                </button>
+                                                <button @click="resetConfig" class="editor-btn" title="重置到原始配置">
+                                                    🔄 重置
+                                                </button>
+                                            </div>
+                                            <div class="editor-status">
+                                                <span v-if="configChanged" class="config-changed-indicator">
+                                                    ● 已修改
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <textarea 
+                                            ref="configTextarea"
+                                            v-model="fullConfigText"
+                                            class="config-editor"
+                                            placeholder="正在加载配置文件..."
+                                            @input="onConfigChange"
+                                            @scroll="onEditorScroll"
+                                            spellcheck="false">
+                                        </textarea>
+                                    </div>
+                                </div>
+                                
+                                <!-- 配置提示信息 -->
+                                <div class="config-tips">
+                                    <div class="tip-item">
+                                        <strong>💡 使用提示:</strong>
+                                    </div>
+                                    <div class="tip-content">
+                                        • 修改配置后请先点击"验证配置"确保JSON格式正确<br>
+                                        • "保存配置"仅保存文件，不重启服务<br>
+                                        • "保存并重启"会保存配置并自动重启Sing-Box服务<br>
+                                        • 支持Ctrl+A全选、Ctrl+C复制、Ctrl+V粘贴等快捷键<br>
+                                        • 建议在修改重要配置前先备份原始配置
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3146,6 +3539,19 @@
                     const savedTab = localStorage.getItem('mybox-active-tab') || 'inbounds';
                     const activeTab = ref(savedTab);
                     
+                    // 配置编辑器状态
+                    const fullConfigText = ref('');
+                    const originalConfigText = ref('');
+                    const configChanged = ref(false);
+                    const configValidation = reactive({
+                        isValid: null,
+                        error: ''
+                    });
+                    
+                    // 配置结构大纲状态
+                    const showOutline = ref(true); // 默认显示大纲面板
+                    const configOutline = ref([]);
+                    
                     // 监听页面变化并保存到localStorage
                     watch(currentPage, (newPage) => {
                         localStorage.setItem('mybox-current-page', newPage);
@@ -3160,6 +3566,11 @@
                         // 如果切换到网络状态标签，获取网络信息
                         if (newTab === 'network') {
                             fetchNetworkInfo();
+                        }
+                        
+                        // 如果切换到配置编辑标签，直接加载完整配置
+                        if (newTab === 'config-editor') {
+                            loadFullConfig();
                         }
                     });
                     const hasUnsavedChanges = ref(false);
@@ -3741,6 +4152,447 @@
                         } finally {
                             loadingConfig.value = false;
                         }
+                    };
+
+                    // 加载完整配置文件
+                    const loadFullConfig = async () => {
+                        loadingStates.config = true;
+                        configValidation.isValid = null;
+                        configValidation.error = '';
+                        
+                        try {
+                            console.log('正在加载Sing-Box完整配置...');
+                            const response = await fetch('/api/config/sing-box/full');
+                            const data = await response.json();
+                            
+                            if (response.ok) {
+                                console.log('配置加载成功:', data);
+                                fullConfigText.value = JSON.stringify(data.config, null, 2);
+                                originalConfigText.value = fullConfigText.value;
+                                configChanged.value = false;
+                                
+                                // 显示加载信息（仅在控制台）
+                                if (data.note) {
+                                    console.info(`📝 ${data.note}`);
+                                }
+                                
+                                // 总是解析配置结构（为大纲面板准备）
+                                parseConfigOutline();
+                            } else {
+                                console.error('配置加载失败:', data);
+                                fullConfigText.value = `// 配置加载失败: ${data.error}\n// 请检查Sing-Box配置文件是否存在\n// 文件路径: /etc/sing-box/config.json\n\n{\n  "log": {\n    "level": "info"\n  },\n  "inbounds": [],\n  "outbounds": [],\n  "route": {\n    "rules": []\n  }\n}`;
+                                originalConfigText.value = fullConfigText.value;
+                                alert(`❌ 加载配置失败: ${data.error}\n\n已显示示例配置，您可以基于此创建自己的配置。`);
+                            }
+                        } catch (error) {
+                            console.error('配置加载异常:', error);
+                            fullConfigText.value = `// 网络请求失败: ${error.message}\n// 请检查服务器连接状态\n\n{\n  "log": {\n    "level": "info"\n  },\n  "inbounds": [],\n  "outbounds": [],\n  "route": {\n    "rules": []\n  }\n}`;
+                            originalConfigText.value = fullConfigText.value;
+                            alert(`❌ 加载配置异常: ${error.message}\n\n请检查：\n1. MyBox服务是否正常运行\n2. 网络连接是否正常\n3. Sing-Box配置文件是否存在`);
+                        } finally {
+                            loadingStates.config = false;
+                        }
+                    };
+
+                    // 监听配置变化
+                    const onConfigChange = () => {
+                        configChanged.value = fullConfigText.value !== originalConfigText.value;
+                        configValidation.isValid = null;
+                        configValidation.error = '';
+                    };
+
+                    // 验证配置
+                    const validateConfig = () => {
+                        try {
+                            const config = JSON.parse(fullConfigText.value);
+                            configValidation.isValid = true;
+                            configValidation.error = '';
+                            
+                            // 基本结构验证
+                            if (!config.inbounds || !Array.isArray(config.inbounds)) {
+                                throw new Error('缺少 inbounds 配置或格式错误');
+                            }
+                            
+                            if (!config.outbounds || !Array.isArray(config.outbounds)) {
+                                throw new Error('缺少 outbounds 配置或格式错误');
+                            }
+                            
+                            alert('✅ 配置验证通过！');
+                        } catch (error) {
+                            configValidation.isValid = false;
+                            configValidation.error = error.message;
+                            alert(`❌ 配置验证失败: ${error.message}`);
+                        }
+                    };
+
+                    // 保存配置
+                    const saveFullConfig = async () => {
+                        if (!fullConfigText.value.trim()) {
+                            alert('配置内容不能为空');
+                            return;
+                        }
+
+                        // 先验证配置
+                        try {
+                            JSON.parse(fullConfigText.value);
+                        } catch (error) {
+                            alert(`配置格式错误: ${error.message}`);
+                            return;
+                        }
+
+                        loadingStates.config = true;
+                        
+                        try {
+                            const response = await fetch('/api/config/sing-box/full', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    config: JSON.parse(fullConfigText.value)
+                                })
+                            });
+
+                            const data = await response.json();
+                            
+                            if (response.ok) {
+                                originalConfigText.value = fullConfigText.value;
+                                configChanged.value = false;
+                                alert('✅ 配置保存成功！');
+                                
+                                // 刷新配置显示
+                                await fetchSingBoxConfig();
+                            } else {
+                                alert(`❌ 保存配置失败: ${data.error}`);
+                            }
+                        } catch (error) {
+                            alert(`❌ 保存配置异常: ${error.message}`);
+                        } finally {
+                            loadingStates.config = false;
+                        }
+                    };
+
+                    // 保存配置并重启服务
+                    const saveAndRestartService = async () => {
+                        if (!fullConfigText.value.trim()) {
+                            alert('配置内容不能为空');
+                            return;
+                        }
+
+                        // 先验证配置
+                        try {
+                            JSON.parse(fullConfigText.value);
+                        } catch (error) {
+                            alert(`配置格式错误: ${error.message}`);
+                            return;
+                        }
+
+                        if (!confirm('确定要保存配置并重启Sing-Box服务吗？')) {
+                            return;
+                        }
+
+                        loadingStates.configRestart = true;
+                        
+                        try {
+                            // 1. 先保存配置
+                            const saveResponse = await fetch('/api/config/sing-box/full', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    config: JSON.parse(fullConfigText.value)
+                                })
+                            });
+
+                            const saveData = await saveResponse.json();
+                            
+                            if (!saveResponse.ok) {
+                                throw new Error(`保存配置失败: ${saveData.error}`);
+                            }
+
+                            // 2. 重启服务
+                            const restartResponse = await fetch('/api/service/sing-box/restart', {
+                                method: 'POST'
+                            });
+
+                            const restartData = await restartResponse.json();
+                            
+                            if (restartResponse.ok) {
+                                originalConfigText.value = fullConfigText.value;
+                                configChanged.value = false;
+                                alert('✅ 配置保存成功，Sing-Box服务已重启！');
+                                
+                                // 刷新服务状态和配置
+                                await Promise.all([
+                                    fetchServices(),
+                                    fetchSingBoxConfig()
+                                ]);
+                            } else {
+                                alert(`⚠️ 配置已保存，但重启服务失败: ${restartData.error}`);
+                            }
+                        } catch (error) {
+                            alert(`❌ 操作失败: ${error.message}`);
+                        } finally {
+                            loadingStates.configRestart = false;
+                        }
+                    };
+
+                    // 格式化配置
+                    const formatConfig = () => {
+                        try {
+                            const config = JSON.parse(fullConfigText.value);
+                            fullConfigText.value = JSON.stringify(config, null, 2);
+                            onConfigChange();
+                            alert('✅ 配置格式化完成！');
+                        } catch (error) {
+                            alert(`❌ 格式化失败: ${error.message}`);
+                        }
+                    };
+
+                    // 复制配置
+                    const copyConfig = async () => {
+                        try {
+                            await navigator.clipboard.writeText(fullConfigText.value);
+                            alert('✅ 配置已复制到剪贴板！');
+                        } catch (error) {
+                            // 降级方案：选中文本
+                            const textarea = document.querySelector('.config-editor');
+                            if (textarea) {
+                                textarea.select();
+                                document.execCommand('copy');
+                                alert('✅ 配置已复制到剪贴板！');
+                            } else {
+                                alert('❌ 复制失败，请手动选择并复制');
+                            }
+                        }
+                    };
+
+                    // 重置配置
+                    const resetConfig = () => {
+                        if (!configChanged.value) {
+                            alert('配置未修改，无需重置');
+                            return;
+                        }
+                        
+                        if (confirm('确定要重置配置到原始状态吗？所有未保存的修改将丢失！')) {
+                            fullConfigText.value = originalConfigText.value;
+                            configChanged.value = false;
+                            configValidation.isValid = null;
+                            configValidation.error = '';
+                            alert('✅ 配置已重置！');
+                        }
+                    };
+
+                    // 格式化文件大小
+                    const formatFileSize = (bytes) => {
+                        if (bytes === 0) return '0 B';
+                        const k = 1024;
+                        const sizes = ['B', 'KB', 'MB'];
+                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                    };
+
+                    // 切换大纲面板显示
+                    const toggleOutline = () => {
+                        showOutline.value = !showOutline.value;
+                        if (showOutline.value && fullConfigText.value) {
+                            parseConfigOutline();
+                        }
+                    };
+
+                    // 解析配置结构生成大纲
+                    const parseConfigOutline = () => {
+                        try {
+                            if (!fullConfigText.value.trim()) {
+                                configOutline.value = [];
+                                return;
+                            }
+
+                            const config = JSON.parse(fullConfigText.value);
+                            const lines = fullConfigText.value.split('\n');
+                            const outline = [];
+
+                            // 解析各个主要配置段
+                            if (config.inbounds) {
+                                const section = {
+                                    key: 'inbounds',
+                                    label: '入站配置',
+                                    icon: '📥',
+                                    count: Array.isArray(config.inbounds) ? config.inbounds.length : 0,
+                                    collapsed: false,
+                                    children: []
+                                };
+
+                                if (Array.isArray(config.inbounds)) {
+                                    config.inbounds.forEach((inbound, index) => {
+                                        section.children.push({
+                                            label: inbound.tag || `入站${index + 1}`,
+                                            icon: '🔹',
+                                            info: `${inbound.type || 'unknown'}${inbound.listen_port ? ':' + inbound.listen_port : ''}`,
+                                            line: findLineNumber(lines, `"tag".*"${inbound.tag}"`) || findLineNumber(lines, `"type".*"${inbound.type}"`)
+                                        });
+                                    });
+                                }
+                                outline.push(section);
+                            }
+
+                            if (config.outbounds) {
+                                const section = {
+                                    key: 'outbounds',
+                                    label: '出站配置',
+                                    icon: '📤',
+                                    count: Array.isArray(config.outbounds) ? config.outbounds.length : 0,
+                                    collapsed: false,
+                                    children: []
+                                };
+
+                                if (Array.isArray(config.outbounds)) {
+                                    config.outbounds.forEach((outbound, index) => {
+                                        const isProxy = ['vmess', 'vless', 'trojan', 'shadowsocks', 'hysteria2', 'tuic', 'wireguard'].includes(outbound.type);
+                                        section.children.push({
+                                            label: outbound.tag || `出站${index + 1}`,
+                                            icon: isProxy ? '🔗' : (outbound.type === 'direct' ? '🔄' : '📋'),
+                                            info: outbound.type || 'unknown',
+                                            line: findLineNumber(lines, `"tag".*"${outbound.tag}"`) || findLineNumber(lines, `"type".*"${outbound.type}"`)
+                                        });
+                                    });
+                                }
+                                outline.push(section);
+                            }
+
+                            if (config.route) {
+                                const section = {
+                                    key: 'route',
+                                    label: '路由配置',
+                                    icon: '🛣️',
+                                    count: config.route.rules ? (Array.isArray(config.route.rules) ? config.route.rules.length : 0) : 0,
+                                    collapsed: false,
+                                    children: []
+                                };
+
+                                if (config.route.rules && Array.isArray(config.route.rules)) {
+                                    config.route.rules.forEach((rule, index) => {
+                                        const ruleDesc = rule.domain ? `domain: ${Array.isArray(rule.domain) ? rule.domain[0] + '...' : rule.domain}` :
+                                                        rule.domain_suffix ? `suffix: ${Array.isArray(rule.domain_suffix) ? rule.domain_suffix[0] + '...' : rule.domain_suffix}` :
+                                                        rule.geosite ? `geosite: ${Array.isArray(rule.geosite) ? rule.geosite[0] + '...' : rule.geosite}` :
+                                                        rule.ip_cidr ? `ip: ${Array.isArray(rule.ip_cidr) ? rule.ip_cidr[0] + '...' : rule.ip_cidr}` : 
+                                                        `规则${index + 1}`;
+                                        
+                                        section.children.push({
+                                            label: `规则${index + 1}`,
+                                            icon: '📏',
+                                            info: `${ruleDesc} → ${rule.outbound || 'default'}`,
+                                            line: findLineNumber(lines, `"outbound".*"${rule.outbound}"`)
+                                        });
+                                    });
+                                }
+
+                                if (config.route.rule_set && Array.isArray(config.route.rule_set)) {
+                                    config.route.rule_set.forEach((ruleSet, index) => {
+                                        section.children.push({
+                                            label: ruleSet.tag || `规则集${index + 1}`,
+                                            icon: '📚',
+                                            info: `${ruleSet.type || 'unknown'} ${ruleSet.format || ''}`,
+                                            line: findLineNumber(lines, `"tag".*"${ruleSet.tag}"`)
+                                        });
+                                    });
+                                }
+                                outline.push(section);
+                            }
+
+                            if (config.dns) {
+                                const section = {
+                                    key: 'dns',
+                                    label: 'DNS配置',
+                                    icon: '🌐',
+                                    count: config.dns.servers ? (Array.isArray(config.dns.servers) ? config.dns.servers.length : 0) : 0,
+                                    collapsed: false,
+                                    children: []
+                                };
+
+                                if (config.dns.servers && Array.isArray(config.dns.servers)) {
+                                    config.dns.servers.forEach((server, index) => {
+                                        const serverAddr = typeof server === 'string' ? server : (server.address || `DNS${index + 1}`);
+                                        section.children.push({
+                                            label: typeof server === 'string' ? server : (server.tag || `DNS${index + 1}`),
+                                            icon: '🌍',
+                                            info: typeof server === 'string' ? 'standard' : serverAddr,
+                                            line: findLineNumber(lines, serverAddr)
+                                        });
+                                    });
+                                }
+                                outline.push(section);
+                            }
+
+                            if (config.experimental) {
+                                outline.push({
+                                    key: 'experimental',
+                                    label: '实验性配置',
+                                    icon: '🧪',
+                                    collapsed: true,
+                                    children: []
+                                });
+                            }
+
+                            configOutline.value = outline;
+                        } catch (error) {
+                            console.error('解析配置结构失败:', error);
+                            configOutline.value = [];
+                        }
+                    };
+
+                    // 查找行号的辅助函数
+                    const findLineNumber = (lines, pattern) => {
+                        for (let i = 0; i < lines.length; i++) {
+                            if (new RegExp(pattern, 'i').test(lines[i])) {
+                                return i + 1;
+                            }
+                        }
+                        return null;
+                    };
+
+                    // 切换配置段的折叠状态
+                    const toggleSection = (section) => {
+                        section.collapsed = !section.collapsed;
+                    };
+
+                    // 展开所有配置段
+                    const expandAllOutline = () => {
+                        configOutline.value.forEach(section => {
+                            section.collapsed = false;
+                        });
+                    };
+
+                    // 收起所有配置段
+                    const collapseAllOutline = () => {
+                        configOutline.value.forEach(section => {
+                            section.collapsed = true;
+                        });
+                    };
+
+                    // 跳转到指定行
+                    const jumpToLine = (lineNumber) => {
+                        if (!lineNumber) return;
+                        
+                        const textarea = document.querySelector('.config-editor');
+                        if (textarea) {
+                            const lines = fullConfigText.value.split('\n');
+                            let charCount = 0;
+                            
+                            for (let i = 0; i < Math.min(lineNumber - 1, lines.length); i++) {
+                                charCount += lines[i].length + 1; // +1 for newline
+                            }
+                            
+                            textarea.focus();
+                            textarea.setSelectionRange(charCount, charCount);
+                            textarea.scrollTop = (lineNumber - 1) * 20; // 大概每行20px高度
+                        }
+                    };
+
+                    // 编辑器滚动事件
+                    const onEditorScroll = () => {
+                        // 可以在这里添加滚动同步逻辑
                     };
 
                     const fetchNetworkInfo = async () => {
@@ -4603,9 +5455,19 @@
                             if (activeTab.value === 'network') {
                                 fetchNetworkInfo();
                             }
+                            // 如果当前标签页是配置编辑，也要加载完整配置
+                            if (activeTab.value === 'config-editor') {
+                                loadFullConfig();
+                            }
                         }
                         
                         console.log(`页面初始化完成，当前页面: ${currentPage.value}`);
+                        
+                        // 额外检查：如果当前在配置编辑标签页但配置未加载，则立即加载
+                        if (currentPage.value === 'sing-box' && activeTab.value === 'config-editor' && !fullConfigText.value) {
+                            console.log('检测到配置编辑标签页但配置未加载，立即加载配置');
+                            loadFullConfig();
+                        }
                         
                         // 启动定时刷新（仅在仪表盘页面）
                         startDashboardRefresh();
@@ -4817,6 +5679,14 @@
                         activeTab,
                         hasUnsavedChanges,
                         
+                        // 配置编辑器状态
+                        fullConfigText,
+                        originalConfigText,
+                        configChanged,
+                        configValidation,
+                        showOutline,
+                        configOutline,
+                        
                         // 计算属性
                         proxyNodes,
                         nonProxyOutbounds,
@@ -4860,6 +5730,26 @@
                         controlService,
                         viewLogs,
                         fetchNetworkInfo,
+                        
+                        // 配置编辑器函数
+                        loadFullConfig,
+                        onConfigChange,
+                        validateConfig,
+                        saveFullConfig,
+                        saveAndRestartService,
+                        formatConfig,
+                        copyConfig,
+                        resetConfig,
+                        formatFileSize,
+                        
+                        // 配置结构大纲函数
+                        toggleOutline,
+                        parseConfigOutline,
+                        toggleSection,
+                        expandAllOutline,
+                        collapseAllOutline,
+                        jumpToLine,
+                        onEditorScroll,
                         
                         // 更新相关函数
                         showUpdateDialog,

@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -112,6 +114,8 @@ func (s *Server) setupRoutes() {
 			config.GET("/sing-box", s.getSingBoxConfig)
 			config.PUT("/sing-box", s.updateSingBoxConfig)
 			config.POST("/sing-box/validate", s.validateSingBoxConfig)
+			config.GET("/sing-box/full", s.getSingBoxFullConfig)
+			config.POST("/sing-box/full", s.updateSingBoxFullConfig)
 			
 			// MosDNS 专用配置接口
 			config.GET("/mosdns", s.getMosDNSConfig)
@@ -1473,4 +1477,164 @@ func (s *Server) updateFromGitHub(c *gin.Context) {
 		utils.Logger.Errorf("从 GitHub Release 更新 %s 内核失败: %s", serviceName, result.Error)
 		c.JSON(http.StatusInternalServerError, result)
 	}
+}
+
+// getSingBoxFullConfig 获取完整的Sing-Box配置文件
+func (s *Server) getSingBoxFullConfig(c *gin.Context) {
+	configPath := "/etc/sing-box/config.json"
+	
+	// utils.Logger.Infof("尝试读取Sing-Box配置文件: %s", configPath)
+	
+	// 检查配置文件是否存在
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		utils.Logger.Errorf("Sing-Box配置文件不存在: %s", configPath)
+		
+		// 尝试其他可能的路径
+		altPaths := []string{
+			"./config/sing-box/config.json",
+			"./sing-box.json",
+			"/usr/local/etc/sing-box/config.json",
+		}
+		
+		for _, altPath := range altPaths {
+			if _, err := os.Stat(altPath); err == nil {
+				// utils.Logger.Infof("找到替代配置文件: %s", altPath)
+				configPath = altPath
+				break
+			}
+		}
+		
+		// 如果仍然找不到，返回示例配置
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			utils.Logger.Warnf("未找到任何配置文件，返回示例配置")
+			sampleConfig := map[string]interface{}{
+				"log": map[string]interface{}{
+					"level":     "info",
+					"timestamp": true,
+				},
+				"inbounds": []map[string]interface{}{
+					{
+						"tag":         "mixed-in",
+						"type":        "mixed",
+						"listen":      "127.0.0.1",
+						"listen_port": 7890,
+					},
+				},
+				"outbounds": []map[string]interface{}{
+					{
+						"tag":  "direct",
+						"type": "direct",
+					},
+					{
+						"tag":  "block",
+						"type": "block",
+					},
+				},
+				"route": map[string]interface{}{
+					"rules": []map[string]interface{}{
+						{
+							"outbound": "direct",
+						},
+					},
+				},
+			}
+			
+			c.JSON(http.StatusOK, gin.H{
+				"config": sampleConfig,
+				"path":   configPath,
+				"size":   0,
+				"note":   "示例配置 - 请创建实际配置文件",
+			})
+			return
+		}
+	}
+	
+	// 读取配置文件
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		utils.Logger.Errorf("读取Sing-Box配置文件失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("读取配置文件失败: %v", err),
+		})
+		return
+	}
+	
+	// 解析JSON配置
+	var config map[string]interface{}
+	if err := json.Unmarshal(configData, &config); err != nil {
+		utils.Logger.Errorf("解析Sing-Box配置文件失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("解析配置文件失败: %v", err),
+		})
+		return
+	}
+	
+	utils.Logger.Infof("成功获取Sing-Box完整配置文件")
+	c.JSON(http.StatusOK, gin.H{
+		"config": config,
+		"path":   configPath,
+		"size":   len(configData),
+	})
+}
+
+// updateSingBoxFullConfig 更新完整的Sing-Box配置文件
+func (s *Server) updateSingBoxFullConfig(c *gin.Context) {
+	var req struct {
+		Config map[string]interface{} `json:"config" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误: " + err.Error(),
+		})
+		return
+	}
+	
+	configPath := "/etc/sing-box/config.json"
+	
+	// 创建配置目录（如果不存在）
+	configDir := filepath.Dir(configPath)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		utils.Logger.Errorf("创建配置目录失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("创建配置目录失败: %v", err),
+		})
+		return
+	}
+	
+	// 备份原配置文件
+	if _, err := os.Stat(configPath); err == nil {
+		backupPath := configPath + ".backup." + time.Now().Format("20060102-150405")
+		if err := os.Rename(configPath, backupPath); err != nil {
+			utils.Logger.Warnf("备份原配置文件失败: %v", err)
+		} else {
+			utils.Logger.Infof("原配置文件已备份到: %s", backupPath)
+		}
+	}
+	
+	// 将配置转换为JSON
+	configData, err := json.MarshalIndent(req.Config, "", "  ")
+	if err != nil {
+		utils.Logger.Errorf("序列化配置失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("序列化配置失败: %v", err),
+		})
+		return
+	}
+	
+	// 写入配置文件
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
+		utils.Logger.Errorf("写入Sing-Box配置文件失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("写入配置文件失败: %v", err),
+		})
+		return
+	}
+	
+	utils.Logger.Infof("成功更新Sing-Box完整配置文件: %s", configPath)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "配置文件更新成功",
+		"path":    configPath,
+		"size":    len(configData),
+	})
 }
