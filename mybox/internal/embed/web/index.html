@@ -323,6 +323,49 @@
             cursor: not-allowed;
         }
 
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-outline:hover {
+            background: #dc3545;
+            color: white;
+        }
+
+        .current-ip-info {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .saved-ips-list {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .saved-ip-item {
+            transition: all 0.2s;
+        }
+
+        .saved-ip-item:hover {
+            background: #e9ecef !important;
+            border-color: #adb5bd !important;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; max-height: 0; }
+            to { opacity: 1; max-height: 300px; }
+        }
+
         .input-group {
             margin-bottom: 15px;
         }
@@ -1759,7 +1802,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>📦 MyBox</h2>
-                <div class="version-badge">v1.0.5</div>
+                <div class="version-badge">v1.0.6</div>
             </div>
             <nav>
                 <div class="nav-item" :class="{ active: currentPage === 'home' }" @click="showDashboard">
@@ -2525,23 +2568,69 @@
                                         placeholder="例如: 192.168.1.100" 
                                         class="form-input"
                                         @keyup.enter="saveCustomMosDNSIP"
-                                        style="flex: 1; margin-right: 10px;"
+                                        style="flex: 1; margin-right: 8px;"
                                     />
                                     <button 
                                         class="btn btn-primary" 
                                         @click="saveCustomMosDNSIP"
-                                        :disabled="!customMosDNSIP.trim()">
+                                        :disabled="!customMosDNSIP.trim()"
+                                        style="margin-right: 8px;">
                                         保存
+                                    </button>
+                                    <button 
+                                        class="btn btn-secondary" 
+                                        @click="cancelCustomMosDNSIP"
+                                        :disabled="!customMosDNSIP.trim()"
+                                        title="取消输入">
+                                        取消
                                     </button>
                                 </div>
                             </div>
-                            <div v-if="savedCustomMosDNSIP" class="saved-ip-info" style="margin-top: 10px;">
-                                <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #bae6fd; border-radius: 6px;">
-                                    <span style="color: #666; font-size: 14px;">当前配置:</span>
-                                    <span style="color: #2563eb; font-weight: 600; font-family: monospace;">{{ savedCustomMosDNSIP }}</span>
-                                    <button class="btn btn-danger" @click="clearCustomMosDNSIP" style="padding: 2px 8px; font-size: 12px;" title="清除配置">
-                                        ✕
+                            
+                            <!-- 当前使用的IP显示 -->
+                            <div v-if="currentMosDNSIP" class="current-ip-info" style="margin-top: 15px;">
+                                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #e3f2fd; border-radius: 6px; border-left: 4px solid #2196f3;">
+                                    <span style="color: #1565c0; font-size: 14px; font-weight: 500;">🌐 当前使用:</span>
+                                    <span style="color: #0d47a1; font-weight: 600; font-family: monospace;">{{ currentMosDNSIP }}</span>
+                                    <span v-if="currentMosDNSIP !== getCurrentMosDNSIP()" style="color: #666; font-size: 12px;">(自定义)</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 已保存的地址列表 -->
+                            <div v-if="savedMosDNSIPs.length > 0" class="saved-ips-list" style="margin-top: 15px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                    <span style="color: #666; font-size: 14px; font-weight: 500;">📋 已保存地址:</span>
+                                    <button class="btn btn-outline" @click="clearAllMosDNSIPs" style="padding: 2px 8px; font-size: 12px;" title="清除所有地址">
+                                        清空全部
                                     </button>
+                                </div>
+                                <div class="saved-ip-items">
+                                    <div v-for="(ip, index) in savedMosDNSIPs" :key="index" 
+                                         class="saved-ip-item"
+                                         style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; margin-bottom: 6px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px;">
+                                        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                            <span style="color: #495057; font-family: monospace; font-weight: 500;">{{ ip }}</span>
+                                            <span v-if="ip === currentMosDNSIP" 
+                                                  style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px;">
+                                                使用中
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <button v-if="ip !== currentMosDNSIP"
+                                                    class="btn btn-info" 
+                                                    @click="switchToMosDNSIP(ip)" 
+                                                    style="padding: 2px 8px; font-size: 12px;" 
+                                                    title="切换到此地址">
+                                                使用
+                                            </button>
+                                            <button class="btn btn-danger" 
+                                                    @click="removeMosDNSIP(ip)" 
+                                                    style="padding: 2px 8px; font-size: 12px;" 
+                                                    title="删除此地址">
+                                                删除
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3047,6 +3136,8 @@
                     // MosDNS 自定义IP相关状态
                     const customMosDNSIP = ref('');
                     const savedCustomMosDNSIP = ref('');
+                    const savedMosDNSIPs = ref([]);
+                    const currentMosDNSIP = ref('');
                     
                     // Sing-Box 配置状态
                     const singboxConfig = ref(null);
@@ -3161,11 +3252,19 @@
                     // MosDNS WebUI 相关计算属性和方法
                     const canAccessMosDNSWebUI = computed(() => {
                         // 如果本地MosDNS正在运行，或者有自定义IP配置，则可以访问
-                        return (services.mosdns && services.mosdns.status === 0) || savedCustomMosDNSIP.value.trim() !== '';
+                        return (services.mosdns && services.mosdns.status === 0) || 
+                               currentMosDNSIP.value.trim() !== '' || 
+                               savedCustomMosDNSIP.value.trim() !== '' ||
+                               savedMosDNSIPs.value.length > 0;
                     });
 
                     // 获取当前使用的IP地址
                     const getCurrentMosDNSIP = () => {
+                        // 如果有设置当前IP，使用当前IP
+                        if (currentMosDNSIP.value.trim()) {
+                            return currentMosDNSIP.value.trim();
+                        }
+                        // 兼容旧版本：如果有保存的自定义IP，使用它
                         if (savedCustomMosDNSIP.value.trim()) {
                             return savedCustomMosDNSIP.value.trim();
                         }
@@ -3187,6 +3286,11 @@
                         window.open(url, '_blank');
                     };
 
+                    // 取消输入MosDNS IP
+                    const cancelCustomMosDNSIP = () => {
+                        customMosDNSIP.value = '';
+                    };
+
                     // 保存自定义MosDNS IP
                     const saveCustomMosDNSIP = () => {
                         const ip = customMosDNSIP.value.trim();
@@ -3200,28 +3304,116 @@
                             return;
                         }
                         
+                        // 检查是否已存在
+                        if (savedMosDNSIPs.value.includes(ip)) {
+                            alert('该IP地址已存在，请勿重复添加');
+                            return;
+                        }
+                        
+                        // 添加到已保存列表
+                        savedMosDNSIPs.value.push(ip);
+                        
+                        // 设置为当前使用的IP
+                        currentMosDNSIP.value = ip;
                         savedCustomMosDNSIP.value = ip;
+                        
+                        // 清空输入框
                         customMosDNSIP.value = '';
                         
                         // 保存到localStorage
-                        localStorage.setItem('mybox_mosdns_custom_ip', ip);
+                        saveMosDNSIPsToStorage();
                         
-                        alert(`MosDNS自定义IP已保存: ${ip}`);
+                        alert(`MosDNS自定义IP已保存并启用: ${ip}`);
                     };
 
-                    // 清除自定义MosDNS IP
-                    const clearCustomMosDNSIP = () => {
-                        if (confirm('确定要清除MosDNS自定义IP配置吗？')) {
-                            savedCustomMosDNSIP.value = '';
-                            localStorage.removeItem('mybox_mosdns_custom_ip');
+                    // 切换到指定的MosDNS IP
+                    const switchToMosDNSIP = (ip) => {
+                        currentMosDNSIP.value = ip;
+                        savedCustomMosDNSIP.value = ip;
+                        localStorage.setItem('mybox_mosdns_current_ip', ip);
+                        alert(`已切换到MosDNS服务器: ${ip}`);
+                    };
+
+                    // 删除指定的MosDNS IP
+                    const removeMosDNSIP = (ip) => {
+                        if (confirm(`确定要删除MosDNS地址 ${ip} 吗？`)) {
+                            const index = savedMosDNSIPs.value.indexOf(ip);
+                            if (index > -1) {
+                                savedMosDNSIPs.value.splice(index, 1);
+                                
+                                // 如果删除的是当前使用的IP，切换到本地IP
+                                if (currentMosDNSIP.value === ip) {
+                                    currentMosDNSIP.value = getCurrentMosDNSIP();
+                                    savedCustomMosDNSIP.value = savedMosDNSIPs.value.length > 0 ? savedMosDNSIPs.value[0] : '';
+                                    localStorage.removeItem('mybox_mosdns_current_ip');
+                                }
+                                
+                                saveMosDNSIPsToStorage();
+                                alert(`MosDNS地址 ${ip} 已删除`);
+                            }
                         }
+                    };
+
+                    // 清空所有MosDNS IP
+                    const clearAllMosDNSIPs = () => {
+                        if (confirm('确定要清除所有已保存的MosDNS地址吗？')) {
+                            savedMosDNSIPs.value = [];
+                            currentMosDNSIP.value = getCurrentMosDNSIP();
+                            savedCustomMosDNSIP.value = '';
+                            localStorage.removeItem('mybox_mosdns_saved_ips');
+                            localStorage.removeItem('mybox_mosdns_current_ip');
+                            alert('所有MosDNS地址已清除');
+                        }
+                    };
+
+                    // 保存MosDNS IPs到localStorage
+                    const saveMosDNSIPsToStorage = () => {
+                        localStorage.setItem('mybox_mosdns_saved_ips', JSON.stringify(savedMosDNSIPs.value));
+                        localStorage.setItem('mybox_mosdns_current_ip', currentMosDNSIP.value);
                     };
 
                     // 从localStorage加载自定义MosDNS IP
                     const loadCustomMosDNSIP = () => {
-                        const saved = localStorage.getItem('mybox_mosdns_custom_ip');
-                        if (saved) {
-                            savedCustomMosDNSIP.value = saved;
+                        // 加载已保存的IP列表
+                        const savedIPs = localStorage.getItem('mybox_mosdns_saved_ips');
+                        if (savedIPs) {
+                            try {
+                                savedMosDNSIPs.value = JSON.parse(savedIPs);
+                            } catch (e) {
+                                console.error('解析已保存IP列表失败:', e);
+                                savedMosDNSIPs.value = [];
+                            }
+                        }
+                        
+                        // 加载当前使用的IP
+                        const currentIP = localStorage.getItem('mybox_mosdns_current_ip');
+                        if (currentIP && savedMosDNSIPs.value.includes(currentIP)) {
+                            currentMosDNSIP.value = currentIP;
+                            savedCustomMosDNSIP.value = currentIP;
+                        } else {
+                            // 如果没有有效的当前IP，使用本地IP
+                            currentMosDNSIP.value = getCurrentMosDNSIP();
+                            
+                            // 兼容旧版本的单个IP配置
+                            const oldSaved = localStorage.getItem('mybox_mosdns_custom_ip');
+                            if (oldSaved && !savedMosDNSIPs.value.includes(oldSaved)) {
+                                savedMosDNSIPs.value.push(oldSaved);
+                                currentMosDNSIP.value = oldSaved;
+                                savedCustomMosDNSIP.value = oldSaved;
+                                saveMosDNSIPsToStorage();
+                                localStorage.removeItem('mybox_mosdns_custom_ip');
+                            }
+                        }
+                    };
+
+                    // 兼容性方法：清除自定义MosDNS IP（保留原有接口）
+                    const clearCustomMosDNSIP = () => {
+                        if (currentMosDNSIP.value !== getCurrentMosDNSIP()) {
+                            if (confirm('确定要切换回本地MosDNS服务器吗？')) {
+                                currentMosDNSIP.value = getCurrentMosDNSIP();
+                                savedCustomMosDNSIP.value = '';
+                                localStorage.removeItem('mybox_mosdns_current_ip');
+                            }
                         }
                     };
 
@@ -4745,10 +4937,17 @@
                         // MosDNS WebUI 功能
                         customMosDNSIP,
                         savedCustomMosDNSIP,
+                        savedMosDNSIPs,
+                        currentMosDNSIP,
                         canAccessMosDNSWebUI,
+                        getCurrentMosDNSIP,
                         openMosDNSWebUI,
                         openMosDNSWebLog,
+                        cancelCustomMosDNSIP,
                         saveCustomMosDNSIP,
+                        switchToMosDNSIP,
+                        removeMosDNSIP,
+                        clearAllMosDNSIPs,
                         clearCustomMosDNSIP,
                         
                         // 服务控制功能

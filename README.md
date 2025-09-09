@@ -15,13 +15,14 @@ wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/inst
 ```
 ### MyBox 代理服务控制中心
 
-#### 📦 当前版本: v1.0.4
+#### 📦 当前版本: v1.0.6
 
-**最新更新**:
-- ✨ 新增一键内核更新功能
-- 🚀 支持多分支自动识别和更新
-- ⚡ 优化定时刷新，节省系统资源
-- 👨‍💻 添加作者信息和项目链接
+**最新更新 (v1.0.6)**:
+- 🚀 **MosDNS远程访问增强**: 支持多地址管理和快速切换
+- ✨ **取消按钮**: 新增输入框取消功能，提升用户体验
+- 📋 **地址列表**: 显示所有已保存地址，支持一键切换和删除
+- 🎨 **界面优化**: 状态标识、动画效果和响应式布局改进
+- 🔧 **技术改进**: 数据持久化、向后兼容和错误修复
 
 #### ✅ 已完成功能
 
@@ -47,7 +48,10 @@ wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/inst
 - ✅ GitHub Release 智能解析
 - ✅ WebUI 按钮: 直接访问 ip:9099/graphic 管理界面
 - ✅ Web日志按钮: 直接访问 ip:9099/rlog 日志界面
-- ✅ 自定义IP配置: 支持输入远程MosDNS服务器IP地址
+- ✅ 多地址管理: 支持保存和管理多个MosDNS服务器地址
+- ✅ 地址快速切换: 一键切换不同MosDNS服务器
+- ✅ 智能状态显示: 当前使用地址和自定义标识
+- ✅ 取消按钮: 输入框快速清空功能
 - ✅ 根据MosDNS安装状态自动启用/禁用按钮
 
 
@@ -61,11 +65,6 @@ wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/inst
 - [ ] 插件系统扩展
 
 
-### 脚本
-* `install.sh` 脚本
-``` shell
-wget https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/install.sh && bash install.sh
-```
 ### 文档
 * `docs` 文档
 * `docs/router` 路由器fakeip文档
