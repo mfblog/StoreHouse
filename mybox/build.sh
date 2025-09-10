@@ -19,7 +19,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # 版本信息
-VERSION=${VERSION:-"1.0.7"}
+VERSION=${VERSION:-"1.1.0"}
 BUILD_TIME=$(date '+%Y-%m-%d %H:%M:%S')
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
@@ -274,7 +274,7 @@ show_help() {
     done
     echo ""
     echo "环境变量:"
-    echo "  VERSION      设置版本号 (默认: 1.0.2)"
+    echo "  VERSION      设置版本号 (默认: 1.1.0)"
     echo ""
     echo "示例:"
     echo "  $0                                    # 构建默认平台"

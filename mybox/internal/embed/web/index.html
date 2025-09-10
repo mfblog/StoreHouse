@@ -2115,6 +2115,54 @@
                 max-height: calc(100vh - 120px);
             }
         }
+
+        /* MosDNS 配置管理样式 */
+        .config-manager-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .config-manager-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .file-item:hover {
+            background: #f1f5f9;
+            border-color: #3b82f6;
+        }
+
+        .file-item.active {
+            background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+            border-color: #3b82f6;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .config-editor:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .status-message.status-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status-message.status-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .status-message.status-warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
     </style>
 </head>
 <body>
@@ -2135,7 +2183,7 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>📦 MyBox</h2>
-                <div class="version-badge">v1.0.6</div>
+                <div class="version-badge">v1.1.0</div>
             </div>
             <nav>
                 <div class="nav-item" :class="{ active: currentPage === 'home' }" @click="showDashboard">
@@ -2940,7 +2988,33 @@
                     </div>
                 </div>
                 
-                <!-- MosDNS 远程访问配置 -->
+                <!-- MosDNS 选项卡导航 -->
+                <div class="tab-navigation" style="margin-top: 20px; margin-bottom: 20px;">
+                    <div class="tab-buttons" style="display: flex; gap: 4px; border-bottom: 2px solid #e5e7eb; background: #f9fafb; padding: 4px; border-radius: 8px 8px 0 0;">
+                        <button 
+                            class="tab-button"
+                            :class="{ active: mosdnsActiveTab === 'basic' }"
+                            @click="mosdnsActiveTab = 'basic'"
+                            style="flex: 1; padding: 12px 16px; border: none; background: transparent; border-radius: 6px; font-weight: 500; transition: all 0.2s ease; cursor: pointer;"
+                            :style="mosdnsActiveTab === 'basic' ? 'background: white; color: #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.1);' : 'color: #6b7280;'"
+                        >
+                            🎯 基础功能
+                        </button>
+                        <button 
+                            class="tab-button"
+                            :class="{ active: mosdnsActiveTab === 'advanced' }"
+                            @click="mosdnsActiveTab = 'advanced'"
+                            style="flex: 1; padding: 12px 16px; border: none; background: transparent; border-radius: 6px; font-weight: 500; transition: all 0.2s ease; cursor: pointer;"
+                            :style="mosdnsActiveTab === 'advanced' ? 'background: white; color: #3b82f6; box-shadow: 0 1px 3px rgba(0,0,0,0.1);' : 'color: #6b7280;'"
+                        >
+                            ⚙️ 高级功能
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 基础功能选项卡内容 -->
+                <div v-if="mosdnsActiveTab === 'basic'">
+                    <!-- MosDNS 远程访问配置 -->
                 <div class="card" style="margin-top: 20px;">
                     <div class="card-header">
                         <h3 class="card-title">🔧 远程访问配置</h3>
@@ -3029,6 +3103,189 @@
                         </div>
                     </div>
                 </div>
+                </div> <!-- 结束基础功能选项卡 -->
+
+                <!-- 高级功能选项卡内容 -->
+                <div v-if="mosdnsActiveTab === 'advanced'">
+                    <!-- MosDNS 配置管理 -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h3 class="card-title">⚙️ 配置文件管理</h3>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button 
+                                v-if="isConfigManagementAvailable"
+                                class="btn btn-primary btn-sm" 
+                                @click="refreshMosDNSConfigFiles" 
+                                :disabled="mosdnsConfigLoading">
+                                {{ mosdnsConfigFiles.length > 0 ? '🔄 刷新' : '📁 扫描' }}
+                            </button>
+                            <div v-if="!isConfigManagementAvailable" 
+                                 class="lock-indicator" 
+                                 style="padding: 4px 8px; background: #fee2e2; color: #991b1b; border-radius: 4px; font-size: 12px; font-weight: 500;">
+                                🔒 仅限 MyBox 安装的服务
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- 功能不可用提示 -->
+                        <div v-if="!isConfigManagementAvailable" class="access-restricted-notice">
+                            <div style="text-align: center; padding: 40px 20px; color: #666; background: #f9fafb; border-radius: 8px; border: 2px dashed #d1d5db;">
+                                <div style="font-size: 3em; margin-bottom: 15px;">🔒</div>
+                                <h4 style="margin: 0 0 10px 0; color: #374151;">配置文件管理功能已锁定</h4>
+                                <p style="margin: 0 0 15px 0; color: #6b7280; font-size: 0.95em;">
+                                    此功能仅在 MosDNS 通过 MyBox 系统安装和管理时可用
+                                </p>
+                                <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
+                                    <p style="margin: 0; color: #92400e; font-size: 0.9em; text-align: left;">
+                                        <strong>提示：</strong><br>
+                                        • 当前 MosDNS 状态: <span style="font-weight: 600;">{{ services.mosdns ? getStatusText(services.mosdns.status) : '未知' }}</span><br>
+                                        • 如需使用配置管理功能，请通过 MyBox 安装 MosDNS 服务<br>
+                                        • 或手动管理位于 mosdns/sub_config 目录下的配置文件
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 配置管理界面（仅当服务由 MyBox 管理时显示） -->
+                        <div v-if="isConfigManagementAvailable">
+                            <!-- 目录路径配置 -->
+                            <div class="directory-config" style="margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                <div class="input-group">
+                                    <label for="mosdnsConfigDir" class="input-label" style="font-weight: 600; margin-bottom: 8px; display: block;">配置文件目录:</label>
+                                    <div class="input-with-button" style="display: flex; gap: 8px;">
+                                        <input 
+                                            type="text" 
+                                            id="mosdnsConfigDir" 
+                                            v-model="mosdnsConfigDirectory" 
+                                            placeholder="例如: /cus/mosdns/sub_config" 
+                                            class="form-input"
+                                            style="flex: 1;"
+                                            @keyup.enter="refreshMosDNSConfigFiles"
+                                        />
+                                        <button 
+                                            class="btn btn-secondary btn-sm" 
+                                            @click="refreshMosDNSConfigFiles"
+                                            :disabled="mosdnsConfigLoading"
+                                            title="重新扫描目录">
+                                            📁 扫描
+                                        </button>
+                                    </div>
+                                    <small style="color: #666; font-size: 0.85em; margin-top: 4px; display: block;">
+                                        输入要扫描的配置文件目录路径，支持绝对路径和相对路径
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="config-manager-grid" style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                            <!-- 文件列表 -->
+                            <div class="file-list-section">
+                                <div class="section-header" style="margin-bottom: 15px;">
+                                    <h4 style="margin: 0; color: #333;">📁 配置文件列表</h4>
+                                </div>
+                                
+                                <div v-if="mosdnsConfigLoading" class="loading-state" style="text-align: center; padding: 20px; color: #666;">
+                                    加载配置文件列表...
+                                </div>
+                                
+                                <div v-else-if="mosdnsConfigError" class="error-state" style="text-align: center; padding: 20px; color: #dc2626; background: #fee2e2; border-radius: 6px;">
+                                    {{ mosdnsConfigError }}
+                                </div>
+                                
+                                <div v-else-if="mosdnsConfigFiles.length === 0" class="empty-state" style="text-align: center; padding: 20px; color: #666;">
+                                    <div style="font-size: 2em; margin-bottom: 10px;">📄</div>
+                                    <p>未找到配置文件</p>
+                                </div>
+                                
+                                <div v-else class="file-list" style="max-height: 400px; overflow-y: auto;">
+                                    <div 
+                                        v-for="file in mosdnsConfigFiles" 
+                                        :key="file.name"
+                                        class="file-item"
+                                        :class="{ active: selectedMosDNSFile === file.name }"
+                                        @click="selectMosDNSConfigFile(file.name)"
+                                        style="padding: 12px; margin-bottom: 8px; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;"
+                                    >
+                                        <div class="file-info">
+                                            <div class="file-name" style="font-weight: 600; color: #1e293b; margin-bottom: 4px;">
+                                                {{ file.name }}
+                                            </div>
+                                            <div class="file-description" style="font-size: 0.9em; color: #64748b; margin-bottom: 4px;">
+                                                {{ file.description }}
+                                            </div>
+                                            <div class="file-meta" style="font-size: 0.8em; color: #94a3b8;">
+                                                大小: {{ formatBytes(file.size) }} | 修改: {{ formatDate(file.modified) }}
+                                            </div>
+                                        </div>
+                                        <div class="file-actions" style="margin-top: 8px;">
+                                            <button 
+                                                class="btn btn-danger btn-xs" 
+                                                @click.stop="deleteMosDNSConfigFile(file.name)"
+                                                :disabled="mosdnsConfigActionInProgress"
+                                                style="padding: 2px 8px; font-size: 12px;">
+                                                🗑️ 删除
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 文件编辑器 -->
+                            <div class="file-editor-section">
+                                <div class="section-header" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                                    <h4 style="margin: 0; color: #333;">
+                                        ✏️ {{ selectedMosDNSFile ? selectedMosDNSFile : '文件编辑器' }}
+                                    </h4>
+                                    <div v-if="selectedMosDNSFile" class="editor-actions" style="display: flex; gap: 8px;">
+                                        <button 
+                                            class="btn btn-warning btn-xs" 
+                                            @click="validateMosDNSConfig"
+                                            :disabled="mosdnsConfigActionInProgress || !mosdnsFileContent"
+                                            style="padding: 4px 8px; font-size: 12px;">
+                                            ✅ 验证
+                                        </button>
+                                        <button 
+                                            class="btn btn-success btn-xs" 
+                                            @click="saveMosDNSConfigFile"
+                                            :disabled="mosdnsConfigActionInProgress || !mosdnsConfigHasChanges"
+                                            style="padding: 4px 8px; font-size: 12px;">
+                                            💾 保存
+                                        </button>
+                                        <button 
+                                            class="btn btn-secondary btn-xs" 
+                                            @click="reloadMosDNSConfigFile"
+                                            :disabled="mosdnsConfigActionInProgress"
+                                            style="padding: 4px 8px; font-size: 12px;">
+                                            🔄 重载
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div v-if="mosdnsConfigStatusMessage" 
+                                     class="status-message" 
+                                     :class="mosdnsConfigStatusClass"
+                                     style="padding: 12px; border-radius: 6px; margin-bottom: 15px; font-weight: 500;">
+                                    {{ mosdnsConfigStatusMessage }}
+                                </div>
+
+                                <div v-if="!selectedMosDNSFile" class="empty-editor" style="text-align: center; padding: 60px 20px; color: #666; background: #f8fafc; border-radius: 6px; border: 2px dashed #e2e8f0;">
+                                    <div style="font-size: 3em; margin-bottom: 15px;">📝</div>
+                                    <p>请选择一个配置文件进行编辑</p>
+                                </div>
+
+                                <div v-else class="editor-container">
+                                    <textarea 
+                                        v-model="mosdnsFileContent" 
+                                        class="config-editor"
+                                        placeholder="配置文件内容..."
+                                        @input="onMosDNSContentChange"
+                                        style="width: 100%; min-height: 400px; padding: 15px; border: 2px solid #e2e8f0; border-radius: 6px; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace; font-size: 0.9em; line-height: 1.5; background: #fafafa; resize: vertical; transition: border-color 0.2s ease;"
+                                    ></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        </div> <!-- 结束配置管理界面的条件显示区域 -->
+                    </div>
+                </div>
+                </div> <!-- 结束高级功能选项卡 -->
             </div>
         </div>
 
@@ -3531,6 +3788,21 @@
                     const savedCustomMosDNSIP = ref('');
                     const savedMosDNSIPs = ref([]);
                     const currentMosDNSIP = ref('');
+
+                    // MosDNS 页面选项卡状态
+                    const mosdnsActiveTab = ref('basic');
+
+                    // MosDNS 配置管理状态
+                    const mosdnsConfigFiles = ref([]);
+                    const selectedMosDNSFile = ref('');
+                    const mosdnsFileContent = ref('');
+                    const mosdnsOriginalContent = ref('');
+                    const mosdnsConfigLoading = ref(false);
+                    const mosdnsConfigError = ref('');
+                    const mosdnsConfigActionInProgress = ref(false);
+                    const mosdnsConfigStatusMessage = ref('');
+                    const mosdnsConfigStatusType = ref('');
+                    const mosdnsConfigDirectory = ref('/cus/mosdns/sub_config');
                     
                     // Sing-Box 配置状态
                     const singboxConfig = ref(null);
@@ -3669,6 +3941,58 @@
                                savedMosDNSIPs.value.length > 0;
                     });
 
+                    // MosDNS 配置管理计算属性
+                    const mosdnsConfigHasChanges = computed(() => {
+                        return mosdnsFileContent.value !== mosdnsOriginalContent.value;
+                    });
+
+                    const mosdnsConfigStatusClass = computed(() => {
+                        switch (mosdnsConfigStatusType.value) {
+                            case 'success': return 'status-success';
+                            case 'error': return 'status-error';
+                            case 'warning': return 'status-warning';
+                            default: return '';
+                        }
+                    });
+
+                    // 检查 MosDNS 是否由 MyBox 管理
+                    const isMosDNSManagedByMyBox = computed(() => {
+                        // 只有当 MosDNS 服务状态不是"未安装"(2)时，才认为是由 MyBox 管理
+                        return services.mosdns && services.mosdns.status !== 2;
+                    });
+
+                    // 配置管理功能是否可用
+                    const isConfigManagementAvailable = computed(() => {
+                        return isMosDNSManagedByMyBox.value;
+                    });
+
+                    // 监听 MosDNS 状态变化，自动加载配置文件
+                    watch(() => services.mosdns?.status, (newStatus, oldStatus) => {
+                        // 在当前页面是 MosDNS 且在高级功能选项卡且满足以下条件之一时自动加载：
+                        // 1. 状态从未安装变为已安装
+                        // 2. 首次获取到已安装状态且配置文件列表为空
+                        if (currentPage.value === 'mosdns' && 
+                            mosdnsActiveTab.value === 'advanced' && 
+                            newStatus !== 2) {
+                            if ((oldStatus === 2 && newStatus !== 2) || 
+                                (oldStatus === undefined && mosdnsConfigFiles.value.length === 0)) {
+                                refreshMosDNSConfigFiles();
+                            }
+                        }
+                    });
+
+                    // 监听选项卡切换，当切换到高级功能时自动加载配置文件
+                    watch(() => mosdnsActiveTab.value, (newTab) => {
+                        if (newTab === 'advanced' && 
+                            currentPage.value === 'mosdns' && 
+                            services.mosdns && 
+                            services.mosdns.status !== 2 && 
+                            mosdnsConfigFiles.value.length === 0) {
+                            refreshMosDNSConfigFiles();
+                        }
+                    });
+
+
                     // 获取当前使用的IP地址
                     const getCurrentMosDNSIP = () => {
                         // 如果有设置当前IP，使用当前IP
@@ -3700,6 +4024,186 @@
                     // 取消输入MosDNS IP
                     const cancelCustomMosDNSIP = () => {
                         customMosDNSIP.value = '';
+                    };
+
+                    // MosDNS 配置管理方法
+                    const refreshMosDNSConfigFiles = async () => {
+                        mosdnsConfigLoading.value = true;
+                        mosdnsConfigError.value = '';
+                        
+                        try {
+                            const url = `/api/config/mosdns/sub-configs?dir=${encodeURIComponent(mosdnsConfigDirectory.value)}`;
+                            const response = await fetch(url);
+                            if (response.ok) {
+                                mosdnsConfigFiles.value = await response.json();
+                            } else {
+                                const error = await response.json();
+                                mosdnsConfigError.value = error.error || '获取配置文件列表失败';
+                            }
+                        } catch (error) {
+                            console.error('获取MosDNS配置文件列表失败:', error);
+                            mosdnsConfigError.value = '网络请求失败';
+                        } finally {
+                            mosdnsConfigLoading.value = false;
+                        }
+                    };
+
+                    const selectMosDNSConfigFile = async (filename) => {
+                        if (selectedMosDNSFile.value === filename) return;
+                        
+                        selectedMosDNSFile.value = filename;
+                        mosdnsConfigStatusMessage.value = '';
+                        
+                        try {
+                            const url = `/api/config/mosdns/sub-configs/${encodeURIComponent(filename)}?dir=${encodeURIComponent(mosdnsConfigDirectory.value)}`;
+                            const response = await fetch(url);
+                            if (response.ok) {
+                                const data = await response.json();
+                                mosdnsFileContent.value = data.content;
+                                mosdnsOriginalContent.value = data.content;
+                            } else {
+                                const error = await response.json();
+                                mosdnsConfigStatusMessage.value = error.error || '读取文件失败';
+                                mosdnsConfigStatusType.value = 'error';
+                            }
+                        } catch (error) {
+                            console.error('读取MosDNS配置文件失败:', error);
+                            mosdnsConfigStatusMessage.value = '网络请求失败';
+                            mosdnsConfigStatusType.value = 'error';
+                        }
+                    };
+
+                    const onMosDNSContentChange = () => {
+                        // 清除状态消息
+                        mosdnsConfigStatusMessage.value = '';
+                    };
+
+                    const validateMosDNSConfig = async () => {
+                        if (!selectedMosDNSFile.value || !mosdnsFileContent.value) return;
+                        
+                        mosdnsConfigActionInProgress.value = true;
+                        
+                        try {
+                            const url = `/api/config/mosdns/sub-configs/${encodeURIComponent(selectedMosDNSFile.value)}/validate?dir=${encodeURIComponent(mosdnsConfigDirectory.value)}`;
+                            const response = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ content: mosdnsFileContent.value })
+                            });
+                            
+                            if (response.ok) {
+                                mosdnsConfigStatusMessage.value = '配置文件格式验证通过';
+                                mosdnsConfigStatusType.value = 'success';
+                            } else {
+                                const error = await response.json();
+                                mosdnsConfigStatusMessage.value = error.error || '配置验证失败';
+                                mosdnsConfigStatusType.value = 'error';
+                            }
+                        } catch (error) {
+                            console.error('验证MosDNS配置失败:', error);
+                            mosdnsConfigStatusMessage.value = '网络请求失败';
+                            mosdnsConfigStatusType.value = 'error';
+                        } finally {
+                            mosdnsConfigActionInProgress.value = false;
+                        }
+                    };
+
+                    const saveMosDNSConfigFile = async () => {
+                        if (!selectedMosDNSFile.value || !mosdnsConfigHasChanges.value) return;
+                        
+                        mosdnsConfigActionInProgress.value = true;
+                        
+                        try {
+                            const url = `/api/config/mosdns/sub-configs/${encodeURIComponent(selectedMosDNSFile.value)}?dir=${encodeURIComponent(mosdnsConfigDirectory.value)}`;
+                            const response = await fetch(url, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ content: mosdnsFileContent.value })
+                            });
+                            
+                            if (response.ok) {
+                                mosdnsOriginalContent.value = mosdnsFileContent.value;
+                                mosdnsConfigStatusMessage.value = '配置文件保存成功';
+                                mosdnsConfigStatusType.value = 'success';
+                                // 刷新文件列表
+                                await refreshMosDNSConfigFiles();
+                            } else {
+                                const error = await response.json();
+                                mosdnsConfigStatusMessage.value = error.error || '保存失败';
+                                mosdnsConfigStatusType.value = 'error';
+                            }
+                        } catch (error) {
+                            console.error('保存MosDNS配置文件失败:', error);
+                            mosdnsConfigStatusMessage.value = '网络请求失败';
+                            mosdnsConfigStatusType.value = 'error';
+                        } finally {
+                            mosdnsConfigActionInProgress.value = false;
+                        }
+                    };
+
+                    const reloadMosDNSConfigFile = async () => {
+                        if (!selectedMosDNSFile.value) return;
+                        
+                        await selectMosDNSConfigFile(selectedMosDNSFile.value);
+                        mosdnsConfigStatusMessage.value = '配置文件已重新加载';
+                        mosdnsConfigStatusType.value = 'success';
+                    };
+
+                    const deleteMosDNSConfigFile = async (filename) => {
+                        if (!confirm(`确定要删除配置文件 "${filename}" 吗？此操作不可撤销。`)) return;
+                        
+                        mosdnsConfigActionInProgress.value = true;
+                        
+                        try {
+                            const url = `/api/config/mosdns/sub-configs/${encodeURIComponent(filename)}?dir=${encodeURIComponent(mosdnsConfigDirectory.value)}`;
+                            const response = await fetch(url, {
+                                method: 'DELETE'
+                            });
+                            
+                            if (response.ok) {
+                                mosdnsConfigStatusMessage.value = `配置文件 "${filename}" 删除成功`;
+                                mosdnsConfigStatusType.value = 'success';
+                                
+                                // 如果删除的是当前选中的文件，清空编辑器
+                                if (selectedMosDNSFile.value === filename) {
+                                    selectedMosDNSFile.value = '';
+                                    mosdnsFileContent.value = '';
+                                    mosdnsOriginalContent.value = '';
+                                }
+                                
+                                // 刷新文件列表
+                                await refreshMosDNSConfigFiles();
+                            } else {
+                                const error = await response.json();
+                                mosdnsConfigStatusMessage.value = error.error || '删除失败';
+                                mosdnsConfigStatusType.value = 'error';
+                            }
+                        } catch (error) {
+                            console.error('删除MosDNS配置文件失败:', error);
+                            mosdnsConfigStatusMessage.value = '网络请求失败';
+                            mosdnsConfigStatusType.value = 'error';
+                        } finally {
+                            mosdnsConfigActionInProgress.value = false;
+                        }
+                    };
+
+                    // 格式化字节大小
+                    const formatBytes = (bytes) => {
+                        if (bytes === 0) return '0 B';
+                        const k = 1024;
+                        const sizes = ['B', 'KB', 'MB', 'GB'];
+                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                    };
+
+                    // 格式化日期
+                    const formatDate = (dateString) => {
+                        const date = new Date(dateString);
+                        return date.toLocaleString('zh-CN');
                     };
 
                     // 保存自定义MosDNS IP
@@ -4662,11 +5166,18 @@
                         stopDashboardRefresh();
                         
                         // 获取一次服务状态（用于管理页面显示）
-                        fetchServices();
+                        const initPageData = async () => {
+                            await fetchServices();
+                            
+                            if (serviceName === 'sing-box') {
+                                fetchSingBoxConfig();
+                            } else if (serviceName === 'mosdns') {
+                                // 重置选项卡到基础功能
+                                mosdnsActiveTab.value = 'basic';
+                            }
+                        };
                         
-                        if (serviceName === 'sing-box') {
-                            fetchSingBoxConfig();
-                        }
+                        initPageData();
                     };
 
                     const controlService = async (serviceName, action) => {
@@ -5839,6 +6350,34 @@
                         removeMosDNSIP,
                         clearAllMosDNSIPs,
                         clearCustomMosDNSIP,
+
+                        // MosDNS 页面状态
+                        mosdnsActiveTab,
+
+                        // MosDNS 配置管理状态
+                        mosdnsConfigFiles,
+                        selectedMosDNSFile,
+                        mosdnsFileContent,
+                        mosdnsConfigLoading,
+                        mosdnsConfigError,
+                        mosdnsConfigActionInProgress,
+                        mosdnsConfigStatusMessage,
+                        mosdnsConfigStatusClass,
+                        mosdnsConfigHasChanges,
+                        mosdnsConfigDirectory,
+                        isMosDNSManagedByMyBox,
+                        isConfigManagementAvailable,
+
+                        // MosDNS 配置管理方法
+                        refreshMosDNSConfigFiles,
+                        selectMosDNSConfigFile,
+                        onMosDNSContentChange,
+                        validateMosDNSConfig,
+                        saveMosDNSConfigFile,
+                        reloadMosDNSConfigFile,
+                        deleteMosDNSConfigFile,
+                        formatBytes,
+                        formatDate,
                         
                         // 服务控制功能
                         controlService

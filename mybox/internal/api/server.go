@@ -132,6 +132,13 @@ func (s *Server) setupRoutes() {
 				mosdns.GET("/raw-config", s.getMosDNSRawConfig)
 				mosdns.GET("/parsed-config", s.getMosDNSParsedConfig)
 				mosdns.PUT("/parsed-config", s.updateMosDNSParsedConfig)
+				
+				// 新增 sub_config 目录管理接口
+				mosdns.GET("/sub-configs", s.getMosDNSSubConfigs)
+				mosdns.GET("/sub-configs/:filename", s.getMosDNSSubConfig)
+				mosdns.PUT("/sub-configs/:filename", s.updateMosDNSSubConfig)
+				mosdns.POST("/sub-configs/:filename/validate", s.validateMosDNSSubConfig)
+				mosdns.DELETE("/sub-configs/:filename", s.deleteMosDNSSubConfig)
 			}
 			
 			// 通用配置接口（通配符路由放最后）
@@ -209,7 +216,7 @@ func (s *Server) healthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "ok",
 		"timestamp": time.Now(),
-		"version":   "1.0.0",
+		"version":   "1.1.0",
 	})
 }
 
@@ -1637,4 +1644,202 @@ func (s *Server) updateSingBoxFullConfig(c *gin.Context) {
 		"path":    configPath,
 		"size":    len(configData),
 	})
+}
+
+// getMosDNSSubConfigs 获取 MosDNS sub_config 目录中的所有配置文件列表
+func (s *Server) getMosDNSSubConfigs(c *gin.Context) {
+	// 验证 MosDNS 是否由 MyBox 管理
+	if !s.isMosDNSManagedByMyBox() {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "配置文件管理功能仅在 MosDNS 通过 MyBox 安装时可用",
+		})
+		return
+	}
+	
+	// 支持通过查询参数指定目录路径
+	subConfigDir := c.DefaultQuery("dir", "/cus/mosdns/sub_config")
+	
+	files, err := s.configManager.ListMosDNSSubConfigs(subConfigDir)
+	if err != nil {
+		utils.Logger.Errorf("获取MosDNS子配置文件列表失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("获取配置文件失败: %v", err),
+		})
+		return
+	}
+	
+	// 直接返回文件列表数组
+	c.JSON(http.StatusOK, files)
+}
+
+// getMosDNSSubConfig 获取指定的 MosDNS sub_config 文件内容
+func (s *Server) getMosDNSSubConfig(c *gin.Context) {
+	// 验证 MosDNS 是否由 MyBox 管理
+	if !s.isMosDNSManagedByMyBox() {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "配置文件管理功能仅在 MosDNS 通过 MyBox 安装时可用",
+		})
+		return
+	}
+	
+	filename := c.Param("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "文件名不能为空",
+		})
+		return
+	}
+	
+	// 支持通过查询参数指定目录路径
+	subConfigDir := c.DefaultQuery("dir", "/cus/mosdns/sub_config")
+	
+	content, err := s.configManager.GetMosDNSSubConfig(filename, subConfigDir)
+	if err != nil {
+		utils.Logger.Errorf("获取MosDNS子配置文件失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("获取配置文件失败: %v", err),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"filename": filename,
+		"content": content,
+	})
+}
+
+// updateMosDNSSubConfig 更新指定的 MosDNS sub_config 文件
+func (s *Server) updateMosDNSSubConfig(c *gin.Context) {
+	// 验证 MosDNS 是否由 MyBox 管理
+	if !s.isMosDNSManagedByMyBox() {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "配置文件管理功能仅在 MosDNS 通过 MyBox 安装时可用",
+		})
+		return
+	}
+	
+	filename := c.Param("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "文件名不能为空",
+		})
+		return
+	}
+	
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("请求参数错误: %v", err),
+		})
+		return
+	}
+	
+	// 支持通过查询参数指定目录路径
+	subConfigDir := c.DefaultQuery("dir", "/cus/mosdns/sub_config")
+	
+	if err := s.configManager.UpdateMosDNSSubConfig(filename, req.Content, subConfigDir); err != nil {
+		utils.Logger.Errorf("更新MosDNS子配置文件失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("更新配置文件失败: %v", err),
+		})
+		return
+	}
+	
+	utils.Logger.Infof("MosDNS子配置文件 %s 更新成功", filename)
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("配置文件 %s 更新成功", filename),
+	})
+}
+
+// validateMosDNSSubConfig 验证 MosDNS sub_config 文件
+func (s *Server) validateMosDNSSubConfig(c *gin.Context) {
+	// 验证 MosDNS 是否由 MyBox 管理
+	if !s.isMosDNSManagedByMyBox() {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "配置文件管理功能仅在 MosDNS 通过 MyBox 安装时可用",
+		})
+		return
+	}
+	
+	filename := c.Param("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "文件名不能为空",
+		})
+		return
+	}
+	
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("请求参数错误: %v", err),
+		})
+		return
+	}
+	
+	// 支持通过查询参数指定目录路径
+	subConfigDir := c.DefaultQuery("dir", "/cus/mosdns/sub_config")
+	
+	if err := s.configManager.ValidateMosDNSSubConfig(filename, req.Content, subConfigDir); err != nil {
+		utils.Logger.Errorf("MosDNS子配置文件验证失败: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"valid": false,
+			"error": err.Error(),
+		})
+		return
+	}
+	
+	utils.Logger.Infof("MosDNS子配置文件 %s 验证成功", filename)
+	c.JSON(http.StatusOK, gin.H{
+		"valid": true,
+		"message": "配置验证通过",
+	})
+}
+
+// deleteMosDNSSubConfig 删除指定的 MosDNS sub_config 文件
+func (s *Server) deleteMosDNSSubConfig(c *gin.Context) {
+	// 验证 MosDNS 是否由 MyBox 管理
+	if !s.isMosDNSManagedByMyBox() {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "配置文件管理功能仅在 MosDNS 通过 MyBox 安装时可用",
+		})
+		return
+	}
+	
+	filename := c.Param("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "文件名不能为空",
+		})
+		return
+	}
+	
+	// 支持通过查询参数指定目录路径
+	subConfigDir := c.DefaultQuery("dir", "/cus/mosdns/sub_config")
+	
+	if err := s.configManager.DeleteMosDNSSubConfig(filename, subConfigDir); err != nil {
+		utils.Logger.Errorf("删除MosDNS子配置文件失败: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("删除配置文件失败: %v", err),
+		})
+		return
+	}
+	
+	utils.Logger.Infof("MosDNS子配置文件 %s 删除成功", filename)
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("配置文件 %s 删除成功", filename),
+	})
+}
+
+// isMosDNSManagedByMyBox 检查 MosDNS 是否由 MyBox 管理
+func (s *Server) isMosDNSManagedByMyBox() bool {
+	status := s.serviceManager.GetServiceStatus("mosdns")
+	// 状态 2 表示未安装，只有非未安装状态才认为是由 MyBox 管理
+	return status != 2
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v3"
 	"github.com/herozmy/StoreHouse/mybox/internal/utils"
 )
 
@@ -666,6 +667,181 @@ func (m *Manager) GetMosDNSRemoteDNS() (map[string]interface{}, error) {
 	}
 	
 	return nil, fmt.Errorf("在配置文件中未找到合适的远程DNS配置")
+}
+
+// ListMosDNSSubConfigs 列出 MosDNS sub_config 目录中的所有配置文件
+func (m *Manager) ListMosDNSSubConfigs(subConfigDir string) ([]map[string]interface{}, error) {
+	if !utils.FileExists(subConfigDir) {
+		return nil, fmt.Errorf("配置目录不存在: %s", subConfigDir)
+	}
+	
+	files, err := os.ReadDir(subConfigDir)
+	if err != nil {
+		return nil, fmt.Errorf("读取目录失败: %v", err)
+	}
+	
+	var configFiles []map[string]interface{}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		
+		// 只处理 .yaml 文件
+		if !strings.HasSuffix(file.Name(), ".yaml") {
+			continue
+		}
+		
+		filePath := filepath.Join(subConfigDir, file.Name())
+		fileInfo, err := file.Info()
+		if err != nil {
+			utils.Logger.Warnf("获取文件信息失败 %s: %v", file.Name(), err)
+			continue
+		}
+		
+		// 读取文件内容以获取描述信息
+		description := ""
+		if content, err := os.ReadFile(filePath); err == nil {
+			lines := strings.Split(string(content), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "#") && len(line) > 1 {
+					description = strings.TrimSpace(line[1:])
+					break
+				}
+			}
+		}
+		
+		if description == "" {
+			description = "MosDNS 配置文件"
+		}
+		
+		configFiles = append(configFiles, map[string]interface{}{
+			"name":        file.Name(),
+			"size":        fileInfo.Size(),
+			"modified":    fileInfo.ModTime(),
+			"description": description,
+		})
+	}
+	
+	utils.Logger.Infof("找到 %d 个 MosDNS 子配置文件", len(configFiles))
+	return configFiles, nil
+}
+
+// GetMosDNSSubConfig 获取指定的 MosDNS sub_config 文件内容
+func (m *Manager) GetMosDNSSubConfig(filename, subConfigDir string) (string, error) {
+	filePath := filepath.Join(subConfigDir, filename)
+	
+	// 安全检查：确保文件名不包含路径遍历
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		return "", fmt.Errorf("无效的文件名")
+	}
+	
+	// 确保文件是 .yaml 文件
+	if !strings.HasSuffix(filename, ".yaml") {
+		return "", fmt.Errorf("只支持 .yaml 文件")
+	}
+	
+	if !utils.FileExists(filePath) {
+		return "", fmt.Errorf("配置文件不存在: %s", filename)
+	}
+	
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("读取配置文件失败: %v", err)
+	}
+	
+	utils.Logger.Debugf("成功读取 MosDNS 子配置文件: %s", filename)
+	return string(content), nil
+}
+
+// UpdateMosDNSSubConfig 更新指定的 MosDNS sub_config 文件
+func (m *Manager) UpdateMosDNSSubConfig(filename, content, subConfigDir string) error {
+	filePath := filepath.Join(subConfigDir, filename)
+	
+	// 安全检查
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		return fmt.Errorf("无效的文件名")
+	}
+	
+	if !strings.HasSuffix(filename, ".yaml") {
+		return fmt.Errorf("只支持 .yaml 文件")
+	}
+	
+	// 创建目录（如果不存在）
+	if err := os.MkdirAll(subConfigDir, 0755); err != nil {
+		return fmt.Errorf("创建配置目录失败: %v", err)
+	}
+	
+	// 备份原文件（如果存在）
+	if utils.FileExists(filePath) {
+		backupPath := filePath + ".backup." + time.Now().Format("20060102-150405")
+		if err := copyFile(filePath, backupPath); err != nil {
+			utils.Logger.Warnf("备份文件失败: %v", err)
+		} else {
+			utils.Logger.Infof("已备份原文件到: %s", backupPath)
+		}
+	}
+	
+	// 写入新内容
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("写入配置文件失败: %v", err)
+	}
+	
+	utils.Logger.Infof("成功更新 MosDNS 子配置文件: %s", filename)
+	return nil
+}
+
+// ValidateMosDNSSubConfig 验证 MosDNS sub_config 文件内容
+func (m *Manager) ValidateMosDNSSubConfig(filename, content, subConfigDir string) error {
+	// 基本的 YAML 格式验证
+	var yamlData interface{}
+	if err := yaml.Unmarshal([]byte(content), &yamlData); err != nil {
+		return fmt.Errorf("YAML 格式错误: %v", err)
+	}
+	
+	// 检查是否包含 plugins 字段（MosDNS 配置的基本结构）
+	if yamlMap, ok := yamlData.(map[string]interface{}); ok {
+		if _, hasPlugins := yamlMap["plugins"]; !hasPlugins {
+			return fmt.Errorf("配置文件缺少必需的 'plugins' 字段")
+		}
+	}
+	
+	utils.Logger.Debugf("MosDNS 子配置文件 %s 验证通过", filename)
+	return nil
+}
+
+// DeleteMosDNSSubConfig 删除指定的 MosDNS sub_config 文件
+func (m *Manager) DeleteMosDNSSubConfig(filename, subConfigDir string) error {
+	filePath := filepath.Join(subConfigDir, filename)
+	
+	// 安全检查
+	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		return fmt.Errorf("无效的文件名")
+	}
+	
+	if !strings.HasSuffix(filename, ".yaml") {
+		return fmt.Errorf("只支持 .yaml 文件")
+	}
+	
+	if !utils.FileExists(filePath) {
+		return fmt.Errorf("配置文件不存在: %s", filename)
+	}
+	
+	// 创建备份
+	backupPath := filePath + ".deleted." + time.Now().Format("20060102-150405")
+	if err := copyFile(filePath, backupPath); err != nil {
+		utils.Logger.Warnf("备份文件失败: %v", err)
+	} else {
+		utils.Logger.Infof("已备份删除的文件到: %s", backupPath)
+	}
+	
+	// 删除文件
+	if err := os.Remove(filePath); err != nil {
+		return fmt.Errorf("删除配置文件失败: %v", err)
+	}
+	
+	utils.Logger.Infof("成功删除 MosDNS 子配置文件: %s", filename)
+	return nil
 }
 
 // UpdateMosDNSRemoteDNS 更新MosDNS远程DNS配置
