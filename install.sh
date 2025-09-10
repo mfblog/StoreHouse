@@ -5,7 +5,7 @@
 # 版本: 1.0
 # 日期: 2025-04-13
 ########################################################
-
+#1
 ################################################# 颜色定义
 green_text="\033[32m"
 yellow_text="\033[33m"
@@ -26,14 +26,14 @@ yellow() {
 ################################################# 变量定义
 local_ip=$(hostname -I | awk '{print $1}')
 url="https://raw.githubusercontent.com/herozmy/StoreHouse/latest"
-#url="https://d.herozmy.com/"
-#cn_url='https://fastly.jsdelivr.net/gh/herozmy/StoreHouse@latest'
+
 
     check_core_status() {
        # echo -e "\n${yellow}检查服务状态...${reset}"
         #echo -e "----------------------------------------"
         # 查找已安装的程序
-        found_files=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" -o -name "mosdns"  -o -name "unbound"  -o -name "redis-server" \))
+        found_files=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" -o -name "mosdns" -o -name "unbound"  -o -name "redis-server" \))
+
         
         if [ -z "$found_files" ]; then
             return
@@ -78,25 +78,25 @@ url="https://raw.githubusercontent.com/herozmy/StoreHouse/latest"
 
 download(){
 ### 参考shellcrash 所写函数
-	#参数【$1】代表下载目录，【$2】代表在线地址
-	#参数【$3】代表输出显示，【$4】不启用重定向
-	if curl --version >/dev/null 2>&1; then
-		[ "$3" = "echooff" ] && progress='-s' || progress='-#'
-		[ -z "$4" ] && redirect='-L' || redirect=''
-		result=$(curl -w %{http_code} --connect-timeout 5 $progress $redirect -ko $1 $2)
-		[ -n "$(echo $result | grep -e ^2)" ] && result="200"
-	else
-		if wget --version >/dev/null 2>&1; then
-			[ "$3" = "echooff" ] && progress='-q' || progress='-q --show-progress'
-			[ "$4" = "rediroff" ] && redirect='--max-redirect=0' || redirect=''
-			certificate='--no-check-certificate'
-			timeout='--timeout=3'
-		fi
-		[ "$3" = "echoon" ] && progress=''
-		[ "$3" = "echooff" ] && progress='-q'
-		wget $progress $redirect $certificate $timeout -O $1 $2
-		[ $? -eq 0 ] && result="200"
-	fi
+        #参数【$1】代表下载目录，【$2】代表在线地址
+        #参数【$3】代表输出显示，【$4】不启用重定向
+        if curl --version >/dev/null 2>&1; then
+                [ "$3" = "echooff" ] && progress='-s' || progress='-#'
+                [ -z "$4" ] && redirect='-L' || redirect=''
+                result=$(curl -w %{http_code} --connect-timeout 5 $progress $redirect -ko $1 $2)
+                [ -n "$(echo $result | grep -e ^2)" ] && result="200"
+        else
+                if wget --version >/dev/null 2>&1; then
+                        [ "$3" = "echooff" ] && progress='-q' || progress='-q --show-progress'
+                        [ "$4" = "rediroff" ] && redirect='--max-redirect=0' || redirect=''
+                        certificate='--no-check-certificate'
+                        timeout='--timeout=3'
+                fi
+                [ "$3" = "echoon" ] && progress=''
+                [ "$3" = "echooff" ] && progress='-q'
+                wget $progress $redirect $certificate $timeout -O $1 $2
+                [ $? -eq 0 ] && result="200"
+        fi
 }
 
 error_download(){
@@ -105,13 +105,13 @@ error_download(){
 get_script(){
     # 下载脚本
     download /tmp/StoreHouse.tar.gz $url/bin/StoreHouse.tar.gz
-	if [ "$result" != "200" ]; then
-		echo -e "${red_text}文件下载失败！${reset}"
-		error_download
-		exit 1
-	else
+        if [ "$result" != "200" ]; then
+                echo -e "${red_text}文件下载失败！${reset}"
+                error_download
+                exit 1
+        else
     # 解压脚本
-	mkdir -p $DIRPATH
+        mkdir -p $DIRPATH
 # 解压安装包
 if ! tar -zxvf "/tmp/StoreHouse.tar.gz" -C "$DIRPATH" >/dev/null 2>&1; then
     echo -e "${red_text}错误：文件解压失败！可能原因：${reset}"
@@ -130,7 +130,7 @@ quick(){
             . $DIRPATH/menu.sh
 EOF
 
-	        cp -r $DIRPATH/proxytool.sh /usr/bin/proxytool
+                cp -r $DIRPATH/proxytool.sh /usr/bin/proxytool
             chmod +x /usr/bin/proxytool /usr/bin/menu
         }
 }
@@ -140,10 +140,11 @@ install(){
     get_script
     echo -e "${green_text}安装完成！${reset}"
     quick
-	echo -----------------------------------------------
-	echo -e "\033[33m输入\033[30;47m menu \033[0;33m命令进入菜单页面！！！\033[0m"
+        echo -----------------------------------------------
+        echo -e "\033[33m输入\033[30;47m menu \033[0;33m命令进入菜单页面！！！\033[0m"
     echo -e "${green_text}后期直接执行${reset} ${yellow_text}menu${reset} ${green_text}更新相关脚本，无需重新安装！！！${reset}"
-	echo ----------------------------------------------- 
+                                                                                     
+        echo ----------------------------------------------- 
     echo -e "是否直接进入安装菜单？y确认 n忽略"
     read -p "请输入(y/n): " choice
     if [ "$choice" = "y" ]; then
@@ -176,4 +177,3 @@ if [ -d "$DIRPATH" ]; then
 else
     install
 fi
-

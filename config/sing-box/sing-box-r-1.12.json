@@ -413,11 +413,11 @@
         "default_mark": 1,
         "rules": [
             {
-                "inbound": "in-dns",
-                "action": "hijack-dns"
+                "action": "sniff"
             },
             {
-                "action": "sniff"
+                "inbound": "in-dns",
+                "action": "hijack-dns"
             },
             {
                 "ip_cidr": [

@@ -35,7 +35,7 @@ main() {
     # 创建备份根目录
     mkdir -p "$BAK_ROOT"
 
-    stop_and_disable_service "$service_name"
+    #stop_and_disable_service "$service_name"
     backup_files "$service_name" "$core_file" "$config_dir" "$timestamp"
     cleanup_files "$core_file" "$service_name"
 

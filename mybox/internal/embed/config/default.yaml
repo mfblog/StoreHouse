@@ -1,0 +1,39 @@
+# MyBox 默认配置文件
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  enable_cors: true
+
+logging:
+  level: "info"
+  file: "/var/log/mybox.log"
+  max_size: 100
+  max_backups: 3
+
+services:
+  sing-box:
+    binary: "/usr/local/bin/sing-box"
+    config: "/etc/sing-box/config.json"
+    service: "sing-box"
+    auto_restart: true
+    restart_delay: 30
+    log_path: "/var/log/sing-box.log"
+    
+  mosdns:
+    binary: "/usr/local/bin/mosdns"
+    config: "/etc/mosdns/config.yaml"
+    service: "mosdns"
+    auto_restart: true
+    restart_delay: 30
+    log_path: "/var/log/mosdns.log"
+
+monitor:
+  interval: "5s"
+  timeout: "10s"
+  enable_metrics: true
+
+backup:
+  enable: true
+  directory: "/var/backups/mybox"
+  max_backups: 10

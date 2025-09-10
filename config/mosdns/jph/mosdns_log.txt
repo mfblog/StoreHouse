@@ -1,0 +1,212 @@
+
+20250829
+
+保存客户端别名至服务端功能添加
+关闭mosdns
+1：替换2进制
+2：修改/cus/mosdns/config_custom.yaml  在forward_2.yaml后面添加webinfo配置
+  - "/cus/mosdns/sub_config/forward_2.yaml"                 #打包主分流逻辑供调用
+  - "/cus/mosdns/sub_config/webinfo.yaml"                 #前端信息与配置存储
+3：添加文件并修改权限  /cus/mosdns/sub_config/webinfo.yaml  
+4：添加文件和文件夹并修改权限  /cus/mosdns/webinfo/clientname.json 
+5：启动mosdns
+
+
+2025年7月7日更新内容
+此次更新太多，不再列更改点。
+
+2025年7月7日更新内容
+1：替换2进制，集成J佬最新优化UI，大幅提升后端API性能，提升前端响应速度，支持精确搜索。
+2：上次更新忘记说要打开审计日志开关了      enable_audit: true
+#对外服务器
+  - tag: udp_all
+    type: udp_server
+    args:
+      entry: sequence_6666
+      listen: ":53"
+      enable_audit: true
+
+  - tag: tcp_all
+    type: tcp_server
+    args:
+      entry: sequence_6666
+      listen: ":53"
+      idle_timeout: 720
+      enable_audit: true
+3：/cus/mosdns/sub_config/forward_1.yaml中
+  - tag: sequence_fakeip
+    type: sequence
+    args:
+      - exec: drop_resp      #丢弃用于标记的blackhole ip
+      - exec: $forward_fakeip
+整个替换为
+#单次请求fakeip
+  - tag: sequence_fakeip_single
+    type: sequence
+    args:
+      - exec: drop_resp      #丢弃用于标记的blackhole ip
+      - exec: $forward_fakeip
+
+#20ms内不回应fakeip，自动再次请求
+  - tag: sequence_fakeip
+    type: fallback
+    args:
+      primary: sequence_fakeip_single
+      secondary: sequence_fakeip_single
+      threshold: 20
+      always_standby: false
+
+
+2025年7月3日更新内容
+1：替换2进制。
+2：/cus/mosdns/sub_config/forward_local.yaml中，upstream_query_timeout设置为500
+3：/cus/mosdns/config_custom.yaml中，主服务端口6666添加enable_audit: true选项以增加日志输出功能。
+#对外服务器
+  - tag: udp_all
+    type: udp_server
+    args:
+      entry: sequence_6666
+      listen: 127.0.0.1:6666
+      enable_audit: true
+
+  - tag: tcp_all
+    type: tcp_server
+    args:
+      entry: sequence_6666
+      listen: 127.0.0.1:6666
+      enable_audit: true
+      idle_timeout: 720
+4：可以通过 http://mosip:port/log 路径来查看日志了。
+使用方法：
+1)日志存储在内存中，会增加内存占用，重启就没了，防止爆磁盘。
+2)默认存10000条，最高可设置10万条，输入条目自己点设置按钮，到了条目数会覆盖最旧的条目。
+3)日志默认是关闭状态，重启mosdns后需要手动开启。
+
+
+2025年6月30日更新内容，
+新功能：
+1：数据查看部分添加请求排行按钮，按域名请求数量从高到低排列，优化数据查看其它按钮显示。
+2：添加日志抓取和获取日志按钮，临时抓取指定秒数的debug日志并做分析，使用方法，先点击日志抓取按钮，等指定秒数后点击获取日志按钮，滚动到页面最下方查看。
+3：给mosdns添加更为详细的日志输出，以支持新功能2。
+
+需要配置修改/二进制更新
+建议web ui清除分流规则
+1：添加文件/cus/mosdns/gen/top_domains.txt
+2：/cus/mosdns/config_custom.yaml 添加- exec: $top_domains
+  - tag: sequence_6666
+    type: sequence
+    args:
+      - exec: $top_domains
+      - matches:    #阻止SOA PTR HTTPS类型的dns查询
+3：/cus/mosdns/sub_config/domain_output.yaml 添加top_domains插件定义
+plugins:
+#域名排行
+  - tag: top_domains
+    type: domain_output
+    args:
+      file_stat: /cus/mosdns/gen/top_domains.txt
+      max_entries: 1000
+      dump_interval: 36000
+4：添加4K分辨率的UI单独路径 http://mosdnsip:9099/4k  (还未适配新功能）
+
+
+
+2025年6月20日更新内容
+1：/cus/mosdns/sub_config/switch.yaml重新部署，现在重启mosdns开关状态可以保存了。
+2：/cus/mosdns/config_custom.yaml中添加
+  - tag: sequence_6666
+    type: sequence
+    args:
+###添加部分
+      - matches:    #阻止SOA PTR HTTPS类型的dns查询
+        - switch5 'A'
+        - "qtype 6 12 65"
+        exec: reject 0
+3：二进制更新，web ui添加开关，同步J佬更新
+4：新增加规则文件switch1.txt-switch9.txt，在rule文件夹内
+5：覆盖/cus/mosdns/sub_config/domain_output.yaml  不用重启mosdns，生成的分流规则屏蔽规则会在写入本地文件（web ui保存分流规则也可以）时自动生效。
+
+感谢J佬提供UI，没有J佬，这几天加的功能一个都不会有........
+感谢英雄佬提供脚本，小白福音！
+感谢各位测试提供反馈的各位兄弟。
+
+原教程
+
+注意事项
+1：必须使用文件夹中的二进制.
+2：不要更换目录，需要自己重新修改配置文件中的目录，不建议。
+3：启动前杀掉自己的mosdns，防止端口冲突。
+4：如果启动不了，可以手动删除配置文件中所有的中文注释再尝试。
+5：有问题使用前台运行命令看报错 /cus/bin/mosdns start -c /cus/mosdns/config_custom.yaml
+
+使用方法
+1：把mosdns整个文件夹放入/cus/目录下，把mosdns二进制放入/cus/bin/下，给权限。
+2：在sub_config文件夹下的cache.yaml中，把28.0.0.0/8和fc00::/18改为自己的fakeip段，共2对。
+3：在sub_config文件夹下的forward_1.yaml中，把udp://127.0.0.1:7874改为自己的fakedns
+4：在sub_config文件夹下的forward_local.yaml中，把202.102.128.68改为自己的运营商dns
+5：在sub_config文件夹下的forward_nocn.yaml中搜索socks5: "127.0.0.1:7891"，替换为自己的socks5代理，mosdns vm网关是sb的，可以去除这一行。
+6：在sub_config文件夹下的forward_nocn_ecs.yaml中搜索socks5: "127.0.0.1:7891"，替换为自己的socks5代理，2408:8214:213::1替换为自己的ipv6公网地址。
+7：在config_custom.yaml搜索 listen: ":53"，有2处，在最后，改为自己想让mosdns监听的服务端口
+8：如果需要生成Adguard Home使用的规则，请修改sub_config文件夹下的domain_output.yaml，把注释打开并修改。
+9：通过编辑sub_config文件夹下的switch.yaml来控制mosdns启动时的初始状态，在ui上对开关做的设置，重启后会回归初始状态。
+
+#未部署Adguard Home联动的，建议启用。
+#是否启用屏蔽无解析结果的A、AAAA请求及黑名单  'A'-启用  'B'-不启用
+  - tag: switch1
+    type: switch1
+    args:
+      initial_value: 'A'
+
+#需要mosdns占用53端口并下发给客户端，按需要启用
+#是否启用指定client科学开关  'A'-启用  'B'-不启用
+  - tag: switch2
+    type: switch2
+    args:
+      initial_value: 'B'
+
+#强烈建议泄露版本
+#泄露版本/不泄露版本开关 'A'-泄露  'B'-不泄露
+  - tag: switch3
+    type: switch3
+    args:
+      initial_value: 'A'
+
+#强烈建议打开
+#是否启用过期缓存开关 'A'-打开  'B'-关闭  
+#cache_google_node缓存不会被关闭，否则会影响7777逻辑，其它缓存会全部不生效
+  - tag: switch4
+    type: switch4
+    args:
+      initial_value: 'A'
+
+一些说明：
+以下端口均返回real ip，可单独使用
+2222端口：带过期缓存的国内dns服务
+3333端口：带过期缓存的国外dns服务
+4444端口：带过期缓存的国外dns服务（请求时附加了设置的ecs）
+7777端口：供节点域名使用，解析时默认通过代理请求，代理不通时通过223请求，对国内dns隐藏节点域名的请求。
+8888端口：同2222端口，兼容早期的sing-box配置。
+
+关于泄露/不泄露版本
+泄露版本其实也不算真泄露，敏感的域名已经在域名列表中，强制走fakeip，不会对国内dns请求。对于未收录在
+网络流行的域名列表中的域名，mosdns配置会在解析1次后自动产生个性化的域名列表重启后生效，对于是国外IP的域名，
+在mosdns重启后也不会再向国内dns请求，也就是说，泄露版慢慢会进化成不泄露版，除了泄露测试的时候漏，其它时候基本不露。
+
+关于web ui中的域名列表/IP列表编辑，这个是不需要重启mosdns实时生效且会回写到配置文件指定的txt中的，不支持srs格式。
+
+
+
+2025年6月20日更新内容
+1：/cus/mosdns/sub_config/switch.yaml重新部署，现在重启mosdns开关状态可以保存了。
+2：/cus/mosdns/config_custom.yaml中添加
+  - tag: sequence_6666
+    type: sequence
+    args:
+###添加部分
+      - matches:    #阻止SOA PTR HTTPS类型的dns查询
+        - switch5 'A'
+        - "qtype 6 12 65"
+        exec: reject 0
+3：二进制更新，web ui添加开关，同步J佬更新
+4：新增加规则文件switch1.txt-switch9.txt，在rule文件夹内
+5：覆盖/cus/mosdns/sub_config/domain_output.yaml  不用重启mosdns，生成的分流规则屏蔽规则会在写入本地文件（web ui保存分流规则也可以）时自动生效。

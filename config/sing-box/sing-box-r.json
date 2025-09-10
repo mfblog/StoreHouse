@@ -108,7 +108,6 @@
     "providers": [
         {
             "type": "remote",
-            
             "tag": "🛫 机场",
             "url": "机场订阅",
             "update_interval": "24000h",

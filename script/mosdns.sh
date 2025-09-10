@@ -6,8 +6,8 @@
 #
 
 # --- 严格模式与安全设置 ---
-set -e
-set -o pipefail
+#set -e
+#set -o pipefail
 
 # --- 引入通用工具库 ---
 # 加载包含日志函数和颜色定义的共享脚本，实现代码复用。
@@ -34,7 +34,6 @@ main() {
         get_mosdns_rule)   task_get_mosdns_rule ;;
         mosdns_logrotate)  task_setup_logrotate_mosdns ;;
         mosdns_service)    task_setup_service_mosdns ;;
-        check_aio)         task_check_aio_and_apply_rules ;;
         *)                 task_install_mosdns ;;
     esac
 }
@@ -97,13 +96,20 @@ ${log_file_path} {
     compress
 }
 EOF
-    # 仅在 crontab 中不存在时添加，防止重复
-    if ! grep -q "/etc/logrotate.d/mosdns" /etc/crontab; then
-        echo "57 23 * * * root /usr/sbin/logrotate -f /etc/logrotate.d/mosdns" >> /etc/crontab
-    fi
-    log_success "MosDNS 日志轮转配置完成。"
+    task_crontab
 }
-
+task_crontab() {
+    log_info "正在设置 MosDNS 定时任务..."
+    CRON_JOB="57 23 * * * /usr/sbin/logrotate -f /etc/logrotate.d/mosdns"
+    JOB_CHECK_STRING="/usr/sbin/logrotate -f /etc/logrotate.d/mosdns"
+    CURRENT_CRONTAB=$(crontab -l 2>/dev/null)
+    if ! echo "${CURRENT_CRONTAB}" | grep -Fq "${JOB_CHECK_STRING}"; then
+        (echo "${CURRENT_CRONTAB}"; echo "${CRON_JOB}") | crontab -
+    else
+        log_info "定时任务已存在，无需重复设置。"
+    fi
+    log_success "MosDNS 定时任务配置完成。"
+}
 # 任务：安装并启动 MosDNS 系统服务 (优化版)
 task_setup_service_mosdns() {
     log_info "正在设置并启动 MosDNS 服务..."
@@ -132,7 +138,7 @@ EOF
     log_success "MosDNS 服务已启动并设置为开机自启。"
     
     # 在服务启动后检查AIO环境
-    task_check_aio_and_apply_rules
+   # bash /usr/local/bin/tools/check_aio.sh
     
     print_service_commands
 }
@@ -187,9 +193,9 @@ install_mosdns_binary() {
 
 configure_mosdns_rules() {
     log_info "开始交互式配置 MosDNS 规则..."
-    
-    read -rp "请输入 sing-box/mihomo 的入站地址 (默认 10.10.10.147:6666): " uiport
-    uiport="${uiport:-10.10.10.147:6666}"
+    log_info "默认使用 127.0.0.1:6666 作为入站地址,如singbox/mihomo和mosdns不是安装在同一台服务器,请手动输入入站地址，入站默认端口为:6666"
+    read -rp "请输入 sing-box/mihomo 的入站地址 (默认 127.0.0.1:6666): " uiport
+    uiport="${uiport:-127.0.0.1:6666}"
     read -rp "请输入 本地运营商DNS (默认 114.114.114.114): " localdns
     localdns="${localdns:-114.114.114.114}"
     
@@ -200,8 +206,8 @@ configure_mosdns_rules() {
     echo
     log_info "请选择要使用的 MosDNS 分流规则:"
     echo "  1. O佬分流规则 (经典稳定)"
-    echo "  2. PH佬分流规则 (越用越快)"
-    echo "  999. J佬/PH 魔改Ui (测试)"
+    #echo "  2. PH佬分流规则 (越用越快)"
+    echo "  999. J佬/PH 魔改Ui (推荐 越用越快)"
     echo "  0. 退出"
     read -rp "请输入您的选择 [1,2,999,0]: " choice
     
@@ -247,8 +253,28 @@ configure_mosdns_rules() {
         sed -i 's|fc00::/18|f2b0::/18|g' "${dest_dir}/sub_config/cache.yaml"
         sed -i "s|127.0.0.1:7874|${uiport}|g" "${dest_dir}/sub_config/forward_1.yaml"
         sed -i "s/202.102.128.68/${localdns}/g" "${dest_dir}/sub_config/forward_local.yaml"
-        sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/forward_nocn.yaml"
-        sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/forward_nocn_ecs.yaml"
+        log_info "是否注释sock5代理,如注释,请输入y,否则输入n"
+        log_info "sock5代理：singbox/mihomo默认为:127.0.0.1:7891"
+        read -rp "请输入您的选择 [y-n], 回车默认为y: " sock5_choice
+        if [ "$sock5_choice" == "y" ]; then 
+            log_info "正在注释sock5代理..."
+            sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"[[:space:]]*$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/forward_nocn.yaml"
+            sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"[[:space:]]*$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/forward_nocn_ecs.yaml"
+            sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"[[:space:]]*$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/rule_set.yaml"
+            sed -i '/^[[:space:]]*socks5: "127.0.0.1:7891"[[:space:]]*$/s/^[[:space:]]*/\#&/' "${dest_dir}/sub_config/adguard.yaml"
+        else
+            log_info "sock5代理未注释,默认sock5代理：127.0.0.1:7891"
+            log_info "是否更改sock5代理,如更改,请输入y,否则输入n"
+            read -rp "请输入您的选择 [y-n], 回车默认为n: " sock5_choice
+            if [ "$sock5_choice" == "y" ]; then
+                read -rp "请输入sock5代理地址: " sock5_port
+                sed -i "s|127.0.0.1:7891|${sock5_port}|g" "${dest_dir}/sub_config/forward_nocn.yaml"
+                sed -i "s|127.0.0.1:7891|${sock5_port}|g" "${dest_dir}/sub_config/forward_nocn_ecs.yaml"
+                sed -i "s|127.0.0.1:7891|${sock5_port}|g" "${dest_dir}/sub_config/rule_set.yaml"
+                sed -i "s|127.0.0.1:7891|${sock5_port}|g" "${dest_dir}/sub_config/adguard.yaml"
+                log_info "sock5代理已更改,新sock5代理地址为:${sock5_port}"
+            fi
+        fi
         sed -i 's|/tmp/mosdns|/cus/mosdns/mosdns|g' /cus/mosdns/config_custom.yaml
         sed -i 's/listen: 127.0.0.1:6666/listen: ":53"/' "${dest_dir}/config_custom.yaml"
 
@@ -279,18 +305,18 @@ update_mosdns_rulesets() {
         ["geosite_cn.txt"]="https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/direct-list.txt"
         ["geosite_no_cn.txt"]="https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/proxy-list.txt"
         ["gfw.txt"]="https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/gfw.txt"
-        ["ChinaAllNetwork_IPv4.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaAllNetwork_IPv4.txt"
-        ["ChinaAllNetwork_IPv6.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaAllNetwork_IPv6.txt"
-        ["ChinaEducation_IPv4.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaEducation_IPv4.txt"
-        ["ChinaEducation_IPv6.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaEducation_IPv6.txt"
-        ["ChinaMobile_IPv4.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaMobile_IPv4.txt"
-        ["ChinaMobile_IPv6.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaMobile_IPv6.txt"
-        ["ChinaSciences_IPv4.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaSciences_IPv4.txt"
-        ["ChinaSciences_IPv6.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaSciences_IPv6.txt"
-        ["ChinaTelecom_IPv4.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaTelecom_IPv4.txt"
-        ["ChinaTelecom_IPv6.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaTelecom_IPv6.txt"
-        ["ChinaUnicom_IPv4.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaUnicom_IPv4.txt"
-        ["ChinaUnicom_IPv6.txt"]="https://file.bairuo.net/iplist/output/Aggregated_ChinaUnicom_IPv6.txt"
+["ChinaAllNetwork_IPv4.txt"]="http://www.ipdeny.com/ipblocks/data/aggregated/cn-aggregated.zone"
+        ["ChinaAllNetwork_IPv6.txt"]="http://www.ipdeny.com/ipv6/ipaddresses/aggregated/cn-aggregated.zone"
+        ["ChinaEducation_IPv4.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/cernet.txt"
+        ["ChinaEducation_IPv6.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/cernet6.txt"
+        ["ChinaMobile_IPv4.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/cmcc.txt"
+        ["ChinaMobile_IPv6.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/cmcc6.txt"
+        ["ChinaSciences_IPv4.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/cernet.txt" 
+        ["ChinaSciences_IPv6.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/cernet6.txt"
+        ["ChinaTelecom_IPv4.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/chinanet.txt"
+        ["ChinaTelecom_IPv6.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/chinanet6.txt"
+        ["ChinaUnicom_IPv4.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/unicom.txt"
+        ["ChinaUnicom_IPv6.txt"]="https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/unicom6.txt"
     )
     
     local temp_dir
@@ -346,78 +372,6 @@ check_resolved_port53() {
     log_success "53 端口冲突已解决。"
 }
 
-task_check_aio_and_apply_rules() {
-    log_info "正在检测 AIO 环境 (MosDNS与代理核心共存)..."
-    
-    if ! [ -f "$NFT_RULESET_PATH" ]; then
-        log_warn "nftables 配置文件不存在 ($NFT_RULESET_PATH)，跳过AIO规则检查。"
-        return
-    fi
-    
-    if [ -x "/usr/local/bin/mosdns" ] && { [ -x "/usr/local/bin/sing-box" ] || [ -x "/usr/local/bin/mihomo" ]; }; then
-        log_warn "检测到DNS与代理核心共存，需要调整防火墙规则。"
-        
-        # 优化点：使用专门的标记作为锚点，更可靠
-        local nft_bak_path="$NFT_RULESET_PATH.bak_$(date +%F-%T)"
-        cp "$NFT_RULESET_PATH" "$nft_bak_path" 
-        log_info "已备份当前防火墙配置到: $nft_bak_path"
-
-        # 1. 先安全地删除旧的规则块，防止重复
-        sed -i '/# MOSDNS_AIO_RULES_BEGIN/,/# MOSDNS_AIO_RULES_END/d' "$NFT_RULESET_PATH"
-
-        # 2. 定义新的规则块
-        read -r -d '' aio_rules <<'EOF'
-      # MOSDNS_AIO_RULES_BEGIN
-      # Rules for MosDNS to bypass proxy in AIO mode
-      223.5.5.5, 223.6.6.6,                                 # AliDNS
-      2400:3200::1, 2400:3200:baba::1,                       # AliDNS IPv6
-      119.29.29.29, 182.254.116.116,                         # DNSPod
-      2402:4e00::,                                           # DNSPod IPv6
-      # MOSDNS_AIO_RULES_END
-EOF
-        
-        # 3. 将规则块插入到正确的锚点之后 (这里假设在 `define lan_ip` 块中)
-        # 如果找不到锚点，则报错
-        if ! grep -q "define lan_ip = {" "$NFT_RULESET_PATH"; then
-             log_error "在 $NFT_RULESET_PATH 中未找到 'define lan_ip' 锚点，无法自动添加规则。"
-             log_error "请手动将 AliDNS 和 DNSPod 的 IP 添加到直连列表，或恢复备份: $nft_bak_path"
-             exit 1
-        fi
-        sed -i "/define lan_ip = {/a ${aio_rules}" "$NFT_RULESET_PATH"
-        
-        log_info "正在验证并应用新的防火墙规则..."
-        if nft -c -f "$NFT_RULESET_PATH"; then
-            nft flush ruleset
-            nft -f "$NFT_RULESET_PATH"
-            log_success "AIO 防火墙规则已成功应用。"
-            if systemctl is-active --quiet "tproxy-router"; then
-                log_info "正在重启 tproxy-router 服务以应用新规则..."
-                systemctl restart "tproxy-router"
-            fi
-            rm -f "$nft_bak_path"
-        else
-            log_error "新的防火墙配置无效！已自动从备份回滚。"
-            mv "$nft_bak_path" "$NFT_RULESET_PATH"
-            exit 1
-        fi
-    else
-        log_info "未检测到 AIO 环境，无需修改防火墙规则。"
-    fi
-}
-
-# --- 帮助与收尾函数 ---
-
-print_help() {
-    echo "用法: $0 [命令]"
-    echo "可用命令:"
-    echo "  install (默认)     - 执行完整的 MosDNS 安装流程"
-    echo "  cn_mosdns          - 安装 'cn佬' 的嵌套规则"
-    echo "  get_mosdns_rule    - 更新远程规则集"
-    echo "  mosdns_logrotate   - 仅设置日志轮转"
-    echo "  mosdns_service     - 仅安装系统服务"
-    echo "  check_aio          - 检查并应用AIO防火墙规则"
-    echo "  help, -h, --help   - 显示此帮助信息"
-}
 
 print_service_commands() {
     log_info "常用管理命令:"

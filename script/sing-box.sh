@@ -3,14 +3,9 @@
 # Sing-Box & Mihomo 多功能一体化安装与管理脚本 (重构注释最终版)
 #
 
-# --- 严格模式与安全设置 ---
-# set -e: 当任何命令以非零状态码退出时，立即终止脚本。这可以防止错误状态下的继续执行。
-# set -o pipefail: 在管道命令中 (e.g., cmd1 | cmd2)，只要有任何一个命令失败，整个管道就视为失败。
-set -e
-set -o pipefail
+#set -e
+#set -o pipefail
 
-# --- 引入通用工具库 ---
-# 加载包含日志函数和颜色定义的共享脚本，实现代码复用。
 readonly COMMON_UTILS_PATH="/usr/local/bin/tools/common.sh"
 if [ -f "$COMMON_UTILS_PATH" ]; then
     source "$COMMON_UTILS_PATH"
@@ -22,59 +17,245 @@ fi
 
 # --- 全局常量定义 ---
 # 将不应改变的变量定义为只读常量，增加代码的健壮性。
-readonly DIRPATH="/usr/local/bin/tools"
+DIRPATH="/usr/local/bin/tools"
+YQ_BIN_PATH="/usr/local/bin/yq"
 readonly SUB_HOST="https://sub-singbox.herozmy.com"
 readonly SINGBOX_CONFIG_TPL="&file=https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/sing-box/sing-box.json"
 readonly LOCAL_IP=$(hostname -I | awk '{print $1}')
 
 # --- 主调度器 (脚本入口) ---
-# 这是脚本的唯一入口点。所有执行都从这里开始。
 main() {
     # 步骤 1: 检查所有必需的系统依赖。
-    check_dependencies
+    
     
     # 步骤 2: 根据传入的第一个命令行参数，决定执行哪个任务。
-    # 这种结构称为“调度器”，它将命令行参数路由到相应的函数。
     case "$1" in
         update_core)   task_update_core ;;       # 更新核心
         update_ui)     task_update_ui ;;         # 更新UI面板
         update_home)   task_install_hy2_home ;;   # 更新回家配置 (注意：此处调用主任务函数)
         switch_core)   task_switch_core ;;       # 切换核心
-        mihomo)        task_install_mihomo ;;    # 安装Mihomo
-        *)             task_interactive_install ;; # 如果没有参数，默认执行交互式安装
+        mihomo)        
+            check_proxy_conflict "mihomo"
+            task_install_mihomo ;;    # 安装Mihomo
+        switch_nft)    setup_nftables && _activate_nftables_rules ;;
+        *)             
+            check_proxy_conflict "sing-box"
+            task_interactive_install ;; # 如果没有参数，默认执行交互式安装
     esac
 }
 
+switch_nftables() {
+    echo "请选择要应用的 Nftable 模式："
+    echo "1) Redirect+Tproxy"
+    echo "2) Tproxy"
+  #  echo "3) Default_Redirect+Tproxy (使用 nft_tproxy_redirect.conf)"
+  #  echo "4) Default_Tproxy (使用 nft_tproxy.conf)"
+    echo ""
 
+    local nft_choice
+    while true; do
+        # 提示用户，并说明默认选项
+        read -p "输入选项 [1-2] (回车默认1): " nft_choice
+        
+        # 检查是否为空（回车）
+        if [[ -z "$nft_choice" ]]; then
+            nft_choice="1" # 设置默认值为1
+            log_info "未输入选项，默认选择 1) Redirect+Tproxy."
+        fi
+
+        # 验证输入是否有效 (1-3)
+        if [[ "$nft_choice" =~ ^[1-2]$ ]]; then
+            break # 有效输入，退出循环
+        else
+            log_error "无效选项：'$nft_choice'。请输入 1 到 2 之间的数字。"
+        fi
+    done
+
+    local NFT_CONF_DEST="/etc/nftables.conf"
+    local RON_REDIRECT_CONF="/usr/local/bin/tools/ron_tproxy_redirect.conf"
+    local RON_TPROXY_CONF="/usr/local/bin/tools/ron_tproxy.conf"
+    local DEFAULT_REDIRECT_CONF="/usr/local/bin/tools/nft-tproxy-redirect.conf"
+    local DEFAULT_TPROXY_CONF="/usr/local/bin/tools/nft-tproxy.conf" # 尽管注释掉了，但变量保留
+
+
+    _apply_nftables_config() {
+        local source_file="$1"
+        local mode_name="$2"
+
+        log_info "选择 $mode_name 模式。正在复制配置文件..."
+
+        if [ ! -f "$source_file" ]; then
+            log_error "源配置文件 '$source_file' 不存在。请确认路径是否正确。"
+            return 1
+        fi
+
+        if ! cp "$source_file" "$NFT_CONF_DEST"; then
+            log_error "复制 '$source_file' 到 '$NFT_CONF_DEST' 失败。请检查权限。"
+            return 1
+        fi
+        sleep 1
+        log_success "$mode_name 配置已成功配置到 '$NFT_CONF_DEST'。"
+        # !!! 移除这里的 _activate_nftables_rules 调用 !!!
+        return 0 # 返回复制操作的状态
+    }
+
+    case "$nft_choice" in
+        1)
+            _apply_nftables_config "$RON_REDIRECT_CONF" "Redirect+Tproxy"
+            ;;
+        2)
+            _apply_nftables_config "$RON_TPROXY_CONF" "Tproxy"
+            ;;
+       # 3)
+        #    _apply_nftables_config "$DEFAULT_REDIRECT_CONF" "Default_Redirect"
+       #     ;;
+
+        # 4)
+        #    _apply_nftables_config "$DEFAULT_TPROXY_CONF" "Default_Tproxy"
+        #    ;;
+        *)
+            # 理论上这里的代码不会被执行到，因为前面已经验证过输入
+            log_error "内部错误：无效选项 '$nft_choice'。"
+            ;;
+    esac
+    return $? # 返回 _apply_nftables_config 的状态
+}
+_activate_nftables_rules() {
+    local mode_name="$1"
+    local NFT_CONF_DEST="/etc/nftables.conf" # 确保路径一致
+
+    log_info "正在重启 nftables 服务并刷新规则以应用 $mode_name 模式..."
+
+    if ! systemctl restart nftables; then
+        log_error "重启 nftables 服务失败。请检查 '$NFT_CONF_DEST' 文件内容及 nftables 服务状态。"
+        return 1
+    fi
+    log_success "nftables 服务已成功重启。"
+
+    log_info "正在通过 nft -f 命令强制加载规则..."
+    if ! nft -f "$NFT_CONF_DEST"; then
+        log_error "nft -f '$NFT_CONF_DEST' 命令执行失败。可能存在配置语法错误或服务问题。"
+        return 1
+    fi
+    log_success "nft -f '$NFT_CONF_DEST' 命令执行成功。"
+    log_success "$mode_name 模式已成功应用。"
+    return 0
+}
 # ==============================================================================
-# SECTION: 任务层 (Tasks) - 由主调度器触发的高级功能组合
+# SECTION: 任务层 (Tasks) -yq
 # ==============================================================================
+# 任务：安装 yq
+task_install_yq(){
+    log_info "开始安装 yq..."
+
+    # 1. 检查 wget 是否安装
+    if ! command -v wget &>/dev/null; then
+        log_info "wget 未安装，正在安装 wget..."
+        if apt-get update && apt-get install -y wget; then
+            log_success "wget 安装成功。"
+        else
+            log_error "安装 wget 失败。请手动安装 wget 后重试。"
+            return 1 # 返回非零值表示失败
+        fi
+    fi
+
+    # 2. 检测系统架构
+    ARCH=$(uname -m)
+    YQ_ARCH=""
+    case "$ARCH" in
+        x86_64) YQ_ARCH="amd64" ;;
+        aarch64) YQ_ARCH="arm64" ;;
+        armv7l) YQ_ARCH="arm" ;; # 或 armv7
+        *)
+            log_error "不支持的系统架构: ${ARCH}。请手动下载适合您架构的 yq。"
+            return 1
+            ;;
+    esac
+
+    YQ_DOWNLOAD_URL="https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH}"
+
+    log_info "正在从 ${YQ_DOWNLOAD_URL} 下载 yq 到 ${YQ_BIN_PATH}..."
+    if wget "${YQ_DOWNLOAD_URL}" -O "${YQ_BIN_PATH}"; then
+        log_success "yq 下载成功。"
+    else
+        log_error "下载 yq 失败。请检查网络连接或 URL 是否正确。"
+        return 1
+    fi
+
+    log_info "正在为 yq 添加可执行权限..."
+    if chmod +x "${YQ_BIN_PATH}"; then
+        log_success "yq 已成功设置为可执行。"
+    else
+        log_error "设置 yq 可执行权限失败。"
+        return 1
+    fi
+
+    log_success "yq 已成功安装到 ${YQ_BIN_PATH}。"
+
+    # 验证安装
+    if command -v yq &>/dev/null; then
+        log_success "yq 安装验证成功。版本信息:"
+        yq --version
+    else
+        log_error "yq 安装后未能找到。可能 PATH 环境变量未包含 ${YQ_BIN_PATH}。"
+        return 1
+    fi
+    return 0 # 返回零值表示成功
+}
 
 # 任务：安装 Mihomo 的完整流程
 task_install_mihomo() {
-    log_info "开始 Mihomo 安装流程..."
+    log_info "开始 Mihomo 安装..."
+    check_dependencies
     # 确保 yq 存在
-    install_dependencies "yq"
+    log_info "检查是否已安装 yq..."
+    if command -v yq &>/dev/null; then
+        log_success "yq 已经安装在 $(command -v yq)。"
+    else
+        # 如果 yq 未安装，则调用安装函数
+        if ! task_install_yq; then
+            log_error "yq 安装失败，无法继续安装 Mihomo。请检查上述错误信息。"
+            exit 1 # yq安装失败，退出整个脚本
+        fi
+    fi
     
     # 下载并安装 Mihomo 核心文件
+    # 确保 detect_architecture 函数可用
     download_and_install_archive "mihomo" "https://github.com/herozmy/StoreHouse/releases/download/mihomo/mihomo-meta-linux-$(detect_architecture).tar.gz" "/usr/local/bin/mihomo"
     
     # 串联所有安装步骤
     install_mihomo_config
     setup_systemd_services "mihomo"
-    setup_nftables "mihomo"
+    
+    # 只有在需要时才设置防火墙和tp-router
+    if [ "$NEED_FIREWALL_SETUP" = "true" ]; then
+        log_info "正在配置IP转发和防火墙规则..."
+        task_ip_forward
+        setup_nftables "mihomo"
+    else
+        log_info "跳过防火墙和透明代理设置，复用现有服务..."
+    fi
+    
     install_dashboard_ui "mihomo"
-    # check_aio_and_apply_rules # 如果需要，取消此行注释
-    . "$DIRPATH/check_aio.sh"
+  #  bash /usr/local/bin/tools/check_aio.sh # 确保这个脚本存在且可执行
     enable_and_start_all_services "mihomo"
     
     # 打印最终的总结信息
     print_summary "Mihomo" "/etc/mihomo" "http://${LOCAL_IP}:9090"
+    log_success "Mihomo 定制安装完成！"
+    
+    # 提示用户关于代理切换的信息
+    if command -v sing-box &>/dev/null; then
+        log_info "检测到系统中同时安装了 Sing-Box。"
+        log_info "您可以使用 'proxytool' 命令在两个代理服务之间切换。"
+    fi
 }
 
 # 任务：交互式安装 Sing-Box 的完整流程
 task_interactive_install() {
-    log_info "开始 Sing-Box 交互式安装流程..."
+    log_info "开始 Sing-Box 交互式安装..."
+    sleep 1
+    check_dependencies
     rm -rf /root/sing-box* # 清理之前的安装残留
 
     # === 修改开始 ===
@@ -98,7 +279,7 @@ task_interactive_install() {
     local config_type 
     case "$core_type" in
         official-compile)          config_type="official" ;;
-        official-core)             config_type="official" ;;
+        official-core)             config_type="official-core" ;;
         puer)                      config_type="puer" ;;
         xiling)                    config_type="xiling" ;;
         s-y)                       config_type="s-y" ;;
@@ -108,20 +289,34 @@ task_interactive_install() {
     
     # 串联所有后续安装步骤
     setup_systemd_services "sing-box"
-    setup_nftables "sing-box"
+    
+    # 只有在需要时才设置防火墙和tp-router
+    if [ "$NEED_FIREWALL_SETUP" = "true" ]; then
+        log_info "正在配置IP转发和防火墙规则..."
+        task_ip_forward
+        setup_nftables "sing-box"
+    else
+        log_info "跳过防火墙和透明代理设置，复用现有服务..."
+    fi
+    
     install_dashboard_ui "sing-box"
-    # check_aio_and_apply_rules # 如果需要，取消此行注释
-    . "$DIRPATH/check_aio.sh"
+  #  bash /usr/local/bin/tools/check_aio.sh
     enable_and_start_all_services "sing-box"
     
     print_summary "Sing-Box" "/etc/sing-box" "http://${LOCAL_IP}:9090"
     print_service_commands "sing-box"
+
+    # 提示用户关于代理切换的信息
+    if command -v mihomo &>/dev/null; then
+        log_info "检测到系统中同时安装了 Mihomo。"
+        log_info "您可以使用 'proxytool' 命令在两个代理服务之间切换。"
+    fi
 }
 
 # 任务：更新核心
 task_update_core() {
-    systemctl stop nftables &>/dev/null || true
-    systemctl stop tproxy-router &>/dev/null || true
+    #systemctl stop nftables &>/dev/null || true
+    #systemctl stop tproxy-router &>/dev/null || true
     log_info "开始更新核心程序..."
     if [ ! -f "/etc/sing-box/version" ]; then
         log_error "未检测到 Sing-Box 安装。无法执行更新。"
@@ -131,12 +326,19 @@ task_update_core() {
     local current_core_type
     current_core_type=$(cat /etc/sing-box/version)
     
+    # 兼容旧版本：如果是 'official'，则升级为 'official-core'
+    if [ "$current_core_type" = "official" ]; then
+        log_info "检测到旧版本格式，正在升级版本标识为 'official-core'..."
+        current_core_type="official-core"
+        echo "$current_core_type" > /etc/sing-box/version
+    fi
+    
     log_info "正在备份当前核心..."
     local current_version
     current_version=$(/usr/local/bin/sing-box version | awk '/sing-box version/ {print $3}')
     cp -r /usr/local/bin/sing-box "/usr/local/bin/sing-box-${current_core_type}-${current_version}.bak"
     
-    systemctl stop tproxy-router &>/dev/null || true # 停止路由服务，忽略可能发生的错误
+    #systemctl stop tproxy-router &>/dev/null || true # 停止路由服务，忽略可能发生的错误
     
     # 重新运行当前核心类型的安装流程，以达到更新的目的
     install_singbox_core "$current_core_type"
@@ -151,8 +353,8 @@ task_update_core() {
 # 任务：更新 UI 面板
 task_update_ui() {
     log_info "正在更新仪表盘 UI..."
-    systemctl stop tproxy-router &>/dev/null || true
-    systemctl stop nftables &>/dev/null || true
+    #systemctl stop tproxy-router &>/dev/null || true
+    #systemctl stop nftables &>/dev/null || true
     local core_binary
     # 自动查找当前安装的是 sing-box 还是 mihomo
     core_binary=$(find /usr/local/bin/ -type f \( -name "mihomo" -o -name "sing-box" \))
@@ -162,11 +364,11 @@ task_update_ui() {
         exit 1
     fi
     
-    systemctl stop tproxy-router &>/dev/null || true
+    #systemctl stop tproxy-router &>/dev/null || true
     # 根据找到的核心名来更新对应的UI目录
     install_dashboard_ui "$(basename "$core_binary")"
-    systemctl start tproxy-router &>/dev/null || true
-    systemctl start nftables &>/dev/null || true
+    systemctl restart tproxy-router &>/dev/null || true
+    systemctl restart nftables &>/dev/null || true
     log_success "UI 更新完成。"
 }
 
@@ -189,13 +391,10 @@ task_switch_core() {
     cp -f /usr/local/bin/sing-box "/usr/local/bin/sing-box-${current_core_type}-${current_version}.bak"
     cp -f /etc/sing-box/config.json "/etc/sing-box/config.${current_core_type}.bak"
     
-    systemctl stop tproxy-router &>/dev/null || true
-    systemctl stop nftables &>/dev/null || true
+    #systemctl stop tproxy-router &>/dev/null || true
+    #systemctl stop nftables &>/dev/null || true
     
-    # --- 关键修复点 ---
-    # 让用户选择新的核心类型
-    # 不再使用旧的 new_core_type=$(...) 方式
-    # 而是将变量名传递给函数，让函数直接设置它
+
     local new_core_type=""
     choose_core_type new_core_type
     
@@ -209,8 +408,9 @@ task_switch_core() {
     # 根据核心类型确定配置文件类型
     local new_config_type
     case "$new_core_type" in
-        official-compile|official-core) new_config_type="official" ;;
-        *)                              new_config_type="$new_core_type" ;;
+        official-compile) new_config_type="official" ;;
+        official-core)    new_config_type="official-core" ;;
+        *)                new_config_type="$new_core_type" ;;
     esac
     
     # 安装新的核心和对应的配置
@@ -232,22 +432,46 @@ task_switch_core() {
 check_dependencies() {
     log_info "正在检查系统依赖项..."
     # 定义所有需要的软件包列表
-    local all_deps=("curl" "git" "gawk" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "yq" "go")
-    local missing_deps=()
-    
-    # 遍历列表，检查每个命令是否存在
-    for dep in "${all_deps[@]}"; do
+    # 注意：'go' 依赖通常通过下载 tarball 安装，而不是 apt-get
+    # 'gawk' 已经是 GNU awk，在 Debian/Ubuntu 上通常就是 'awk'
+    local apt_deps=("curl" "git" "build-essential" "libssl-dev" "libevent-dev" "zlib1g-dev" "nftables" "jq" "unzip" "gawk")
+    local missing_apt_deps=()
+    local missing_non_apt_deps=() # 用于非 apt-get 安装的依赖
+
+    # 遍历 apt 依赖列表，检查每个命令是否存在
+    for dep in "${apt_deps[@]}"; do
         if ! command -v "$dep" &>/dev/null; then
-            missing_deps+=("$dep")
+            missing_apt_deps+=("$dep")
         fi
     done
 
-    # 如果有缺失的依赖，尝试自动安装
-    if [ ${#missing_deps[@]} -gt 0 ]; then
-       # log_warn "检测到以下依赖项缺失: ${missing_deps[*]}。正在尝试自动安装..."
-        apt-get update && apt-get install -y "${missing_deps[@]}" >/dev/null 2>&1
+    # 特殊处理 'go'
+    if ! command -v go &>/dev/null; then
+        missing_non_apt_deps+=("go")
     fi
-    log_success "所有依赖项均已满足。"
+
+    # 如果有缺失的 APT 依赖，尝试自动安装
+    if [ ${#missing_apt_deps[@]} -gt 0 ]; then
+        log_warn "检测到以下 APT 依赖项缺失: ${missing_apt_deps[*]}。正在尝试自动安装..."
+        if ! apt-get update; then
+            log_error "apt update 失败，请检查您的软件源或网络连接。"
+            exit 1
+        fi
+        if ! apt-get install -y "${missing_apt_deps[@]}"; then # 移除 >/dev/null 2>&1 以显示错误
+            log_error "自动安装依赖 ${missing_apt_deps[*]} 失败！请手动安装或检查错误信息。"
+            exit 1
+        fi
+        log_success "APT 依赖项安装完成。"
+    else
+        log_success "所有 APT 依赖项均已满足。"
+    fi
+
+    # 提示非 APT 安装的依赖（如 Go），因为它们会在后续步骤中单独处理
+    if [ ${#missing_non_apt_deps[@]} -gt 0 ]; then
+        log_warn "以下依赖 (${missing_non_apt_deps[*]}) 未通过 APT 安装，将在后续步骤中按需处理。"
+    fi
+    
+    log_success "所有关键系统依赖检查完毕。"
 }
 
 # 专门用于按需安装依赖的函数
@@ -275,6 +499,22 @@ detect_architecture() {
         *) log_error "不支持的CPU架构: $(uname -m)"; exit 1 ;;
     esac
 }
+task_ip_forward(){
+        echo -e "${yellow}创建系统转发${reset}"
+    # 判断是否已存在 net.ipv4.ip_forward=1
+        if ! grep -q '^net.ipv4.ip_forward=1$' /etc/sysctl.conf; then
+            echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
+        fi
+
+    # 判断是否已存在 net.ipv6.conf.all.forwarding = 1
+    #    if ! grep -q '^net.ipv6.conf.all.forwarding = 1$' /etc/sysctl.conf; then
+    #       echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.conf
+    #   fi
+        sleep 1
+        echo -e "${green_text}系统转发创建完成${reset}"
+        sleep 1
+        }
+
 
 # 检查并解除 systemd-resolved 对 53 端口的占用
 check_resolved_port53() {
@@ -405,8 +645,9 @@ install_singbox_core() {
             compile_singbox_from_source
             return # 编译函数自己处理安装，所以这里直接返回
             ;;
-        official-core)
+        official|official-core)
             # 从 GitHub API 获取最新稳定版的版本号和下载地址
+            # official 是为了兼容旧版本的版本文件
             local version
             version=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r .tag_name)
             url="https://github.com/SagerNet/sing-box/releases/download/${version}/sing-box-${version#v}-linux-${arch}.tar.gz"
@@ -557,7 +798,7 @@ install_singbox_config() {
     local template_url=""
     # 根据配置类型，设置不同的模板下载地址
     case "$config_type" in
-        official)
+        official|official-core)
             if [ -n "$sub_url" ]; then
                 log_info "正在从订阅链接生成配置文件..."
                 curl -o /etc/sing-box/config.json "${SUB_HOST}/config/${sub_url}${SINGBOX_CONFIG_TPL}"
@@ -610,7 +851,8 @@ install_mihomo_config() {
     log_info "正在下载并适配 Mihomo 配置文件模板..."
     
     # 定义常量，便于维护
-    local template_url="https://raw.githubusercontent.com/luestr/ProxyResource/main/Tool/Clash/Config/Clash_Sample_Configuration_By_iKeLee.yaml"
+    #local template_url="https://raw.githubusercontent.com/luestr/ProxyResource/main/Tool/Clash/Config/Clash_Sample_Configuration_By_iKeLee.yaml"
+    local template_url="https://raw.githubusercontent.com/herozmy/StoreHouse/refs/heads/latest/config/mihomo/config.yaml"
     local final_config_path="/etc/mihomo/config.yaml"
     
     # 创建一个临时文件来执行所有修改操作
@@ -635,30 +877,37 @@ install_mihomo_config() {
         exit 1
     fi
     log_info "自动检测到网卡: $interface_name"
+    log_info "正在根据您的系统环境和输入适配配置文件..."
+    # 替换所有的 eth0 为检测到的网卡名称
+    sed -i "s|eth0|${interface_name}|g" "$temp_config_file"
+    # 特别确保 interface-name 字段被正确替换
+   # sed -i "s|interface-name: .*|interface-name: ${interface_name}|" "$temp_config_file"
 
     # --- 步骤 4: 使用 yq 和 sed 集中修改配置 ---
     # 使用 yq 进行结构化修改，一次性完成
-    yq eval-all \
-        '.tproxy-port = 7896 |
-         .redir-port = 7877 |
-         ."interface-name" = "'"$interface_name"'" |
-         ."external-ui" = "/etc/mihomo/ui" |
-         del(.tun) |
-         del(.proxy-providers."机场名称2") |
-         .proxy-providers."机场名称1".url = "'"$sub_url"'"
-        ' -i "$temp_config_file"
+  #  yq eval-all \
+   #     '.tproxy-port = 7896 |
+   #      .redir-port = 7877 |
+    #     ."interface-name" = "'"$interface_name"'" |
+    #     ."external-ui" = "/etc/mihomo/ui" |
+     #    del(.tun) |
+     #    del(.proxy-providers."机场名称2") |
+     #    .proxy-providers."机场名称1".url = "'"$sub_url"'"
+     #   ' -i "$temp_config_file"
 
     # 使用 sed 处理非标准 YAML 或纯文本替换
-    sed -i \
-        -e 's/!!merge <<: \*/<<: \*/g' \
-        -e 's/FilterAll: &FilterAll.*$/FilterAll: \&FilterAll/' \
-        "$temp_config_file"
-    
+    #sed -i \
+       # -e 's/!!merge <<: \*/<<: \*/g' \
+       # -e 's/FilterAll: &FilterAll.*$/FilterAll: \&FilterAll/' \
+       # -e "s/28.0.0.1\/8/28.0.0.0\/8/g" \
+
+       # "$temp_config_file"
+    sed -i "s|机场订阅|${sub_url}|g" "$temp_config_file"
     # --- 步骤 5: 验证并应用修改 ---
-    if ! yq eval 'true' "$temp_config_file" &>/dev/null; then
-        log_error "配置文件修改后格式错误，操作已中止。"
-        exit 1
-    fi
+   # if ! yq eval 'true' "$temp_config_file" &>/dev/null; then
+    #    log_error "配置文件修改后格式错误，操作已中止。"
+  #      exit 1
+  #  fi
 
     # 所有修改成功后，才将临时文件移动到最终位置
     mv "$temp_config_file" "$final_config_path"
@@ -670,7 +919,7 @@ install_mihomo_config() {
 # SECTION: Hysteria2 'Go Home' 功能模块
 # ==============================================================================
 
-# 主任务函数：协调整个“回家”配置流程
+# 主任务函数：协调整个"回家"配置流程
 task_install_hy2_home() {
     # 询问用户是否要安装
     read -rp "是否安装或更新 Hysteria2 '回家' 配置? (y/n): " choice
@@ -899,32 +1148,81 @@ setup_systemd_services() {
     local service_name="$1" # "sing-box" 或 "mihomo"
     log_info "正在为 '$service_name' 设置 systemd 服务..."
     cp "$DIRPATH/${service_name}.service" "/etc/systemd/system/"
-    cp "$DIRPATH/tproxy-router.service" "/etc/systemd/system/"
     systemctl daemon-reload # 重新加载 systemd 配置使其生效
-    log_success "Systemd 服务文件已创建。"
+    log_success "$service_name 服务文件已创建。"
 }
-
-# 配置 nftables 防火墙规则
+    check_interfaces() {
+        interfaces=$(ip -o link show | awk -F': ' '{print $2}')
+        # 输出物理网卡名称
+        for interface in $interfaces; do
+            # 检查是否为物理网卡（不包含虚拟、回环等），并排除@符号及其后面的内容
+            if [[ $interface =~ ^(en|eth).* ]]; then
+                interface_name=$(echo "$interface" | awk -F'@' '{print $1}')  # 去掉@符号及其后面的内容
+                echo -e "您的网卡是：${yellow}$interface_name${reset}"
+                valid_interfaces+=("$interface_name")  # 存储有效的网卡名称
+            fi
+        done
+        # 提示用户选择
+        
+        #read -p "脚本自行检测的是否是您要的网卡？(y/n): " confirm_interface
+        #if [ "$confirm_interface" = "y" ]; then
+            #selected_interface="$interface_name"
+            #echo -e "您选择的网卡是: ${green_text}$selected_interface${reset}"
+        #elif [ "$confirm_interface" = "n" ]; then
+            #read -p "请自行输入您的网卡名称: " selected_interface
+            #echo -e "您输入的网卡名称是: ${green_text}$selected_interface${reset}"
+        #else
+            #echo "无效的选择"
+        #fi
+    }
 setup_nftables() {
-    local core_name="$1"
-    log_info "正在配置 nftables 防火墙规则..."
-    
+    log_info "正在进行 NFTables 和透明代理初始配置..."
+
+    # 安装透明代理服务文件
+    log_info "正在设置透明代理服务..."
+    cp "$DIRPATH/tproxy-router.service" "/etc/systemd/system/"
+    systemctl daemon-reload
+    log_success "透明代理服务文件已创建。"
+
     # 自动检测主网卡名称
-    local interface_name
-    interface_name=$(ip -o link show | awk -F': ' '{print $2}' | grep -E '^(en|eth)' | head -n 1 | cut -d'@' -f1)
-    
-    # 根据核心类型选择不同的防火墙模板
-    local nft_template=""
-    if [ "$core_name" == "mihomo" ]; then
-        nft_template="$DIRPATH/nft-tproxy.conf"
-    else
-        nft_template="$DIRPATH/nft-tproxy-redirect.conf"
+    check_interfaces
+
+    if [ -z "$interface_name" ]; then
+        log_error "无法自动检测到主网络接口。请手动检查网络配置或确保网络连接正常。"
+        return 1
     fi
+    log_info "检测到主网络接口为: '$interface_name'"
+    sleep 1
+    log_info "请根据提示选择要应用的 NFTables 模式..."
     
-    # 复制并替换模板中的网卡名
-    cp "$nft_template" "/etc/nftables.conf"
-    sed -i "s/eth0/${interface_name}/g" "/etc/nftables.conf"
-    log_success "nftables 规则已为网卡 '$interface_name' 配置完成。"
+    # 调用 switch_nftables 函数，它现在只负责复制文件，不激活
+    switch_nftables
+    local switch_status=$?
+    if [ $switch_status -ne 0 ]; then
+        log_error "NFTables 模式选择或文件配置失败，退出初始配置。"
+        return $switch_status
+    fi
+    log_success "NFTables 配置模板已根据您的选择配置到 '/etc/nftables.conf'。"
+    log_info "防火墙规则尚未激活，正在准备替换网卡名称..."
+    sleep 1
+    local NFT_CONF_DEST="/etc/nftables.conf"
+
+    # 检查 nftables.conf 中是否存在 eth0
+    if grep -q "eth0" "$NFT_CONF_DEST"; then
+        log_info "正在替换为检测到的接口 '$interface_name'..."
+        if ! sed -i "s/eth0/${interface_name}/g" "$NFT_CONF_DEST"; then
+            log_error "替换 '$NFT_CONF_DEST' 中的 'eth0' 为 '$interface_name' 失败。请检查文件权限或内容。"
+            return 1 # 替换失败是严重错误，应退出
+        else
+            log_success "网卡名称已成功更新为 '$interface_name'。"
+        fi
+    fi
+
+    sleep 1
+    # 在所有配置（包括网卡替换）完成后，进行一次性激活
+    log_info "所有 NFTables 配置已准备就绪。现在将激活防火墙规则..."
+   # _activate_nftables_rules "最终的 NFTables 配置 (网卡: $interface_name)"
+    return $? # 返回激活函数的状态
 }
 
 # 安装仪表盘 UI
@@ -957,6 +1255,27 @@ enable_and_start_all_services() {
     systemctl enable --now nftables &>/dev/null
     
     log_success "所有服务均已启动并设置为开机自启。"
+    
+    # 检查是否存在冲突服务，并询问是否停止
+    if [ -n "$PROXY_CONFLICT_SERVICE" ]; then
+        local old_service="$PROXY_CONFLICT_SERVICE"
+        log_warn "检测到 ${old_service^} 服务仍在运行。"
+        log_info "新安装的 ${core_name^} 服务已经启动。"
+        log_info "两个代理服务同时运行可能导致网络冲突。"
+        
+        read -p "是否停止旧的 ${old_service^} 服务？(输入y停止，默认否) [y/N]: " choice
+        if [[ "$choice" =~ ^[Yy]$ ]]; then
+            log_info "正在停止 ${old_service^} 服务..."
+            systemctl stop "$old_service"
+            systemctl disable "$old_service"
+            log_success "${old_service^} 服务已停止。"
+        else
+            log_warn "您选择保留两个代理服务同时运行，这可能导致网络问题。"
+            log_info "如需手动切换服务，请使用 'proxytool' 命令。"
+        fi
+        # 清理环境变量
+        unset PROXY_CONFLICT_SERVICE
+    fi
 }
 
 # 打印最终的安装总结信息
@@ -987,6 +1306,50 @@ print_service_commands() {
     echo -e "  ${GREEN}proxytool${RESET} 显示工具菜单"
 }
 
+# --- 检查代理服务冲突 ---
+check_proxy_conflict() {
+    local installing_service="$1"  # 正在安装的服务名称
+    local conflict_found=false
+    local running_service=""
+    
+    # 默认设置为需要安装防火墙和tp-router
+    export NEED_FIREWALL_SETUP=true
+    
+    # 检查是否已安装其他代理服务
+    if [ "$installing_service" = "sing-box" ] && command -v mihomo &>/dev/null; then
+        if systemctl is-active --quiet mihomo; then
+            conflict_found=true
+            running_service="mihomo"
+        fi
+    elif [ "$installing_service" = "mihomo" ] && command -v sing-box &>/dev/null; then
+        if systemctl is-active --quiet sing-box; then
+            conflict_found=true
+            running_service="sing-box"
+        fi
+    fi
+
+    if [ "$conflict_found" = true ]; then
+        log_warn "检测到 ${running_service^} 正在运行。"
+        log_info "当前存在正在运行的 ${running_service^} 服务。"
+        log_info "为保持网络连接，安装过程中不会停止现有服务。"
+        
+        # 将冲突服务名写入环境变量，供后续处理
+        export PROXY_CONFLICT_SERVICE="$running_service"
+        
+        # 检查是否已存在防火墙和tp-router服务
+        if systemctl is-enabled --quiet tproxy-router &>/dev/null && systemctl is-enabled --quiet nftables &>/dev/null; then
+            log_info "检测到已存在防火墙和透明代理服务，将直接复用现有服务。"
+            export NEED_FIREWALL_SETUP=false
+        fi
+        
+        read -p "是否继续安装？(默认是，输入n取消) [Y/n]: " choice
+        if [[ "$choice" =~ ^[Nn]$ ]]; then
+            log_error "安装已取消。"
+            exit 1
+        fi
+    fi
+    return 0
+}
 
 # --- 脚本执行入口 ---
 # 将所有从命令行接收到的参数 ($@) 传递给 main 函数

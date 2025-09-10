@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sing-Box 管理 - MyBox</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #8b5cf6;
+            --bg-color-main: #f8fafc;
+            --bg-color-card: #ffffff;
+            --bg-color-active: #10b981;
+            --bg-color-inactive: #f1f5f9;
+            --text-color: #334155;
+            --text-color-dark: #1e293b;
+            --text-color-light: #64748b;
+            --text-color-muted: #94a3b8;
+            --border-color-light: #e2e8f0;
+            --border-radius-sm: 6px;
+            --border-radius-md: 8px;
+            --border-radius-lg: 12px;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color-main);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: var(--space-lg);
+        }
+
+        .nav-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-lg);
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid var(--border-color-light);
+        }
+
+        .breadcrumb-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .breadcrumb-link:hover {
+            color: var(--secondary-color);
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-color-muted);
+            font-weight: 300;
+        }
+
+        .breadcrumb-current {
+            color: var(--text-color-dark);
+            font-weight: 600;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            text-align: center;
+            padding: var(--space-xl);
+            border-radius: var(--border-radius-lg);
+            margin-bottom: var(--space-xl);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: var(--space-sm);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .service-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .metric-card {
+            background: var(--bg-color-card);
+            padding: var(--space-md);
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color-light);
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: var(--space-xs);
+        }
+
+        .metric-label {
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+        }
+
+        .service-card {
+            background: var(--bg-color-card);
+            padding: var(--space-lg);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--space-xs);
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid var(--border-color-light);
+        }
+
+        .service-name {
+            font-size: 1.6em;
+            font-weight: 700;
+            color: var(--text-color-dark);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .service-icon {
+            font-size: 1.2em;
+        }
+
+        .service-description {
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+            margin-bottom: var(--space-md);
+        }
+
+        .service-status-badge {
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--border-radius-md);
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-width: 80px;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .status-running {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        .status-stopped {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .status-error {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .service-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-sm);
+        }
+
+        .service-uptime {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-xs) var(--space-sm);
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: var(--border-radius-sm);
+            border: 1px solid var(--border-color-light);
+        }
+
+        .uptime-label {
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .uptime-value {
+            color: var(--primary-color);
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        }
+
+        .service-actions {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            margin-top: auto;
+        }
+
+        .btn {
+            padding: var(--space-sm) var(--space-md);
+            border: none;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+        }
+
+        .btn-sm {
+            padding: var(--space-xs) var(--space-md);
+            font-size: 0.8em;
+            border-radius: var(--border-radius-sm);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: var(--space-xl);
+            color: var(--text-color-muted);
+            font-style: italic;
+        }
+
+        .error {
+            text-align: center;
+            padding: var(--space-xl);
+            color: #dc2626;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: var(--border-radius-md);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: var(--space-xl);
+            padding: var(--space-lg);
+            color: var(--text-color-muted);
+            font-size: 0.9em;
+        }
+
+        /* 更新按钮样式 */
+        .update-card .metric-value {
+            padding: 0;
+        }
+        
+        .update-btn {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-md);
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .update-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        
+        .update-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal {
+            background: var(--bg-color-card);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-color-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: var(--text-color-dark);
+            font-size: 1.2em;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-color-muted);
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .close-btn:hover {
+            background: var(--border-color-light);
+            color: var(--text-color);
+        }
+        
+        .modal-body {
+            padding: var(--space-lg);
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        
+        .form-group {
+            margin-bottom: var(--space-lg);
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: var(--space-sm);
+            font-weight: 500;
+            color: var(--text-color-dark);
+        }
+        
+        .current-version, .system-info {
+            background: var(--bg-color-inactive);
+            padding: var(--space-md);
+            border-radius: var(--border-radius-md);
+            color: var(--text-color);
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+        }
+        
+        .url-input {
+            width: 100%;
+            padding: var(--space-md);
+            border: 1px solid var(--border-color-light);
+            border-radius: var(--border-radius-md);
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .url-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .url-input:disabled {
+            background: var(--bg-color-inactive);
+            color: var(--text-color-muted);
+        }
+        
+        .url-help {
+            margin-top: var(--space-sm);
+            font-size: 12px;
+            color: var(--text-color-muted);
+        }
+        
+        .url-help p {
+            margin: 2px 0;
+        }
+        
+        .update-result {
+            padding: var(--space-md);
+            border-radius: var(--border-radius-md);
+            margin-top: var(--space-md);
+        }
+        
+        .update-result.success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+        }
+        
+        .update-result.error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+        
+        .version-change {
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 12px;
+            margin-top: var(--space-sm);
+            font-weight: 500;
+        }
+        
+        .modal-footer {
+            padding: var(--space-lg);
+            border-top: 1px solid var(--border-color-light);
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--space-md);
+        }
+        
+        .btn-cancel, .btn-update {
+            padding: var(--space-md) var(--space-lg);
+            border: none;
+            border-radius: var(--border-radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        }
+        
+        .btn-cancel {
+            background: var(--bg-color-inactive);
+            color: var(--text-color);
+        }
+        
+        .btn-cancel:hover:not(:disabled) {
+            background: #e2e8f0;
+        }
+        
+        .btn-update {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+        }
+        
+        .btn-update:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        
+        .btn-cancel:disabled, .btn-update:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Vue transitions */
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s ease;
+        }
+
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--space-md);
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .service-actions {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .btn-sm {
+                padding: var(--space-xs) var(--space-md);
+                font-size: 0.8em;
+            }
+
+            .service-metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="nav-breadcrumb">
+                <a href="/" class="breadcrumb-link">🏠 首页</a>
+                <span class="breadcrumb-separator">›</span>
+                <span class="breadcrumb-current">🚀 Sing-Box管理</span>
+            </div>
+            
+            <div class="header">
+                <h1>🚀 Sing-Box 管理</h1>
+                <p>多协议代理平台管理控制台</p>
+            </div>
+
+            <!-- 版本信息 -->
+            <div class="service-metrics">
+                <div class="metric-card">
+                    <div class="metric-value">{{ versionInfo.version || '未获取' }}</div>
+                    <div class="metric-label">核心版本</div>
+                </div>
+                <div class="metric-card" v-if="versionInfo.error">
+                    <div class="metric-value" style="font-size: 0.8em; color: #ef4444;">{{ versionInfo.error }}</div>
+                    <div class="metric-label">版本错误</div>
+                </div>
+                <div class="metric-card update-card">
+                    <button class="update-btn" @click="showUpdateDialog = true" :disabled="updateInProgress">
+                        <span v-if="updateInProgress">⏳ 更新中...</span>
+                        <span v-else>🔄 一键更新</span>
+                    </button>
+                    <div class="metric-label">内核更新</div>
+                </div>
+            </div>
+
+            <!-- 服务指标 -->
+            <div v-if="service.status === 0" class="service-metrics">
+                <div class="metric-card">
+                    <div class="metric-value">{{ formatBytes(service.memory_bytes) }}</div>
+                    <div class="metric-label">内存使用</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ service.cpu_percent.toFixed(1) }}%</div>
+                    <div class="metric-label">CPU 使用率</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ service.pid }}</div>
+                    <div class="metric-label">进程 ID</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{{ uptime }}</div>
+                    <div class="metric-label">运行时长</div>
+                </div>
+            </div>
+
+            <!-- 服务状态卡片 -->
+            <transition name="fade" mode="out-in">
+                <div v-if="loading" class="loading" key="loading">
+                    加载 Sing-Box 服务状态...
+                </div>
+                <div v-else-if="error" class="error" key="error">
+                    {{ error }}
+                </div>
+                <div v-else class="service-card" key="service">
+                    <div class="service-header">
+                        <div class="service-name">
+                            <span class="service-icon">🚀</span>
+                            Sing-Box
+                        </div>
+                        <div class="service-status-badge" :class="statusClass">
+                            {{ statusText }}
+                        </div>
+                    </div>
+                    <div class="service-description">
+                        多协议代理平台 - 支持多种代理协议的高性能网络代理工具
+                    </div>
+                    
+                    <div class="service-info">
+                        <div class="service-uptime">
+                            <span class="uptime-label">运行时长</span>
+                            <span class="uptime-value">
+                                {{ uptime || (service.status === 1 ? '已停止' : '未安装') }}
+                            </span>
+                        </div>
+                        <div class="service-uptime">
+                            <span class="uptime-label">核心版本</span>
+                            <span class="uptime-value">
+                                {{ versionInfo.version || '获取中...' }}
+                            </span>
+                        </div>
+                        <div v-if="versionInfo.branch" class="service-uptime">
+                            <span class="uptime-label">分支版本</span>
+                            <span class="uptime-value">
+                                {{ versionInfo.branch }}
+                            </span>
+                        </div>
+                        <div v-if="versionInfo.branch_path" class="service-uptime">
+                            <span class="uptime-label">分支文件</span>
+                            <span class="uptime-value" style="font-size: 0.8em;">
+                                {{ versionInfo.branch_path }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="service-actions">
+                        <button 
+                            v-if="service.status === 0" 
+                            class="btn btn-danger btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('stop')"
+                        >
+                            停止
+                        </button>
+                        <button 
+                            v-if="service.status === 1" 
+                            class="btn btn-success btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('start')"
+                        >
+                            启动
+                        </button>
+                        <button 
+                            v-if="service.status === 2" 
+                            class="btn btn-success btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('start')"
+                        >
+                            启动
+                        </button>
+                        <button 
+                            v-if="service.status !== 2" 
+                            class="btn btn-warning btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('restart')"
+                        >
+                            重启
+                        </button>
+                        <button 
+                            class="btn btn-primary btn-sm" 
+                            :disabled="actionInProgress"
+                            @click="handleAction('logs')"
+                        >
+                            查看日志
+                        </button>
+                    </div>
+                </div>
+            </transition>
+
+            <!-- 更新对话框 -->
+            <div v-if="showUpdateDialog" class="modal-overlay" @click.self="showUpdateDialog = false">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>🔄 更新 Sing-Box 内核</h3>
+                        <button class="close-btn" @click="showUpdateDialog = false">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>当前版本:</label>
+                            <div class="current-version">{{ versionInfo.version || '未知' }}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>系统信息:</label>
+                            <div class="system-info">{{ systemInfo.os }}/{{ systemInfo.arch }}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>下载地址:</label>
+                            <input 
+                                v-model="updateUrl" 
+                                type="url" 
+                                placeholder="请输入 Sing-Box 内核下载地址"
+                                class="url-input"
+                                :disabled="updateInProgress"
+                            >
+                            <div class="url-help">
+                                <p>请提供对应系统架构的 Sing-Box 二进制文件下载地址</p>
+                                <p>支持直接下载链接，如: https://example.com/sing-box</p>
+                            </div>
+                        </div>
+                        <div v-if="updateResult.message" class="update-result" :class="updateResult.success ? 'success' : 'error'">
+                            {{ updateResult.message }}
+                            <div v-if="updateResult.old_version && updateResult.new_version" class="version-change">
+                                {{ updateResult.old_version }} → {{ updateResult.new_version }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-cancel" @click="showUpdateDialog = false" :disabled="updateInProgress">取消</button>
+                        <button class="btn-update" @click="performUpdate" :disabled="updateInProgress || !updateUrl.trim()">
+                            <span v-if="updateInProgress">⏳ 更新中...</span>
+                            <span v-else>🚀 开始更新</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>MyBox v1.0.3 - Sing-Box 管理页面</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, onUnmounted } = Vue;
+
+        const App = {
+            setup() {
+                const service = reactive({});
+                const versionInfo = reactive({});
+                const loading = ref(true);
+                const error = ref(null);
+                const actionInProgress = ref(false);
+                
+                // 更新相关状态
+                const showUpdateDialog = ref(false);
+                const updateInProgress = ref(false);
+                const updateUrl = ref('');
+                const updateResult = reactive({});
+                const systemInfo = reactive({});
+                
+                let refreshTimer = null;
+
+                const API_BASE = '/api';
+
+                const statusClass = computed(() => {
+                    switch (service.status) {
+                        case 0: return 'status-running';
+                        case 1: return 'status-stopped';
+                        case 2: return 'status-error';
+                        default: return 'status-error';
+                    }
+                });
+
+                const statusText = computed(() => {
+                    switch (service.status) {
+                        case 0: return '运行中';
+                        case 1: return '已停止';
+                        case 2: return '未安装';
+                        default: return '未知';
+                    }
+                });
+
+                const uptime = computed(() => {
+                    if (service.status !== 0 || !service.start_time) return null;
+                    
+                    const startTime = new Date(service.start_time);
+                    const now = new Date();
+                    const diffMs = now - startTime;
+                    
+                    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    
+                    if (days > 0) {
+                        return `${days}天 ${hours}小时`;
+                    } else if (hours > 0) {
+                        return `${hours}小时 ${minutes}分钟`;
+                    } else if (minutes > 0) {
+                        return `${minutes}分钟`;
+                    } else {
+                        return '少于1分钟';
+                    }
+                });
+
+                const formatBytes = (bytes) => {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                };
+
+                const fetchServiceStatus = async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/services`);
+                        const data = await response.json();
+                        
+                        if (response.ok && data.services && data.services['sing-box']) {
+                            Object.assign(service, data.services['sing-box']);
+                            loading.value = false;
+                            error.value = null;
+                        } else {
+                            throw new Error('获取 Sing-Box 服务状态失败');
+                        }
+                    } catch (err) {
+                        console.error('获取服务状态失败:', err);
+                        loading.value = false;
+                        error.value = '加载服务状态失败: ' + err.message;
+                    }
+                };
+
+                const fetchVersionInfo = async () => {
+                    console.log('开始获取版本信息...');
+                    try {
+                        const url = `${API_BASE}/version/sing-box`;
+                        console.log('请求URL:', url);
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        console.log('版本信息响应:', data);
+                        
+                        if (response.ok) {
+                            Object.assign(versionInfo, data);
+                            console.log('版本信息更新成功:', versionInfo);
+                        } else {
+                            console.error('获取版本信息失败:', data.error);
+                            versionInfo.version = '获取失败';
+                            versionInfo.error = data.error;
+                        }
+                    } catch (err) {
+                        console.error('获取版本信息异常:', err);
+                        versionInfo.version = '网络错误';
+                        versionInfo.error = err.message;
+                    }
+                };
+
+                // 获取更新信息
+                const fetchUpdateInfo = async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/update/sing-box/info`);
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            Object.assign(systemInfo, data.system_info);
+                        } else {
+                            console.error('获取更新信息失败:', data.error);
+                        }
+                    } catch (err) {
+                        console.error('获取更新信息异常:', err);
+                    }
+                };
+
+                // 执行更新
+                const performUpdate = async () => {
+                    if (updateInProgress.value || !updateUrl.value.trim()) return;
+                    
+                    updateInProgress.value = true;
+                    updateResult.message = '';
+                    updateResult.success = false;
+                    updateResult.error = '';
+                    
+                    try {
+                        const response = await fetch(`${API_BASE}/update/sing-box/core`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                download_url: updateUrl.value.trim()
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok && data.success) {
+                            Object.assign(updateResult, data);
+                            updateResult.success = true;
+                            updateResult.message = data.message || '更新成功';
+                            
+                            // 更新成功后刷新版本信息
+                            setTimeout(() => {
+                                fetchVersionInfo();
+                                fetchServiceStatus();
+                            }, 2000);
+                            
+                            // 3秒后自动关闭对话框
+                            setTimeout(() => {
+                                showUpdateDialog.value = false;
+                                updateUrl.value = '';
+                                Object.keys(updateResult).forEach(key => delete updateResult[key]);
+                            }, 3000);
+                            
+                        } else {
+                            updateResult.success = false;
+                            updateResult.error = data.error || '更新失败';
+                            updateResult.message = data.error || '更新失败，请检查下载地址和网络连接';
+                        }
+                    } catch (err) {
+                        console.error('更新异常:', err);
+                        updateResult.success = false;
+                        updateResult.error = err.message;
+                        updateResult.message = '更新失败：' + err.message;
+                    } finally {
+                        updateInProgress.value = false;
+                    }
+                };
+
+                const handleAction = async (action) => {
+                    if (actionInProgress.value) return;
+                    
+                    try {
+                        if (action === 'logs') {
+                            await viewLogs();
+                            return;
+                        }
+
+                        // 确认操作
+                        if (action === 'stop' || action === 'restart') {
+                            const confirmText = action === 'stop' 
+                                ? '确定要停止 Sing-Box 服务吗？'
+                                : '确定要重启 Sing-Box 服务吗？';
+                            
+                            if (!confirm(confirmText)) {
+                                return;
+                            }
+                        }
+
+                        actionInProgress.value = true;
+
+                        const response = await fetch(`${API_BASE}/services/sing-box/${action}`, {
+                            method: 'POST'
+                        });
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            setTimeout(fetchServiceStatus, 1000);
+                        } else {
+                            alert(`操作失败: ${data.error}`);
+                        }
+                    } catch (err) {
+                        alert(`操作失败: ${err.message}`);
+                    } finally {
+                        actionInProgress.value = false;
+                    }
+                };
+
+                const viewLogs = async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/logs/sing-box?lines=50`);
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            const logs = data.logs.join('\\n');
+                            const newWindow = window.open('', '_blank');
+                            newWindow.document.write(`
+                                <html>
+                                <head>
+                                    <title>Sing-Box 日志</title>
+                                    <style>
+                                        body { 
+                                            font-family: monospace; 
+                                            white-space: pre-wrap; 
+                                            background: #1a1a1a; 
+                                            color: #e0e0e0; 
+                                            padding: 20px; 
+                                            font-size: 0.9em;
+                                            line-height: 1.4;
+                                        }
+                                        pre {
+                                            margin: 0;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                ${logs || '暂无日志'}
+                                </body>
+                                </html>
+                            `);
+                            newWindow.document.close();
+                        } else {
+                            alert(`获取日志失败: ${data.error}`);
+                        }
+                    } catch (err) {
+                        alert(`获取日志失败: ${err.message}`);
+                    }
+                };
+
+                onMounted(() => {
+                    fetchServiceStatus();
+                    fetchVersionInfo();
+                    fetchUpdateInfo();
+                    refreshTimer = setInterval(fetchServiceStatus, 30000);
+                });
+
+                onUnmounted(() => {
+                    if (refreshTimer) {
+                        clearInterval(refreshTimer);
+                    }
+                });
+
+                return {
+                    service,
+                    versionInfo,
+                    loading,
+                    error,
+                    actionInProgress,
+                    statusClass,
+                    statusText,
+                    uptime,
+                    formatBytes,
+                    handleAction,
+                    // 更新相关
+                    showUpdateDialog,
+                    updateInProgress,
+                    updateUrl,
+                    updateResult,
+                    systemInfo,
+                    performUpdate
+                };
+            }
+        };
+
+        createApp(App).mount('#app');
+    </script>
+</body>
+</html>
